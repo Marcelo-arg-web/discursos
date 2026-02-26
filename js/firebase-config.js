@@ -1,4 +1,4 @@
-// 🔥 Configuración Firebase (YA LISTA)
+// 🔥 Configuración Firebase
 
 export const firebaseConfig = {
   apiKey: "AIzaSyDARHGnQMk3ZU1H48n2pfJ_FhusAkl0kfk",
@@ -10,8 +10,8 @@ export const firebaseConfig = {
   measurementId: "G-YVZY3H3DE3"
 };
 
-// Super administradores
+// 👑 Super administrador (puede todo)
 export const SUPERADMINS = ["marceyyesi@gmail.com"];
 
-// Administradores
+// 👤 Administradores
 export const ADMINS = ["edurivaddek@gmail.com"];
