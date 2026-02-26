@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    function isActive() {
+      return signedIn() && userDoc().data.activo == true;
+    }
+
+    function role() {
+      return userDoc().data.rol;
+    }
+
+    function canEdit() {
+      return isActive() && (role() in ['admin','superadmin']);
+    }
+
+    match /usuarios/{uid} {
+      allow read: if signedIn() && (uid == request.auth.uid || canEdit());
+      allow create: if signedIn() && uid == request.auth.uid;
+      allow update: if signedIn() && (uid == request.auth.uid || canEdit());
+      allow delete: if canEdit();
+    }
+
+    match /personas/{id} {
+      allow read: if isActive();
+      allow write: if canEdit();
+    }
+
+    match /discursos/{id} {
+      allow read: if isActive();
+      allow write: if canEdit();
+    }
+
+    match /canciones/{id} {
+      allow read: if isActive();
+      allow write: if canEdit();
+    }
+
+    match /asignaciones/{id} {
+      allow read: if isActive();
+      allow write: if canEdit();
+    }
+  }
+}
