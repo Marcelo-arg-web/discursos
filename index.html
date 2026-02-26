@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="stylesheet" href="./css/styles.css"/>
+<link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+
+<title>Arreglos | Ingresar</title>
+</head>
+<body class="bg">
+  <main class="center">
+    <section class="card auth">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">AD</div>
+        <div>
+          <h1>Arreglos de Discursos</h1>
+          <p class="muted">Villa Fiad • Santa Rosa</p>
+        </div>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Autenticación">
+        <button class="tab active" id="tabLogin" type="button">Ingresar</button>
+        <button class="tab" id="tabRegister" type="button">Registrarme</button>
+      </div>
+
+      <div id="loginPane" class="pane">
+        <label>Correo</label>
+        <input id="email" type="email" placeholder="tu@email.com" autocomplete="username"/>
+        <label>Contraseña</label>
+        <input id="password" type="password" placeholder="••••••••" autocomplete="current-password"/>
+        <button id="btnLogin" class="btn primary">Entrar</button>
+        <button id="btnReset" class="btn ghost" type="button">Olvidé mi contraseña</button>
+      </div>
+
+      <div id="registerPane" class="pane hidden">
+        <label>Correo</label>
+        <input id="regEmail" type="email" placeholder="tu@email.com" autocomplete="username"/>
+        <label>Contraseña</label>
+        <input id="regPassword" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
+        <button id="btnRegister" class="btn primary">Crear cuenta</button>
+        <p class="muted small">Al registrarte, quedás como <strong>lector</strong> (solo ver) hasta que un admin te habilite.</p>
+      </div>
+
+      <p id="msg" class="note" role="status" aria-live="polite"></p>
+      <p class="muted tiny">Consejo: si algo “queda viejo”, probá Ctrl+F5 o modo incógnito.</p>
+    </section>
+  </main>
+
+  <script type="module" src="./js/main-auth.js"></script>
+</body>
+</html>

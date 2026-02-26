@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="stylesheet" href="./css/styles.css"/>
+<link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+
+<title>Arreglos | Panel</title>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebarTop">
+        <div class="brand mini">
+          <div class="logo sm" aria-hidden="true">AD</div>
+          <div>
+            <div class="title">Arreglos</div>
+            <div class="muted tiny" id="congLabel">Villa Fiad</div>
+          </div>
+        </div>
+        <button class="iconBtn" id="btnToggleSidebar" title="Contraer/expandir" type="button">☰</button>
+      </div>
+
+      <nav class="nav">
+        <a href="#/inicio" class="navItem" data-route="inicio">Inicio</a>
+        <a href="#/asignaciones" class="navItem" data-route="asignaciones">Asignaciones</a>
+        <a href="#/personas" class="navItem" data-route="personas">Personas</a>
+        <a href="#/catalogos" class="navItem" data-route="catalogos">Discursos y canciones</a>
+        <a href="#/invitaciones" class="navItem" data-route="invitaciones">Invitaciones</a>
+        <a href="#/exportar" class="navItem" data-route="exportar">Exportar / Imprimir</a>
+        <a href="#/ajustes" class="navItem" data-route="ajustes">Ajustes</a>
+      </nav>
+
+      <div class="sidebarBottom">
+        <div class="userCard">
+          <div class="avatar" aria-hidden="true" id="avatar">MP</div>
+          <div class="userMeta">
+            <div class="userName" id="userName">—</div>
+            <div class="muted tiny" id="userRole">—</div>
+          </div>
+        </div>
+        <button class="btn ghost full" id="btnLogout" type="button">Salir</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="breadcrumbs">
+          <button class="iconBtn" id="btnMobileMenu" type="button" title="Menú">☰</button>
+          <span id="pageTitle">Inicio</span>
+          <span class="muted tiny" id="pageHint"></span>
+        </div>
+        <div class="topbarActions">
+          <button class="btn ghost" id="btnGoHome" type="button">Inicio</button>
+        </div>
+      </header>
+
+      <section class="content" id="view"></section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="./js/main-app.js"></script>
+</body>
+</html>
