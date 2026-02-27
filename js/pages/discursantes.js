@@ -414,6 +414,61 @@ function generarMensajeLocales() {
   toast("Mensaje de locales generado (copiar/pegar)." );
 }
 
+
+// -------------------- EXPORTAR EXCEL --------------------
+function safeStr(v) { return (v == null) ? "" : String(v); }
+
+function exportarExcel() {
+  const XLSX = window.XLSX;
+  if (!XLSX) {
+    toast("No pude cargar el exportador (XLSX). Revisá tu conexión a internet y recargá.", true);
+    return;
+  }
+
+  // Hoja 1: Visitas (visitantes + salidas)
+  const visRows = (cacheVis || [])
+    .slice()
+    .sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""))
+    .map((v) => ({
+      Fecha: safeStr(v.fecha),
+      Hora: safeStr(v.hora),
+      Tipo: safeStr(v.tipo),
+      Nombre: safeStr(v.nombre),
+      Congregación: safeStr(v.congregacion),
+      Teléfono: safeStr(v.telefono),
+      Notas: safeStr(v.notas)
+    }));
+
+  // Hoja 2: Locales
+  const locRows = (cacheLoc || [])
+    .filter((l) => l.activo !== false)
+    .slice()
+    .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"))
+    .map((l) => ({
+      Nombre: safeStr(l.nombre),
+      Teléfono: safeStr(l.telefono),
+      Bosquejos: Array.isArray(l.bosquejos) ? l.bosquejos.join(", ") : safeStr(l.bosquejos),
+      Provisorio: l.provisorio ? "Sí" : "No",
+      Próximo: l.proximo ? "Sí" : "No"
+    }));
+
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.json_to_sheet(visRows.length ? visRows : [{ Fecha: "", Hora: "", Tipo: "", Nombre: "", "Congregación": "", "Teléfono": "", Notas: "" }]);
+  const ws2 = XLSX.utils.json_to_sheet(locRows.length ? locRows : [{ Nombre: "", "Teléfono": "", Bosquejos: "", Provisorio: "", "Próximo": "" }]);
+
+  XLSX.utils.book_append_sheet(wb, ws1, "Visitas");
+  XLSX.utils.book_append_sheet(wb, ws2, "Locales");
+
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const filename = `discursantes_${y}-${m}-${d}.xlsx`;
+
+  XLSX.writeFile(wb, filename);
+  toast("Excel exportado.");
+}
+
 // -------------------- INIT --------------------
 (async function init() {
   await requireActiveUser("discursantes");

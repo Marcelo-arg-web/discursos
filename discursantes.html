@@ -79,6 +79,9 @@
               <label>Buscar</label>
               <input id="q" class="input" placeholder="nombre, congregación, fecha…">
             </div>
+            <div class="col" style="max-width:220px;">
+              <button id="btnExportXlsx" class="btn" style="width:100%;">Exportar Excel</button>
+            </div>
           </div>
 
           <hr class="sep"/>
@@ -153,6 +156,8 @@
     </div>
   </div>
 
+  <!-- SheetJS (XLSX) para exportar a Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script type="module" src="js/pages/discursantes.js"></script>
 </body>
 </html>
