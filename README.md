@@ -1,34 +1,34 @@
-# Arreglos Discursos · Villa Fiad (GitHub Pages + Firebase)
+# Arreglos de Discursos (v2) — Villa Fiad / Santa Rosa
 
-Este paquete es un sitio **estático** (HTML/CSS/JS) listo para **GitHub Pages** y **Firebase (Auth + Firestore)**.
+Sistema web simple y profesional para:
+- Login y registro con Firebase Auth (Email/Password)
+- Roles (lector / admin / superadmin)
+- Personas (base)
+- Catálogos de Discursos y Canciones (para autocompletar títulos)
+- Asignaciones por reunión (sábado/domingo), con microfonistas x2 y acomodadores x2
+- Invitaciones (mensaje listo para WhatsApp)
+- Exportar / Imprimir (PDF vía impresión, y CSV para Excel)
 
-## 1) Configurar Firebase
-1. Firebase Console → Authentication → Sign-in method → habilitar **Email/Password**
-2. Authentication → Settings → Authorized domains → agregar:
-   - `localhost`
-   - `tu-proyecto.web.app` (si usás hosting)
-   - `marcelo-arg-web.github.io` (GitHub Pages)
-3. Firestore → Reglas → pegar el archivo `firestore.rules`
+## 1) Configuración (OBLIGATORIO)
+1. Abrí `js/firebase-config.js`
+2. Reemplazá los valores `REEMPLAZAR` por tu configuración del SDK
+3. En Firebase Console → Authentication → habilitá **Email/Password**
 
-## 2) Pegar tu configuración del SDK
-Editar: `js/firebase-config.js` y pegar tu config (apiKey, authDomain, projectId, etc).
+## 2) Publicar en GitHub Pages
+- Settings → Pages → Branch `main` → `/ (root)`
 
-## 3) Estructura de datos
-- `/usuarios/{uid}` → `activo: true/false`, `rol: viewer/editor/admin/superadmin`, `nombre`, `email`
-- `/personas` → hermanos con roles (microfonista, audio, etc.)
-- `/asignaciones` → semanas con roles
-- `/visitas` → discursantes visitantes / salidas
+## 3) Roles
+- Por defecto los usuarios quedan como `lector`
+- Whitelist por email en `js/firebase-config.js`:
+  - SUPERADMINS: `marceyyesi@gmail.com`
+  - ADMINS: `edurivaddek@gmail.com`
+- También podés cambiar roles desde **Ajustes** (si sos admin)
 
-## 4) Flujo recomendado
-1. Entrás como superadmin (tu usuario debe existir en `/usuarios/{tuUid}` con `activo=true` y `rol=superadmin`).
-2. Cargás personas.
-3. Cargás asignaciones semanales.
-4. Vas a **Imprimir** y sacás el tablero mensual.
+## 4) Recomendación de orden
+1. Cargar Personas
+2. Cargar Catálogos (Discursos y Canciones)
+3. Cargar Asignaciones
+4. Generar Invitaciones y Exportar
 
-## 5) Importar Asignaciones.xlsx
-Página: `importar.html` (solo para rol `editor` o superior).
-Usa SheetJS (CDN) y mapeo rápido por nombre de columnas.
-
----
-
-Generado: 2026-02-27
+## 5) Seguridad (FireStore Rules)
+Ver `docs/firestore.rules.txt`.
