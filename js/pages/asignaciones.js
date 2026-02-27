@@ -48,14 +48,6 @@ function addOption(sel, value, label) {
   sel.appendChild(opt);
 }
 
-function ensureOption(sel, value) {
-  const v = String(value || "").trim();
-  if (!sel || !v) return;
-  const exists = Array.from(sel.options || []).some(o => String(o.value) === v);
-  if (!exists) addOption(sel, v, v);
-}
-
-
 function fillDatalist(datalistEl, values) {
   datalistEl.innerHTML = "";
   for (const v of values) {
@@ -116,16 +108,25 @@ const cancionesMap = new Map(Object.entries(canciones).map(([k,v]) => [Number(k)
 const discursosMap = new Map(Object.entries(bosquejos).map(([k,v]) => [Number(k), String(v)]));
 
 function aplicarAutoCancion() {
-  const num = normNumero($("cancionNumero")?.value);
-  if (!num) { $("cancionTitulo").value = ""; return; }
-  $("cancionTitulo").value = cancionesMap.get(num) || "";
+  // En algunas pantallas el input del título puede no existir; no debe romper el guardado.
+  const tituloEl = $("cancionTitulo");
+  const numEl = $("cancionNumero");
+  if (!tituloEl || !numEl) return;
+
+  const num = normNumero(numEl.value);
+  if (!num) { tituloEl.value = ""; return; }
+  tituloEl.value = cancionesMap.get(num) || "";
 }
 
 function aplicarAutoDiscurso() {
-  const num = normNumero($("discursoNumero")?.value);
+  const numEl = $("discursoNumero");
+  const tituloEl = $("tituloDiscurso");
+  if (!numEl || !tituloEl) return;
+
+  const num = normNumero(numEl.value);
   if (!num) return; // no borro el título por si lo escribió manualmente
   const t = discursosMap.get(num);
-  if (t) $("tituloDiscurso").value = t;
+  if (t) tituloEl.value = t;
 }
 
 // ---------- Data loading ----------
@@ -150,99 +151,186 @@ async function cargarPersonas() {
   for (const p of personas) personasByNameLower.set(String(p.nombre).toLowerCase(), p);
 }
 
+
 function poblarSelectsConPersonas() {
-  // Filtrado por roles (sin tocar Firebase).
-  // Soporta roles "humanos" existentes (ej: "acomodador de plataforma") mediante equivalencias.
-
-  const quitarAcentos = (s) =>
-    String(s || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-
-  const canon = (s) =>
-    quitarAcentos(s)
-      .toLowerCase()
+  // --- Normalización de nombres/roles (SIN tocar Firebase) ---
+  const norm = (s) => {
+    return String(s || "")
       .trim()
-      .replace(/[_\-]/g, " ")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
       .replace(/\s+/g, " ");
+  };
 
-  // Equivalencias: lo que venga de Firestore -> rol canónico usado por la app
-  const ROLE_ALIASES = {
+  const roleAliases = {
+    "siervo ministerial": "siervoministerial",
+    "siervo_ministerial": "siervoministerial",
+    "siervoministerial": "siervoministerial",
+    "anciano": "anciano",
     "presidente": "presidente",
-    "presidir": "presidente",
-
     "microfonista": "microfonista",
-    "microfonos": "microfonista",
-
-    "audio": "audio",
-    "video": "video",
-    "audiovideo": "multimedia",
-    "audio y video": "multimedia",
+    "microfonistas": "microfonista",
     "multimedia": "multimedia",
-
+    "audio": "multimedia",
+    "video": "multimedia",
+    "audio y video": "multimedia",
+    "audio/video": "multimedia",
+    "audiovideo": "multimedia",
     "acomodador": "acomodador",
     "acomodadores": "acomodador",
-
-    "acomodador de plataforma": "acomodadorPlataforma",
-    "acomodador plataforma": "acomodadorPlataforma",
-    "acomodadorplataforma": "acomodadorPlataforma",
-    "plataforma": "acomodadorPlataforma",
-
-    "acomodador de entrada": "acomodadorEntrada",
-    "acomodador entrada": "acomodadorEntrada",
-    "acomodadorentrada": "acomodadorEntrada",
-    "entrada": "acomodadorEntrada",
-
-    "acomodador de auditorio": "acomodadorAuditorio",
-    "acomodador auditorio": "acomodadorAuditorio",
-    "acomodadorauditorio": "acomodadorAuditorio",
-    "auditorio": "acomodadorAuditorio",
-
-    "conductor atalaya": "conductorAtalaya",
-    "conductor de la atalaya": "conductorAtalaya",
-    "conductoratalaya": "conductorAtalaya",
-
-    "lector atalaya": "lectorAtalaya",
-    "lector de la atalaya": "lectorAtalaya",
-    "lectoratalaya": "lectorAtalaya",
-
-    "oracion inicial": "oracion",
-    "oracion final": "oracion",
-    "oracion": "oracion",
+    "acomodador de plataforma": "acomodadorplataforma",
+    "acomodador plataforma": "acomodadorplataforma",
+    "acomodadorplataforma": "acomodadorplataforma",
+    "acomodador de entrada": "acomodadorentrada",
+    "acomodador entrada": "acomodadorentrada",
+    "acomodadorentrada": "acomodadorentrada",
+    "acomodador de auditorio": "acomodadorauditorio",
+    "acomodador auditorio": "acomodadorauditorio",
+    "acomodadorauditorio": "acomodadorauditorio",
+    "lector de la atalaya": "lectoratalaya",
+    "lector atalaya": "lectoratalaya",
+    "lectoratalaya": "lectoratalaya",
+    "conductor de la atalaya": "conductoratalaya",
+    "conductor atalaya": "conductoratalaya",
+    "conductoratalaya": "conductoratalaya"
   };
 
-  function getRolesCanonicos(persona) {
-    const roles = Array.isArray(persona?.roles) ? persona.roles : [];
-    const out = new Set();
-    for (const r of roles) {
-      const key = canon(r).replace(/\s/g, " "); // ya normalizado
-      const alias = ROLE_ALIASES[key] || ROLE_ALIASES[key.replace(/\s/g, "")] || null;
-      out.add(alias || key); // si no está mapeado, queda en "humano" canonizado
-    }
-    return out;
+  function getRolesNorm(p) {
+    const arr = Array.isArray(p.roles) ? p.roles : [];
+    return arr.map(r => roleAliases[norm(r)] || norm(r));
   }
 
-  const personasConRoles = personas.map(p => ({
-    ...p,
-    __roles: getRolesCanonicos(p)
-  }));
+  function hasBase(p) {
+    const rs = getRolesNorm(p);
+    return rs.includes("anciano") || rs.includes("siervoministerial");
+  }
 
-  // Qué roles habilitan cada selector
-  const REQ = {
-    presidente: ["presidente"],
-    conductorAtalaya: ["conductorAtalaya"],
-    lectorAtalaya: ["lectorAtalaya"],
-    multimedia1: ["multimedia", "audio", "video"],
-    multimedia2: ["multimedia", "audio", "video"],
-    microfonista1: ["microfonista"],
-    microfonista2: ["microfonista"],
-    acomodadorPlataforma: ["acomodadorPlataforma"],
-    acomodadorEntrada: ["acomodadorEntrada"],
-    acomodadorAuditorio: ["acomodadorAuditorio"],
-    // oraciones: si nadie tiene rol "oracion", se mostrará todo (fallback)
-    oracionInicial: ["oracion"],
-    oracionFinal: ["oracion"],
+  function isAnciano(p) {
+    const rs = getRolesNorm(p);
+    return rs.includes("anciano");
+  }
+
+  // --- Listas específicas (por NOMBRE) ---
+  // Nota: se matchea por nombre normalizado (sin tildes) para evitar problemas.
+  // Además, para casos ambiguos (padre/hijo) usamos IDs.
+  const LISTA = {
+    acomodadores: [
+      "Marcelo Rodríguez",
+      "Omar Santucho",
+      "Epifanio Pedraza",
+      "Hugo García",
+      "Eduardo Rivadeneira",
+      "Marcelo Palavecino",
+      "Leonardo Araya",
+      "Luis Navarro",
+      "Sergio Saldaña",
+      "Sergio Lazarte",
+      "Roberto Lazarte",
+      "Rodolfo Santucho"
+    ],
+    plataforma: [
+      "Brian Torres",
+      "Brian Rivadeneira",
+      "Martin Zerda",
+      "Omar Santucho"
+    ],
+    multimedia: [
+      "Marcelo Rodríguez",
+      "Eduardo Rivadeneira",
+      "Hugo García",
+      "Marcelo Palavecino",
+      "Brian Rivadeneira",
+      "Isaias Schel",
+      "Isaías Schell",
+      "Martin Zerda",
+      "Roberto Lazarte",
+      "Sergio Saldaña"
+    ],
+    microfonistas: [
+      "David Salica",
+      "Emanuel Salica",
+      "Facundo Reinoso",
+      "Maxi Navarro",
+      "Eduar Salinas",
+      "Misael Salinas",
+      "Isaias Schel",
+      "Isaías Schell",
+      "Roberto Lazarte",
+      "Eduardo Rivadeneira",
+      "Hugo García",
+      "Brian Rivadeneira"
+    ]
   };
+
+  const setByName = (arr) => new Set((arr || []).map(n => norm(n)));
+
+  const setAcomodadores = setByName(LISTA.acomodadores);
+  const setPlataforma = setByName(LISTA.plataforma);
+  const setMultimedia = setByName(LISTA.multimedia);
+  const setMicrofonistas = setByName(LISTA.microfonistas);
+
+  // --- IDs especiales (para distinguir personas con mismo nombre) ---
+  const IDS = {
+    martinPadre: "OIz2KC7o6VwzvjZCqliA",
+    martinHijo: "UQqyIWnjmCkHJlnjnKTH",
+    isaias: "3mdo5EMtQxj5t5Yqgp84"
+  };
+
+  // Microfonistas: incluyen ambos Martin por ID (padre e hijo)
+  const microfonistasIds = new Set([IDS.martinPadre, IDS.martinHijo, IDS.isaias]);
+
+  // Plataforma: usar Martin padre por ID (por defecto)
+  const plataformaIds = new Set([IDS.martinPadre]);
+
+  // Multimedia: incluir Isaías (acompañante) y Martin padre (acompañante) por ID
+  const multimediaIds = new Set([IDS.isaias, IDS.martinPadre]);
+
+  function inSetByNameOrId(p, nameSet, idSet) {
+    if (!p) return false;
+    if (idSet && idSet.has(p.id)) return true;
+    return nameSet && nameSet.has(norm(p.nombre));
+  }
+
+  function canAppear(p, fieldId) {
+    if (!p?.nombre) return false;
+
+    // Oraciones: sin filtro (cualquier activo)
+    if (fieldId === "oracionInicial" || fieldId === "oracionFinal") return true;
+
+    if (fieldId === "presidente") return hasBase(p);
+
+    if (fieldId === "conductorAtalaya") return isAnciano(p);
+
+    if (fieldId === "lectorAtalaya") return hasBase(p);
+
+    if (fieldId === "multimedia1" || fieldId === "multimedia2") {
+      return hasBase(p) || inSetByNameOrId(p, setMultimedia, multimediaIds);
+    }
+
+    if (fieldId === "microfonista1" || fieldId === "microfonista2") {
+      return hasBase(p) || inSetByNameOrId(p, setMicrofonistas, microfonistasIds);
+    }
+
+    if (fieldId === "acomodadorEntrada" || fieldId === "acomodadorAuditorio") {
+      return hasBase(p) || inSetByNameOrId(p, setAcomodadores, null);
+    }
+
+    if (fieldId === "acomodadorPlataforma") {
+      // Plataforma: lista + (si querés) base (anciano/siervo)
+      return hasBase(p) || inSetByNameOrId(p, setPlataforma, plataformaIds);
+    }
+
+    // default: todo activo
+    return true;
+  }
+
+  function ensureOption(sel, value) {
+    const v = String(value || "").trim();
+    if (!v) return;
+    const exists = Array.from(sel.options).some(o => o.value === v);
+    if (!exists) addOption(sel, v, v);
+  }
 
   const selectsIds = [
     "presidente",
@@ -262,28 +350,21 @@ function poblarSelectsConPersonas() {
   for (const id of selectsIds) {
     const sel = $(id);
     if (!sel) continue;
-
     clearSelect(sel);
     addOption(sel, "", "— Seleccionar —");
 
-    const wanted = REQ[id];
-
-    let lista = personasConRoles;
-
-    if (Array.isArray(wanted) && wanted.length) {
-      const wantedSet = new Set(wanted.map(String));
-      const filtradas = personasConRoles.filter(p => {
-        for (const r of p.__roles) if (wantedSet.has(r)) return true;
-        return false;
-      });
-
-      // Fallback: si no hay nadie con ese rol, mostramos todos para que no quede bloqueado.
-      lista = filtradas.length ? filtradas : personasConRoles;
-    }
-
+    const lista = personas.filter(p => canAppear(p, id));
     for (const p of lista) addOption(sel, p.nombre, p.nombre);
   }
+
+  // Guardamos helpers para setFormData (para no perder valores guardados aunque no estén en la lista filtrada)
+  window.__ensureOptionAsignaciones = (fieldId, value) => {
+    const sel = $(fieldId);
+    if (!sel) return;
+    ensureOption(sel, value);
+  };
 }
+
 
 // ---------- Form <-> Object ----------
 function getFormData() {
@@ -321,19 +402,21 @@ function getFormData() {
 }
 
 function setFormData(data = {}) {
-  // Si algún valor guardado no está en las opciones (por filtros), lo agregamos para no “perderlo”.
-  ensureOption($("presidente"), data.presidente);
-  ensureOption($("oracionInicial"), data.oracionInicial);
-  ensureOption($("conductorAtalaya"), data.conductorAtalaya);
-  ensureOption($("lectorAtalaya"), data.lectorAtalaya);
-  ensureOption($("multimedia1"), data.multimedia1);
-  ensureOption($("multimedia2"), data.multimedia2);
-  ensureOption($("acomodadorPlataforma"), data.acomodadorPlataforma);
-  ensureOption($("acomodadorEntrada"), data.acomodadorEntrada);
-  ensureOption($("acomodadorAuditorio"), data.acomodadorAuditorio);
-  ensureOption($("microfonista1"), data.microfonista1);
-  ensureOption($("microfonista2"), data.microfonista2);
-  ensureOption($("oracionFinal"), data.oracionFinal);
+  const ensure = window.__ensureOptionAsignaciones;
+  if (typeof ensure === "function") {
+    ensure("presidente", data.presidente || "");
+    ensure("oracionInicial", data.oracionInicial || "");
+    ensure("conductorAtalaya", data.conductorAtalaya || "");
+    ensure("lectorAtalaya", data.lectorAtalaya || "");
+    ensure("multimedia1", data.multimedia1 || "");
+    ensure("multimedia2", data.multimedia2 || "");
+    ensure("acomodadorPlataforma", data.acomodadorPlataforma || "");
+    ensure("acomodadorEntrada", data.acomodadorEntrada || "");
+    ensure("acomodadorAuditorio", data.acomodadorAuditorio || "");
+    ensure("microfonista1", data.microfonista1 || "");
+    ensure("microfonista2", data.microfonista2 || "");
+    ensure("oracionFinal", data.oracionFinal || "");
+  }
 
   $("presidente").value = data.presidente || "";
 
