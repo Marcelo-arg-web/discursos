@@ -88,21 +88,21 @@ function aplicarAutoVisitante() {
   if (!v) return;
 
   // Solo completamos si el campo está vacío (para no pisar lo que editaste)
-  if (!(val("oradorPublico") || "").trim()) val("oradorPublico") = v.nombre || "";
-  if (!(val("congregacionVisitante") || "").trim()) val("congregacionVisitante") = v.congregacion || "";
+  if (!(val("oradorPublico") || "").trim()) setVal("oradorPublico", v.nombre || "");
+  if (!(val("congregacionVisitante") || "").trim()) setVal("congregacionVisitante", v.congregacion || "");
 
   const b = v.bosquejo;
   if (!(val("discursoNumero") || "").trim() && b !== undefined && b !== null && String(b).trim() !== "") {
-    val("discursoNumero") = String(b);
+    setVal("discursoNumero", String(b));
   }
   // Título: si está vacío, ponemos el de la planilla; si no, dejamos el que tenga
   if (!(val("tituloDiscurso") || "").trim() && (v.titulo || "").trim()) {
-    val("tituloDiscurso") = v.titulo;
+    setVal("tituloDiscurso", v.titulo);
   }
 
   const c = v.cancion;
   if (!(val("cancionNumero") || "").trim() && c !== undefined && c !== null && String(c).trim() !== "") {
-    val("cancionNumero") = String(c);
+    setVal("cancionNumero", String(c));
     aplicarAutoCancion();
   }
 }
@@ -112,15 +112,15 @@ const discursosMap = new Map(Object.entries(bosquejos).map(([k,v]) => [Number(k)
 
 function aplicarAutoCancion() {
   const num = normNumero($("cancionNumero")?.value);
-  if (!num) { val("cancionTitulo") = ""; return; }
-  val("cancionTitulo") = cancionesMap.get(num) || "";
+  if (!num) { setVal("cancionTitulo", ""); return; }
+  setVal("cancionTitulo", cancionesMap.get(num) || "");
 }
 
 function aplicarAutoDiscurso() {
   const num = normNumero($("discursoNumero")?.value);
   if (!num) return; // no borro el título por si lo escribió manualmente
   const t = discursosMap.get(num);
-  if (t) val("tituloDiscurso") = t;
+  if (t) setVal("tituloDiscurso", t);
 }
 
 // ---------- Data loading ----------
@@ -203,7 +203,7 @@ function poblarSelectsConPersonas() {
   function listaPara(id) {
     if (id === "conductorAtalaya") return LISTAS.conductoresAtalaya;
     if (id === "multimedia1" || id === "multimedia2") return LISTAS.multimedia;
-    if (id === "acomodadorPlataforma") return LISTAS.plataforma;
+    if (id === "plataforma") return LISTAS.plataforma;
     if (id === "acomodadorEntrada" || id === "acomodadorAuditorio") return LISTAS.acomodadores;
     if (id === "microfonista1" || id === "microfonista2") return LISTAS.microfonistas;
     return null;
@@ -215,7 +215,7 @@ function poblarSelectsConPersonas() {
     "lectorAtalaya",
     "multimedia1",
     "multimedia2",
-    "acomodadorPlataforma",
+    "plataforma",
     "acomodadorEntrada",
     "acomodadorAuditorio",
     "microfonista1",
@@ -223,6 +223,7 @@ function poblarSelectsConPersonas() {
 
   for (const id of selectsIds) {
     const sel = $(id);
+    if (!sel) continue;
     clearSelect(sel);
     addOption(sel, "", "— Seleccionar —");
 
@@ -284,35 +285,37 @@ function getFormData() {
 }
 
 function setFormData(data = {}) {
-  val("presidente") = data.presidente || "";
+  setVal("presidente", data.presidente || "");
 
-  val("cancionNumero") = data.cancionNumero || "";
-  val("cancionTitulo") = data.cancionTitulo || "";
+  setVal("cancionNumero", data.cancionNumero || "");
+  setVal("cancionTitulo", data.cancionTitulo || "");
 
-  val("oracionInicial") = data.oracionInicial || "";
-  val("oradorPublico") = data.oradorPublico || "";
+  setVal("oracionInicial", data.oracionInicial || "");
+  setVal("oradorPublico", data.oradorPublico || "");
 
-  val("congregacionVisitante") = data.congregacionVisitante || "";
+  setVal("congregacionVisitante", data.congregacionVisitante || "");
 
-  val("discursoNumero") = data.discursoNumero || "";
-  val("tituloDiscurso") = data.tituloDiscurso || "";
+  setVal("discursoNumero", data.discursoNumero || "");
+  setVal("tituloDiscurso", data.tituloDiscurso || "");
 
-  val("tituloSiguienteSemana") = data.tituloSiguienteSemana || "";
+  setVal("tituloSiguienteSemana", data.tituloSiguienteSemana || "");
 
-  val("conductorAtalaya") = data.conductorAtalaya || "";
-  val("lectorAtalaya") = data.lectorAtalaya || "";
+  setVal("conductorAtalaya", data.conductorAtalaya || "");
+  setVal("lectorAtalaya", data.lectorAtalaya || "");
 
-  val("multimedia1") = data.multimedia1 || "";
-  val("multimedia2") = data.multimedia2 || "";
+  setVal("multimedia1", data.multimedia1 || "");
+  setVal("multimedia2", data.multimedia2 || "");
 
-  val("acomodadorPlataforma") = data.acomodadorPlataforma || "";
-  val("acomodadorEntrada") = data.acomodadorEntrada || "";
-  val("acomodadorAuditorio") = data.acomodadorAuditorio || "";
+  setVal("plataforma", (data.plataforma || data.acomodadorPlataforma || ""));
+  // compat: si existe el viejo select en HTML, también lo cargamos
+  setVal("acomodadorPlataforma", data.acomodadorPlataforma || "");
+  setVal("acomodadorEntrada", data.acomodadorEntrada || "");
+  setVal("acomodadorAuditorio", data.acomodadorAuditorio || "");
 
-  val("microfonista1") = data.microfonista1 || "";
-  val("microfonista2") = data.microfonista2 || "";
+  setVal("microfonista1", data.microfonista1 || "");
+  setVal("microfonista2", data.microfonista2 || "");
 
-  val("oracionFinal") = data.oracionFinal || "";
+  setVal("oracionFinal", data.oracionFinal || "");
 }
 
 function limpiarFormulario() {
@@ -340,7 +343,7 @@ function sugerirConductorAtalaya() {
 
   for (const nombre of preferidos.slice(0, 2)) {
     if (personasByNameLower.has(nombre.toLowerCase())) {
-      val("conductorAtalaya") = nombre;
+      setVal("conductorAtalaya", nombre);
       setStatus(`Sugerencia aplicada: Conductor Atalaya → ${nombre}`);
       return;
     }
@@ -348,14 +351,14 @@ function sugerirConductorAtalaya() {
 
   const anciano = personas.find(p => hasRole(p, "anciano"));
   if (anciano) {
-    val("conductorAtalaya") = anciano.nombre;
+    setVal("conductorAtalaya", anciano.nombre);
     setStatus(`Sugerencia aplicada: Conductor Atalaya → ${anciano.nombre} (anciano disponible)`);
     return;
   }
 
   for (const nombre of preferidos.slice(2)) {
     if (personasByNameLower.has(nombre.toLowerCase())) {
-      val("conductorAtalaya") = nombre;
+      setVal("conductorAtalaya", nombre);
       setStatus(`Sugerencia aplicada: Conductor Atalaya → ${nombre}`);
       return;
     }
@@ -398,7 +401,7 @@ function aplicarOracionFinalAutomatica(force = false) {
 
   const actual = val("oracionFinal") || "";
   if (force || !actual || !oracionFinalFueEditada) {
-    val("oracionFinal") = sugerida;
+    setVal("oracionFinal", sugerida);
   }
 }
 
@@ -415,7 +418,7 @@ async function cargarAsignaciones() {
     return;
   }
 
-  const ref = doc(db, "asignacionesSemanales", semanaId);
+  const ref = doc(db, "asignaciones", semanaId);
   const snap = await getDoc(ref);
 
   if (!snap.exists()) {
@@ -464,7 +467,7 @@ async function guardarAsignaciones() {
     return;
   }
 
-  const ref = doc(db, "asignacionesSemanales", semanaId);
+  const ref = doc(db, "asignaciones", semanaId);
 
   await setDoc(
     ref,
@@ -479,7 +482,7 @@ async function guardarAsignaciones() {
     // Si hay orador visitante, guardamos/actualizamos estadística de visitantes
   const orador = (asignaciones.oradorPublico || "").trim();
   if (orador) {
-    const refVis = doc(db, "visitantes", semanaId);
+    const refVis = doc(db, "visitas", semanaId);
     await setDoc(refVis, {
       fecha: semanaId,
       nombre: orador,
@@ -501,7 +504,7 @@ function usarOradorComoOracionFinal() {
     setStatus("Primero elegí el Orador público.", true);
     return;
   }
-  val("oracionFinal") = orador;
+  setVal("oracionFinal", orador);
   oracionFinalFueEditada = true;
   setStatus(`Oración final asignada a: ${orador}`);
 }
@@ -512,7 +515,7 @@ function usarPresidenteComoOracionFinal() {
     setStatus("Primero elegí el Presidente.", true);
     return;
   }
-  val("oracionFinal") = pres;
+  setVal("oracionFinal", pres);
   oracionFinalFueEditada = true;
   setStatus(`Oración final asignada a: ${pres}`);
 }
@@ -526,7 +529,7 @@ async function logout() {
 // ---------- Init ----------
 async function init() {
   try {
-    val("semana") = isoToday();
+    setVal("semana", isoToday());
 
     setStatus(`Cargando personas... (Canciones: ${cancionesMap.size}, Discursos: ${discursosMap.size})`);
     await cargarPersonas();

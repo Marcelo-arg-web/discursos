@@ -100,7 +100,7 @@ async function load(){
   }
 
   try{
-    const snap = await getDoc(doc(db, "asignacionesSemanales", semana));
+    const snap = await getDoc(doc(db, "asignaciones", semana));
     if(!snap.exists()){
       $("contenido").innerHTML = `<div class="card pad"><b>No hay datos guardados para ${semana}.</b><div class="muted">Primero guardá la semana en Asignaciones.</div></div>`;
       return;
