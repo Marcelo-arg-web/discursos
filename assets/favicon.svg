@@ -1,4 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <rect x="6" y="6" width="52" height="52" rx="16" fill="#0f2a52"/>
-  <text x="32" y="39" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff">AD</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#60a5fa"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="48" height="48" rx="14" fill="url(#g)"/>
+  <path d="M22 36c6-10 14-14 20-14-3 4-4 8-4 12 0 9-6 14-16 14-3 0-6-1-8-3 2-1 6-4 8-9z" fill="white" opacity=".92"/>
 </svg>

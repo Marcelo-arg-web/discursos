@@ -1,4 +1,4 @@
-import { db } from "./firebase.js";
+import { db } from "../firebase.js";
 import {
   collection,
   addDoc,
@@ -10,8 +10,8 @@ import {
   doc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-import { mountTopbar, requireAuth } from "./guard.js";
-import { qs, toast } from "./utils.js";
+import { mountTopbar, requireAuth } from "../guard.js";
+import { qs, toast } from "../utils.js";
 
 mountTopbar("personas");
 const session = await requireAuth({ minRole: "viewer" });

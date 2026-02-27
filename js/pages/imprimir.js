@@ -1,7 +1,7 @@
-import { db } from "./firebase.js";
+import { db } from "../firebase.js";
 import { collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-import { mountTopbar, requireAuth } from "./guard.js";
-import { qs } from "./utils.js";
+import { mountTopbar, requireAuth } from "../guard.js";
+import { qs } from "../utils.js";
 
 mountTopbar("imprimir");
 await requireAuth({ minRole: "viewer" });
@@ -58,9 +58,7 @@ function render(list) {
         </tr>
       </thead>
       <tbody>
-        ${rows
-          .map(
-            (x) => `
+        ${rows.map((x) => `
           <tr>
             <td>
               <b>Sáb ${x.fechaSab}</b> <span class="small muted">${x.horaSab || ""}</span>
@@ -73,9 +71,7 @@ function render(list) {
             <td>${(x.roles?.audio || "—")}<br>${(x.roles?.video || "—")}</td>
             <td>${x.notas ? `<span class="small">${x.notas}</span>` : ""}</td>
           </tr>
-        `
-          )
-          .join("")}
+        `).join("")}
       </tbody>
     </table>
   `;

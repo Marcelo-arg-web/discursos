@@ -1,4 +1,4 @@
-import { db } from "./firebase.js";
+import { db } from "../firebase.js";
 import {
   collection,
   addDoc,
@@ -9,8 +9,8 @@ import {
   deleteDoc,
   doc,
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-import { mountTopbar, requireAuth } from "./guard.js";
-import { qs, toast } from "./utils.js";
+import { mountTopbar, requireAuth } from "../guard.js";
+import { qs, toast } from "../utils.js";
 
 mountTopbar("asignaciones");
 const session = await requireAuth({ minRole: "viewer" });
@@ -30,7 +30,6 @@ setDomEnabled();
 
 let personas = [];
 
-// Cargamos personas para los selects (solo activos)
 import {
   onSnapshot as onSnapP,
   collection as colP,
@@ -60,7 +59,6 @@ function byRole(role) {
 }
 
 function pickList(roleFallback, rolePrimary) {
-  // si existen personas con el rolPrimary, usa esas; si no, usa fallback; si no, usa todas
   const pri = byRole(rolePrimary);
   if (pri.length) return pri;
 
@@ -76,10 +74,6 @@ function fillSelects() {
   $("#micro1").innerHTML = optHtml(pickList("microfonista", "microfonista"), "Seleccionar…");
   $("#micro2").innerHTML = optHtml(pickList("microfonista", "microfonista"), "Seleccionar…");
 
-  // NUEVOS roles recomendados:
-  // - acomodador-auditorio
-  // - acomodador-entrada
-  // Compatibilidad: si no existen, usa el rol viejo "acomodador", y si no, todos.
   $("#acomodadorAuditorio").innerHTML = optHtml(
     pickList("acomodador", "acomodador-auditorio"),
     "Seleccionar…"
@@ -104,7 +98,7 @@ async function crear() {
   const horaSab = getVal("#horaSab") || "19:30";
   const hayDom = $("#hayDom").value === "si";
   const fechaDom = hayDom ? getVal("#fechaDom") : "";
-  const horaDom = hayDom ? getVal("#horaDom") || "10:00" : "";
+  const horaDom = hayDom ? (getVal("#horaDom") || "10:00") : "";
 
   if (!fechaSab) return toast("Elegí la fecha del sábado.", "err");
   if (hayDom && !fechaDom) return toast("Elegí la fecha del domingo.", "err");
@@ -165,10 +159,9 @@ $("#btnNuevo").addEventListener("click", () => {
 let all = [];
 
 function showAcomodadores(x) {
-  // Compatibilidad con datos viejos:
   const aud = x.roles?.acomodadorAuditorio || "";
   const ent = x.roles?.acomodadorEntrada || "";
-  const viejo = x.roles?.acomodador || ""; // si antes existía
+  const viejo = x.roles?.acomodador || "";
 
   if (aud || ent) return `Aud: ${aud || "—"} · Ent: ${ent || "—"}`;
   if (viejo) return viejo;
