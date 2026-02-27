@@ -2,7 +2,7 @@
 // NO se modifica firebase-config.js (firebase.js). Solo lo importamos.
 // Ubicación esperada: /js/pages/asignaciones.js
 
-import { db } from "../firebase-config.js";
+import { db, auth } from "../firebase-config.js";
 import { canciones } from "../data/canciones.js";
 import { bosquejos } from "../data/bosquejos.js";
 import { visitantes } from "../data/visitantes.js";
@@ -17,6 +17,8 @@ import {
   setDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+import { signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
 // ---------- Helpers UI ----------
 const $ = (id) => document.getElementById(id);
@@ -428,6 +430,12 @@ function usarPresidenteComoOracionFinal() {
   setStatus(`Oración final asignada a: ${pres}`);
 }
 
+// ---------- Logout ----------
+async function logout() {
+  try { await signOut(auth); } catch (e) {}
+  window.location.href = "index.html";
+}
+
 // ---------- Init ----------
 async function init() {
   try {
@@ -492,6 +500,9 @@ async function init() {
   $("btnSugerirConductor").addEventListener("click", () => sugerirConductorAtalaya());
   $("btnOracionFinalOrador").addEventListener("click", () => usarOradorComoOracionFinal());
   $("btnOracionFinalPresidente").addEventListener("click", () => usarPresidenteComoOracionFinal());
+
+  const btnSalir = document.getElementById("btnSalir");
+  if (btnSalir) btnSalir.addEventListener("click", () => logout());
 }
 
 init();

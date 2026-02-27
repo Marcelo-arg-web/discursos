@@ -2,6 +2,9 @@ const CACHE_NAME = "villa-fiad-asignaciones-v1";
 const CORE_ASSETS = [
   "./",
   "./asignaciones.html",
+  "./visitantes.html",
+  "./personas.html",
+  "./index.html",
   "./manifest.webmanifest",
   "./sw.js",
   "./icons/icon-192.png",
@@ -52,7 +55,10 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => {
           // fallback básico: si falla, devolvemos la página principal si existe en cache
-          return caches.match("./asignaciones.html");
+          return caches.match("./asignaciones.html",
+  "./visitantes.html",
+  "./personas.html",
+  "./index.html");
         });
     })
   );
