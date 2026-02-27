@@ -32,6 +32,55 @@ function setStatus(msg, isError = false) {
   statusBox.style.background = isError ? "#fff1f2" : "#f8fafc";
   statusBox.style.borderColor = isError ? "#fecdd3" : "#e5e7eb";
   statusBox.style.color = isError ? "#9f1239" : "#111827";
+
+// ---------- Normalización y alias (para que coincidan 'Brian/Braian', acentos, etc.) ----------
+const ID_MARTIN_PADRE = "OIz2KC7o6VwzvjZCqliA";
+const ID_MARTIN_JR = "UQqyIWnjmCkHJlnjnKTH";
+const ID_ISAIAS_SCHEL = "3mdo5EMtQxj5t5Yqgp84";
+
+function _stripAccents(s) {
+  return String(s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "");
+}
+
+function nameKey(s) {
+  let x = _stripAccents(String(s || "").trim()).toLowerCase();
+  x = x.replace(/[^\p{L}\p{N}\s]/gu, " ");
+  x = x.replace(/\s+/g, " ").trim();
+  // Brian/Braian → mismo
+  x = x.replace(/\bbraian\b/g, "brian");
+  // Schell/Schel → mismo
+  x = x.replace(/\bschell\b/g, "schel");
+  return x;
+}
+
+function displayNombre(p) {
+  // Diferenciar padre/hijo aunque en Firebase ambos digan "Martin Zerda"
+  if (p?.id === ID_MARTIN_PADRE) return "Martin Zerda (padre)";
+  if (p?.id === ID_MARTIN_JR) return "Martin Zerda Jr";
+  return String(p?.nombre || "");
+}
+
+function roleKey(s) {
+  const x = nameKey(s);
+  // equivalencias comunes
+  if (x === "siervo ministerial" || x === "siervo" || x === "sm") return "siervoministerial";
+  if (x === "conductor de la atalaya" || x === "conductor atalaya") return "conductoratalaya";
+  if (x === "lector de la atalaya" || x === "lector atalaya") return "lectoratalaya";
+  if (x === "acomodador de plataforma" || x === "plataforma") return "plataforma";
+  if (x === "audio y video" || x === "audio video") return "multimedia";
+  if (x === "sonido y video") return "multimedia";
+  return x.replace(/\s+/g, "");
+}
+
+function getRoleSet(p) {
+  const set = new Set();
+  const arr = Array.isArray(p?.roles) ? p.roles : [];
+  for (const r of arr) set.add(roleKey(r));
+  const r1 = p?.rol ? roleKey(p.rol) : null;
+  if (r1) set.add(r1);
+  return set;
+}
+
 }
 
 function isoToday() {
@@ -139,10 +188,16 @@ async function cargarPersonas() {
       .filter(p => p?.nombre);
   }
 
-  personas.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
+  personas.sort((a, b) => displayNombre(a).localeCompare(displayNombre(b), "es"));
 
   personasByNameLower = new Map();
-  for (const p of personas) personasByNameLower.set(String(p.nombre).toLowerCase(), p);
+  for (const p of personas) {
+    // Guardamos múltiples llaves para encontrar por nombre aun si cambia el formato
+    const k1 = nameKey(displayNombre(p));
+    if (k1) personasByNameLower.set(k1, p);
+    const k2 = nameKey(p.nombre);
+    if (k2) personasByNameLower.set(k2, p);
+  }
 }
 
 function poblarSelectsConPersonas() {
@@ -156,7 +211,9 @@ function poblarSelectsConPersonas() {
       "Hugo García",
       "Marcelo Palavecino",
       "Brian Rivadeneira",
+      "Braian Rivadeneira",
       "Isaías Schell",
+      "Isaías Schel",
       "Martin Zerda",
       "Roberto Lazarte",
       "Sergio Saldaña"
@@ -175,7 +232,9 @@ function poblarSelectsConPersonas() {
       "Roberto Lazarte",
       "Rodolfo Santucho"
     ],
-    plataforma: ["Brian Torres", "Brian Rivadeneira", "Martin Zerda", "Omar Santucho"],
+    plataforma: ["Brian Torres",
+      "Braian Torres", "Braian Torres", "Brian Rivadeneira",
+      "Braian Rivadeneira", "Braian Rivadeneira", "Martin Zerda Jr", "Martin Zerda (hijo)", "Martin Zerda", "Omar Santucho", "Facundo Reinoso"],
     microfonistas: [
       "David Salica",
       "Emanuel Salica",
@@ -186,11 +245,14 @@ function poblarSelectsConPersonas() {
       "Eduar Salinas",
       "Misael Salinas",
       "Isaías Schell",
+      "Isaías Schel",
       "Roberto Lazarte",
       "Eduardo Rivadeneira",
       "Hugo García",
       "Brian Rivadeneira",
+      "Braian Rivadeneira",
       "Brian Torres",
+      "Braian Torres",
       "Epifanio Pedraza",
       "Omar Santucho",
       "Marcelo Rodríguez",
@@ -224,25 +286,65 @@ function poblarSelectsConPersonas() {
   for (const id of selectsIds) {
     const sel = $(id);
     if (!sel) continue;
+
+    // Guardamos el valor previo (si estabas editando)
+    const previo = (sel.value || "").trim();
+
     clearSelect(sel);
     addOption(sel, "", "— Seleccionar —");
 
     const lista = listaPara(id);
-    if (Array.isArray(lista)) {
-      // Lista cerrada (por nombre)
-      const set = new Set(lista.map(n => String(n).toLowerCase()));
-      const filtradas = personas.filter(p => set.has(String(p.nombre).toLowerCase()));
-      for (const p of filtradas) addOption(sel, p.nombre, p.nombre);
 
-      // Si ya había un valor guardado que no está en la lista, lo agregamos para no romper
-      const actual = (sel.value || "").trim();
-      if (actual && !set.has(actual.toLowerCase())) {
-        addOption(sel, actual, actual);
-      }
+    // Filtro por lista cerrada (por nombre) o por rol (según reglas)
+    let elegibles = personas;
+
+    if (Array.isArray(lista)) {
+      const set = new Set(lista.map(nameKey));
+
+      elegibles = personas.filter(p => {
+        // Casos especiales por ID (para padre/hijo y nombres iguales)
+        if (id === "plataforma" && p.id === ID_MARTIN_JR) return true;
+        if (id === "microfonista1" || id === "microfonista2") {
+          if (set.has(nameKey(displayNombre(p)))) return true;
+          return false;
+        }
+        return set.has(nameKey(displayNombre(p)));
+      });
     } else {
-      // Sin filtro
-      for (const p of personas) addOption(sel, p.nombre, p.nombre);
+      // Reglas por roles
+      elegibles = personas.filter(p => {
+        const rs = getRoleSet(p);
+        const esAnciano = rs.has("anciano") || rs.has("anciano.");
+        const esSiervo = rs.has("siervoministerial");
+        const esLectorAtalaya = rs.has("lectoratalaya");
+        const esConductorAtalaya = rs.has("conductoratalaya");
+
+        if (id === "presidente" || id === "oracionInicial") {
+          return esAnciano || esSiervo;
+        }
+        if (id === "lectorAtalaya") {
+          return esAnciano || esSiervo || esLectorAtalaya;
+        }
+        if (id === "conductorAtalaya") {
+          return esAnciano || esConductorAtalaya;
+        }
+        // Por defecto, no filtramos
+        return true;
+      });
     }
+
+    for (const p of elegibles) {
+      const nom = displayNombre(p);
+      addOption(sel, nom, nom);
+    }
+
+    // Si ya había un valor guardado que no está en la lista/filtro, lo agregamos para no romper
+    if (previo && !Array.from(sel.options).some(o => (o.value || "").trim() === previo)) {
+      addOption(sel, previo, previo);
+    }
+
+    // Restauramos el valor previo si existe
+    if (previo) sel.value = previo;
   }
 }
 
@@ -609,22 +711,34 @@ init();
 function validarNoRepetidos(data) {
   // No permitir asignar a la misma persona en estos campos
   const campos = [
-    ["multimedia1", data.multimedia1],
-    ["multimedia2", data.multimedia2],
-    ["acomodadorEntrada", data.acomodadorEntrada],
-    ["acomodadorAuditorio", data.acomodadorAuditorio],
-  ].filter(([,v]) => !!v);
+    ["Multimedia 1", data.multimedia1],
+    ["Multimedia 2", data.multimedia2],
+    ["Acomodador Entrada", data.acomodadorEntrada],
+    ["Acomodador Auditorio", data.acomodadorAuditorio],
+  ]
+    .map(([k,v]) => [k, String(v || "").trim()])
+    .filter(([,v]) => v !== "");
 
-  const seen = new Map();
+  const seen = new Map(); // key normalizada -> {campo, valorOriginal}
   const repetidos = [];
-  for (const [k,v] of campos) {
-    if (seen.has(v)) repetidos.push([seen.get(v), k, v]);
-    else seen.set(v, k);
+  for (const [campo, valor] of campos) {
+    const k = nameKey(valor);
+    if (seen.has(k)) {
+      const prev = seen.get(k);
+      repetidos.push({ nombre: valor, campo1: prev.campo, campo2: campo });
+    } else {
+      seen.set(k, { campo, valor });
+    }
   }
+
   if (repetidos.length) {
-    // Devolvemos un mensaje amigable
-    const nombres = repetidos.map(([, , v]) => v).join(", ");
-    alert("No se puede asignar a la misma persona en Multimedia 1/2 y Acomodadores (Entrada/Auditorio). Repetido: " + nombres);
+    const detalle = repetidos
+      .map(r => `${r.nombre} (${r.campo1} y ${r.campo2})`)
+      .join("
+");
+    alert("No se puede asignar a la misma persona en estos campos:
+
+" + detalle);
     return false;
   }
   return true;
