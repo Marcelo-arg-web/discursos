@@ -1,10 +1,10 @@
-// asignaciones.js
-// Requiere: firebase-config.js que exporte { db, auth }
-// Requiere: colección "personas" con campos { nombre: string, roles: array, activo: boolean }
-// Guarda en: colección "asignacionesSemanales" docId = semana (YYYY-MM-DD)
+// asignaciones.js (Admin)
+// NO se modifica firebase-config.js (firebase.js). Solo lo importamos.
+// Ubicación esperada: /js/pages/asignaciones.js
 
-// ✅ FIX: como este archivo está en js/pages, firebase-config está en ../
 import { db } from "../firebase-config.js";
+import { canciones } from "../data/canciones.js";
+import { bosquejos } from "../data/bosquejos.js";
 
 import {
   collection,
@@ -36,9 +36,7 @@ function isoToday() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function clearSelect(sel) {
-  sel.innerHTML = "";
-}
+function clearSelect(sel) { sel.innerHTML = ""; }
 
 function addOption(sel, value, label) {
   const opt = document.createElement("option");
@@ -47,32 +45,48 @@ function addOption(sel, value, label) {
   sel.appendChild(opt);
 }
 
+function normNumero(v) {
+  const n = parseInt(String(v || "").trim(), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+// ---------- Catálogos (desde tus archivos JS) ----------
+const cancionesMap = new Map(Object.entries(canciones).map(([k,v]) => [Number(k), String(v)]));
+const discursosMap = new Map(Object.entries(bosquejos).map(([k,v]) => [Number(k), String(v)]));
+
+function aplicarAutoCancion() {
+  const num = normNumero($("cancionNumero")?.value);
+  if (!num) { $("cancionTitulo").value = ""; return; }
+  $("cancionTitulo").value = cancionesMap.get(num) || "";
+}
+
+function aplicarAutoDiscurso() {
+  const num = normNumero($("discursoNumero")?.value);
+  if (!num) return; // no borro el título por si lo escribió manualmente
+  const t = discursosMap.get(num);
+  if (t) $("tituloDiscurso").value = t;
+}
+
 // ---------- Data loading ----------
 let personas = []; // {id, nombre, roles[], activo}
 let personasByNameLower = new Map();
 
 async function cargarPersonas() {
-  // Solo activos (si tu campo activo existe). Si no existe, igualmente trae todo.
-  // Para no romperte nada, hacemos un intento con filtro, y si falla, sin filtro.
   try {
     const q = query(collection(db, "personas"), where("activo", "==", true));
     const snap = await getDocs(q);
     personas = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       .filter(p => p?.nombre);
   } catch (e) {
-    // Si no existe índice o campo activo, cargamos sin filtro
     const snap = await getDocs(collection(db, "personas"));
     personas = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       .filter(p => p?.nombre);
   }
 
-  // Orden alfabético por nombre
   personas.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
 
   personasByNameLower = new Map();
-  for (const p of personas) {
-    personasByNameLower.set(String(p.nombre).toLowerCase(), p);
-  }
+  for (const p of personas) personasByNameLower.set(String(p.nombre).toLowerCase(), p);
 }
 
 function poblarSelectsConPersonas() {
@@ -95,11 +109,8 @@ function poblarSelectsConPersonas() {
   for (const id of selectsIds) {
     const sel = $(id);
     clearSelect(sel);
-
     addOption(sel, "", "— Seleccionar —");
-    for (const p of personas) {
-      addOption(sel, p.nombre, p.nombre);
-    }
+    for (const p of personas) addOption(sel, p.nombre, p.nombre);
   }
 }
 
@@ -107,12 +118,19 @@ function poblarSelectsConPersonas() {
 function getFormData() {
   return {
     presidente: $("presidente").value || "",
-    cancionNumero: $("cancionNumero").value?.trim() || "",
+
+    cancionNumero: ($("cancionNumero").value || "").trim(),
+    cancionTitulo: ($("cancionTitulo").value || "").trim(),
+
     oracionInicial: $("oracionInicial").value || "",
     oradorPublico: $("oradorPublico").value || "",
-    congregacionVisitante: $("congregacionVisitante").value?.trim() || "",
-    tituloDiscurso: $("tituloDiscurso").value?.trim() || "",
-    tituloSiguienteSemana: $("tituloSiguienteSemana").value?.trim() || "",
+
+    congregacionVisitante: ($("congregacionVisitante").value || "").trim(),
+
+    discursoNumero: ($("discursoNumero").value || "").trim(),
+    tituloDiscurso: ($("tituloDiscurso").value || "").trim(),
+
+    tituloSiguienteSemana: ($("tituloSiguienteSemana").value || "").trim(),
 
     conductorAtalaya: $("conductorAtalaya").value || "",
     lectorAtalaya: $("lectorAtalaya").value || "",
@@ -133,11 +151,18 @@ function getFormData() {
 
 function setFormData(data = {}) {
   $("presidente").value = data.presidente || "";
+
   $("cancionNumero").value = data.cancionNumero || "";
+  $("cancionTitulo").value = data.cancionTitulo || "";
+
   $("oracionInicial").value = data.oracionInicial || "";
   $("oradorPublico").value = data.oradorPublico || "";
+
   $("congregacionVisitante").value = data.congregacionVisitante || "";
+
+  $("discursoNumero").value = data.discursoNumero || "";
   $("tituloDiscurso").value = data.tituloDiscurso || "";
+
   $("tituloSiguienteSemana").value = data.tituloSiguienteSemana || "";
 
   $("conductorAtalaya").value = data.conductorAtalaya || "";
@@ -159,6 +184,10 @@ function setFormData(data = {}) {
 function limpiarFormulario() {
   setFormData({});
   setStatus("Formulario limpio.");
+  aplicarAutoCancion();
+  aplicarAutoDiscurso();
+  refrescarBotonesOracionFinal();
+  aplicarOracionFinalAutomatica(false);
 }
 
 // ---------- Conductor suggestion ----------
@@ -168,13 +197,6 @@ function hasRole(p, role) {
 }
 
 function sugerirConductorAtalaya() {
-  // Orden:
-  // 1) Marcelo Palavecino
-  // 2) Leonardo Araya
-  // 3) cualquier anciano
-  // 4) Marcelo Rodríguez
-  // 5) Eduardo Rivadeneira
-
   const preferidos = [
     "Marcelo Palavecino",
     "Leonardo Araya",
@@ -182,7 +204,6 @@ function sugerirConductorAtalaya() {
     "Eduardo Rivadeneira"
   ];
 
-  // 1 y 2 directos
   for (const nombre of preferidos.slice(0, 2)) {
     if (personasByNameLower.has(nombre.toLowerCase())) {
       $("conductorAtalaya").value = nombre;
@@ -191,7 +212,6 @@ function sugerirConductorAtalaya() {
     }
   }
 
-  // 3 cualquier anciano
   const anciano = personas.find(p => hasRole(p, "anciano"));
   if (anciano) {
     $("conductorAtalaya").value = anciano.nombre;
@@ -199,7 +219,6 @@ function sugerirConductorAtalaya() {
     return;
   }
 
-  // 4 y 5 fallback
   for (const nombre of preferidos.slice(2)) {
     if (personasByNameLower.has(nombre.toLowerCase())) {
       $("conductorAtalaya").value = nombre;
@@ -209,6 +228,44 @@ function sugerirConductorAtalaya() {
   }
 
   setStatus("No pude sugerir conductor: no encontré los nombres ni ancianos en Personas.", true);
+}
+
+// ---------- Oración final (auto + botones con nombres) ----------
+let oracionFinalFueEditada = false;
+
+function refrescarBotonesOracionFinal() {
+  const orador = $("oradorPublico").value || "";
+  const pres = $("presidente").value || "";
+
+  $("btnOracionFinalOrador").textContent = orador
+    ? `Usar orador público: ${orador}`
+    : "Usar orador público";
+
+  $("btnOracionFinalPresidente").textContent = pres
+    ? `Usar presidente: ${pres}`
+    : "Usar presidente";
+}
+
+function sugerirOracionFinal() {
+  const orador = $("oradorPublico").value || "";
+  const pres = $("presidente").value || "";
+  return orador || pres || "";
+}
+
+/**
+ * Si force=true, reemplaza siempre.
+ * Si force=false, solo completa si:
+ *  - está vacío, o
+ *  - todavía no fue editado manualmente.
+ */
+function aplicarOracionFinalAutomatica(force = false) {
+  const sugerida = sugerirOracionFinal();
+  if (!sugerida) return;
+
+  const actual = $("oracionFinal").value || "";
+  if (force || !actual || !oracionFinalFueEditada) {
+    $("oracionFinal").value = sugerida;
+  }
 }
 
 // ---------- Firestore persistence ----------
@@ -234,9 +291,18 @@ async function cargarAsignaciones() {
   }
 
   const data = snap.data() || {};
-  // Guardamos dentro de "asignaciones" (si existe) para no mezclar.
-  const asign = data.asignaciones || data; // compatibilidad si antes guardabas plano
+  const asign = data.asignaciones || data;
   setFormData(asign);
+
+  // al cargar: si no hay título guardado, lo completamos con catálogo
+  aplicarAutoCancion();
+  aplicarAutoDiscurso();
+
+  // refrescar botones y sugerencia (sin pisar si ya está guardado)
+  refrescarBotonesOracionFinal();
+  oracionFinalFueEditada = Boolean(($("oracionFinal").value || "").trim());
+  aplicarOracionFinalAutomatica(false);
+
   setStatus(`Datos cargados para ${semanaId}.`);
 }
 
@@ -247,9 +313,12 @@ async function guardarAsignaciones() {
     return;
   }
 
+  // mantener títulos sincronizados antes de guardar
+  aplicarAutoCancion();
+  aplicarAutoDiscurso();
+
   const asignaciones = getFormData();
 
-  // Validación mínima (podés sacar esto si querés)
   if (!asignaciones.presidente) {
     setStatus("Falta Presidente.", true);
     return;
@@ -257,7 +326,6 @@ async function guardarAsignaciones() {
 
   const ref = doc(db, "asignacionesSemanales", semanaId);
 
-  // setDoc con merge = true: agrega/actualiza sin borrar otros campos del documento
   await setDoc(
     ref,
     {
@@ -271,7 +339,7 @@ async function guardarAsignaciones() {
   setStatus(`Guardado OK para ${semanaId}.`);
 }
 
-// ---------- Oración final helpers ----------
+// ---------- Botones Oración final ----------
 function usarOradorComoOracionFinal() {
   const orador = $("oradorPublico").value || "";
   if (!orador) {
@@ -279,6 +347,7 @@ function usarOradorComoOracionFinal() {
     return;
   }
   $("oracionFinal").value = orador;
+  oracionFinalFueEditada = true;
   setStatus(`Oración final asignada a: ${orador}`);
 }
 
@@ -289,6 +358,7 @@ function usarPresidenteComoOracionFinal() {
     return;
   }
   $("oracionFinal").value = pres;
+  oracionFinalFueEditada = true;
   setStatus(`Oración final asignada a: ${pres}`);
 }
 
@@ -297,13 +367,33 @@ async function init() {
   try {
     $("semana").value = isoToday();
 
-    setStatus("Cargando personas...");
+    setStatus(`Cargando personas... (Canciones: ${cancionesMap.size}, Discursos: ${discursosMap.size})`);
     await cargarPersonas();
     poblarSelectsConPersonas();
-    setStatus(`Personas cargadas: ${personas.length}. Elegí semana y cargá o guardá.`);
+
+    // autocompletes
+    $("cancionNumero").addEventListener("input", () => aplicarAutoCancion());
+    $("discursoNumero").addEventListener("input", () => aplicarAutoDiscurso());
+
+    // oración final
+    $("oracionFinal").addEventListener("change", () => { oracionFinalFueEditada = true; });
+
+    $("oradorPublico").addEventListener("change", () => {
+      refrescarBotonesOracionFinal();
+      aplicarOracionFinalAutomatica(false);
+    });
+    $("presidente").addEventListener("change", () => {
+      refrescarBotonesOracionFinal();
+      aplicarOracionFinalAutomatica(false);
+    });
+
+    refrescarBotonesOracionFinal();
+    aplicarOracionFinalAutomatica(false);
+
+    setStatus(`Listo. Personas cargadas: ${personas.length}.`);
   } catch (e) {
     console.error(e);
-    setStatus("Error cargando personas. Revisá consola (F12) y permisos de Firestore.", true);
+    setStatus("Error cargando datos. Revisá consola (F12) y permisos de Firestore.", true);
   }
 
   $("btnCargar").addEventListener("click", () => cargarAsignaciones());
