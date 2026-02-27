@@ -1,12 +1,9 @@
-// asignaciones.js (Admin)
-// NO se modifica firebase-config.js (firebase.js). Solo lo importamos.
-// Ubicación esperada: /js/pages/asignaciones.js
+// js/pages/asignaciones.js
+// Admin: carga personas, guarda asignaciones semanales, y autocompleta visitante/títulos.
+// NO modifica Firebase.
 
-import { db, auth } from "../firebase-config.js";
-import { canciones } from "../data/canciones.js";
-import { bosquejos } from "../data/bosquejos.js";
-import { visitantes } from "../data/visitantes.js";
-
+import { auth, db } from "../firebase-config.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import {
   collection,
   getDocs,
@@ -18,728 +15,522 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-import { signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { canciones } from "../data/canciones.js";
+import { bosquejos } from "../data/bosquejos.js";
+import { visitantes as visitantesLocal } from "../data/visitantes.js";
 
-// ---------- Helpers UI ----------
+// ---------------- UI helpers ----------------
 const $ = (id) => document.getElementById(id);
-const val = (id) => { const el = $(id); return el ? (el.value ?? "") : ""; };
+const getVal = (id) => ($ (id)?.value ?? "");
 const setVal = (id, v) => { const el = $(id); if (el) el.value = v ?? ""; };
-const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
 
-const statusBox = $("status");
-function setStatus(msg, isError = false) {
-  statusBox.textContent = msg;
-  statusBox.style.background = isError ? "#fff1f2" : "#f8fafc";
-  statusBox.style.borderColor = isError ? "#fecdd3" : "#e5e7eb";
-  statusBox.style.color = isError ? "#9f1239" : "#111827";
-
-// ---------- Normalización y alias (para que coincidan 'Brian/Braian', acentos, etc.) ----------
-const ID_MARTIN_PADRE = "OIz2KC7o6VwzvjZCqliA";
-const ID_MARTIN_JR = "UQqyIWnjmCkHJlnjnKTH";
-const ID_ISAIAS_SCHEL = "3mdo5EMtQxj5t5Yqgp84";
-
-function _stripAccents(s) {
-  return String(s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "");
+function setStatus(msg, isError=false){
+  const box = $("status");
+  if(!box) return;
+  box.textContent = msg;
+  box.style.background = isError ? "#fff1f2" : "#f8fafc";
+  box.style.borderColor = isError ? "#fecdd3" : "#e5e7eb";
+  box.style.color = isError ? "#9f1239" : "#111827";
 }
 
-function nameKey(s) {
-  let x = _stripAccents(String(s || "").trim()).toLowerCase();
-  x = x.replace(/[^\p{L}\p{N}\s]/gu, " ");
-  x = x.replace(/\s+/g, " ").trim();
-  // Brian/Braian → mismo
-  x = x.replace(/\bbraian\b/g, "brian");
-  // Schell/Schel → mismo
-  x = x.replace(/\bschell\b/g, "schel");
-  return x;
-}
-
-function displayNombre(p) {
-  // Diferenciar padre/hijo aunque en Firebase ambos digan "Martin Zerda"
-  if (p?.id === ID_MARTIN_PADRE) return "Martin Zerda (padre)";
-  if (p?.id === ID_MARTIN_JR) return "Martin Zerda Jr";
-  return String(p?.nombre || "");
-}
-
-function roleKey(s) {
-  const x = nameKey(s);
-  // equivalencias comunes
-  if (x === "siervo ministerial" || x === "siervo" || x === "sm") return "siervoministerial";
-  if (x === "conductor de la atalaya" || x === "conductor atalaya") return "conductoratalaya";
-  if (x === "lector de la atalaya" || x === "lector atalaya") return "lectoratalaya";
-  if (x === "acomodador de plataforma" || x === "plataforma") return "plataforma";
-  if (x === "audio y video" || x === "audio video") return "multimedia";
-  if (x === "sonido y video") return "multimedia";
-  return x.replace(/\s+/g, "");
-}
-
-function getRoleSet(p) {
-  const set = new Set();
-  const arr = Array.isArray(p?.roles) ? p.roles : [];
-  for (const r of arr) set.add(roleKey(r));
-  const r1 = p?.rol ? roleKey(p.rol) : null;
-  if (r1) set.add(r1);
-  return set;
-}
-
-}
-
-function isoToday() {
+function isoToday(){
   const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const da=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${da}`;
 }
 
-function clearSelect(sel) { sel.innerHTML = ""; }
+function addDaysISO(iso, days){
+  const d = new Date(iso+"T00:00:00");
+  if(Number.isNaN(d.getTime())) return "";
+  d.setDate(d.getDate()+days);
+  return d.toISOString().slice(0,10);
+}
 
-function addOption(sel, value, label) {
-  const opt = document.createElement("option");
-  opt.value = value;
-  opt.textContent = label;
+function clearSelect(id){
+  const el = $(id);
+  if(el) el.innerHTML = "";
+}
+
+function addOpt(sel, value, label){
+  const opt=document.createElement('option');
+  opt.value=value;
+  opt.textContent=label;
   sel.appendChild(opt);
 }
 
-function fillDatalist(datalistEl, values) {
-  datalistEl.innerHTML = "";
-  for (const v of values) {
-    const opt = document.createElement("option");
-    opt.value = v;
-    datalistEl.appendChild(opt);
+function normalize(s){
+  return String(s||"")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\.\,\;\:]+$/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function normalizeRole(r){
+  const n = normalize(r)
+    .replace(/_/g,' ')
+    .replace(/-/g,' ');
+  return n;
+}
+
+function rolesSet(persona){
+  const arr = Array.isArray(persona?.roles) ? persona.roles : [];
+  return new Set(arr.map(normalizeRole));
+}
+
+function hasAncianoOrSiervo(persona){
+  const rs = rolesSet(persona);
+  return rs.has('anciano') || rs.has('siervo ministerial') || rs.has('siervoministerial') || rs.has('siervo');
+}
+
+function hasAnciano(persona){
+  const rs = rolesSet(persona);
+  return rs.has('anciano');
+}
+
+// ---------------- Lists (según lo que me pasaste) ----------------
+const LISTA_ACOMODADORES = [
+  "Marcelo Rodríguez","Omar Santucho","Epifanio Pedraza","Hugo García","Eduardo Rivadeneira",
+  "Marcelo Palavecino","Leonardo Araya","Luis Navarro","Sergio Saldaña","Sergio Lazarte",
+  "Roberto Lazarte","Rodolfo Santucho"
+].map(normalize);
+
+const LISTA_PLATAFORMA = [
+  "Brian Torres","Braian Torres",
+  "Brian Rivadeneira","Braian Rivadeneira",
+  "Martin Zerda Jr","Martin Zerda (hijo)","Martin Zerda hijo",
+  "Omar Santucho",
+  // Facundo Reinoso lo querés en plataforma también
+  "Facundo Reinoso"
+].map(normalize);
+
+const LISTA_MULTIMEDIA = [
+  "Marcelo Rodríguez","Eduardo Rivadeneira","Hugo García","Marcelo Palavecino","Sergio Saldaña",
+  "Brian Rivadeneira","Braian Rivadeneira","Isaías Schell","Isaias Schel","Martin Zerda","Roberto Lazarte",
+  "Facundo Reinoso","Brian Torres","Braian Torres"
+].map(normalize);
+
+const LISTA_MICROFONISTAS = [
+  "David Salica","Emanuel Salica","Facundo Reinoso","Maxi Navarro","Eduar Salinas","Misael Salinas",
+  "Isaías Schell","Isaias Schel","Roberto Lazarte","Eduardo Rivadeneira","Hugo García",
+  "Brian Rivadeneira","Braian Rivadeneira","Martin Zerda (padre)","Martin Zerda padre","Martin Zerda (hijo)","Martin Zerda hijo"
+].map(normalize);
+
+// IDs especiales (para distinguir Martin padre/hijo)
+const ID_MARTIN_PADRE = "OIz2KC7o6VwzvjZCqliA";
+const ID_MARTIN_HIJO  = "UQqyIWnjmCkHJlnjnKTH";
+const ID_ISAIAS       = "3mdo5EMtQxj5t5Yqgp84";
+
+function displayName(persona){
+  if(persona?.id === ID_MARTIN_PADRE) return "Martin Zerda (padre)";
+  if(persona?.id === ID_MARTIN_HIJO) return "Martin Zerda Jr";
+  if(persona?.id === ID_ISAIAS) return "Isaías Schel";
+  return persona?.nombre || "";
+}
+
+function inListByNameOrId(persona, listNorm){
+  const nm = normalize(persona?.nombre);
+  if(listNorm.includes(nm)) return true;
+  // soporte Brian/Braian por normalización adicional
+  const nm2 = nm.replace(/^brian /,'braian ');
+  const nm3 = nm.replace(/^braian /,'brian ');
+  return listNorm.includes(nm2) || listNorm.includes(nm3);
+}
+
+// ---------------- Data ----------------
+let personas = []; // {id, nombre, roles, activo, ...}
+
+async function cargarPersonas(){
+  const qy = query(collection(db, "personas"), where("activo","==", true));
+  const snap = await getDocs(qy);
+  personas = snap.docs.map(d=>({id:d.id, ...d.data()})).filter(p=>p?.nombre);
+  personas.sort((a,b)=> displayName(a).localeCompare(displayName(b), 'es', {sensitivity:'base'}));
+}
+
+function fillSelect(id, filterFn){
+  const sel = $(id);
+  if(!sel) return;
+  sel.innerHTML = "";
+  addOpt(sel, "", "— Seleccionar —");
+  for(const p of personas){
+    if(filterFn(p)) addOpt(sel, p.id, displayName(p));
   }
 }
 
-function normNumero(v) {
-  const n = parseInt(String(v || "").trim(), 10);
+function getSelectedPersona(id){
+  const pid = getVal(id);
+  if(!pid) return null;
+  return personas.find(p=>p.id===pid) || null;
+}
+
+function ensureOptionById(selectId, personaId){
+  const sel = $(selectId);
+  if(!sel || !personaId) return;
+  const exists = Array.from(sel.options).some(o=>o.value===personaId);
+  if(exists) return;
+  const p = personas.find(x=>x.id===personaId);
+  if(!p) return;
+  addOpt(sel, p.id, displayName(p));
+}
+
+function poblarSelects(){
+  // Presidente / Oraciones / Lector: anciano o siervo
+  const base = (p)=> hasAncianoOrSiervo(p);
+  fillSelect("presidente", base);
+  fillSelect("oracionInicial", base);
+  fillSelect("oracionFinal", base);
+  fillSelect("lectorAtalaya", base);
+
+  // Conductor Atalaya: solo ancianos
+  fillSelect("conductorAtalaya", (p)=> hasAnciano(p));
+
+  // Multimedia: lista + anciano/siervo
+  fillSelect("multimedia1", (p)=> hasAncianoOrSiervo(p) || inListByNameOrId(p, LISTA_MULTIMEDIA));
+  fillSelect("multimedia2", (p)=> hasAncianoOrSiervo(p) || inListByNameOrId(p, LISTA_MULTIMEDIA));
+
+  // Plataforma: SOLO lista plataforma (como pediste)
+  fillSelect("plataforma", (p)=> inListByNameOrId(p, LISTA_PLATAFORMA) || p.id === ID_MARTIN_HIJO);
+
+  // Acomodadores: lista + anciano/siervo
+  fillSelect("acomodadorEntrada", (p)=> hasAncianoOrSiervo(p) || inListByNameOrId(p, LISTA_ACOMODADORES));
+  fillSelect("acomodadorAuditorio", (p)=> hasAncianoOrSiervo(p) || inListByNameOrId(p, LISTA_ACOMODADORES));
+
+  // Microfonistas: lista + anciano/siervo
+  fillSelect("microfonista1", (p)=> hasAncianoOrSiervo(p) || inListByNameOrId(p, LISTA_MICROFONISTAS));
+  fillSelect("microfonista2", (p)=> hasAncianoOrSiervo(p) || inListByNameOrId(p, LISTA_MICROFONISTAS));
+}
+
+// ---------------- Autocompletado canción y discurso por número ----------------
+const cancionesMap = new Map(Object.entries(canciones).map(([k,v])=>[Number(k), String(v)]));
+const bosquejosMap = new Map(Object.entries(bosquejos).map(([k,v])=>[Number(k), String(v)]));
+
+function normNumero(v){
+  const n = parseInt(String(v||"").trim(), 10);
   return Number.isFinite(n) ? n : null;
 }
 
-// ---------- Catálogos (desde tus archivos JS) ----------
-const visitantesMap = new Map(Object.entries(visitantes));
-
-function findVisitanteCerca(fechaISO) {
-  // busca exacto; si no, prueba +1 día y -1 día (para cubrir fin de semana)
-  const exact = visitantesMap.get(fechaISO);
-  if (exact) return exact;
-  const d = new Date(fechaISO + "T00:00:00");
-  if (isNaN(d.getTime())) return null;
-  const plus = new Date(d); plus.setDate(plus.getDate() + 1);
-  const minus = new Date(d); minus.setDate(minus.getDate() - 1);
-  const isoPlus = plus.toISOString().slice(0,10);
-  const isoMinus = minus.toISOString().slice(0,10);
-  return visitantesMap.get(isoPlus) || visitantesMap.get(isoMinus) || null;
+function aplicarAutoCancion(){
+  const num = normNumero(getVal("cancionNumero"));
+  if(!num) return;
+  // no hay campo cancionTitulo en el formulario, pero lo dejamos para imprimir
 }
 
-function aplicarAutoVisitante() {
-  const semanaId = getSemanaId();
-  if (!semanaId) return;
-  const v = findVisitanteCerca(semanaId);
-  if (!v) return;
-
-  // Solo completamos si el campo está vacío (para no pisar lo que editaste)
-  if (!(val("oradorPublico") || "").trim()) setVal("oradorPublico", v.nombre || "");
-  if (!(val("congregacionVisitante") || "").trim()) setVal("congregacionVisitante", v.congregacion || "");
-
-  const b = v.bosquejo;
-  if (!(val("discursoNumero") || "").trim() && b !== undefined && b !== null && String(b).trim() !== "") {
-    setVal("discursoNumero", String(b));
-  }
-  // Título: si está vacío, ponemos el de la planilla; si no, dejamos el que tenga
-  if (!(val("tituloDiscurso") || "").trim() && (v.titulo || "").trim()) {
-    setVal("tituloDiscurso", v.titulo);
-  }
-
-  const c = v.cancion;
-  if (!(val("cancionNumero") || "").trim() && c !== undefined && c !== null && String(c).trim() !== "") {
-    setVal("cancionNumero", String(c));
-    aplicarAutoCancion();
-  }
+function aplicarAutoDiscurso(){
+  const num = normNumero(getVal("discursoNumero"));
+  if(!num) return;
+  const t = bosquejosMap.get(num);
+  if(t && !getVal("tituloDiscurso").trim()) setVal("tituloDiscurso", t);
 }
 
-const cancionesMap = new Map(Object.entries(canciones).map(([k,v]) => [Number(k), String(v)]));
-const discursosMap = new Map(Object.entries(bosquejos).map(([k,v]) => [Number(k), String(v)]));
-
-function aplicarAutoCancion() {
-  const num = normNumero($("cancionNumero")?.value);
-  if (!num) { setVal("cancionTitulo", ""); return; }
-  setVal("cancionTitulo", cancionesMap.get(num) || "");
+// ---------------- Visitantes (Firestore + fallback local) ----------------
+function localVisitanteFor(fechaISO){
+  const v = visitantesLocal[fechaISO];
+  if(v) return v;
+  // tolerancia +/- 1 día
+  const plus = addDaysISO(fechaISO, 1);
+  const minus = addDaysISO(fechaISO, -1);
+  return visitantesLocal[plus] || visitantesLocal[minus] || null;
 }
 
-function aplicarAutoDiscurso() {
-  const num = normNumero($("discursoNumero")?.value);
-  if (!num) return; // no borro el título por si lo escribió manualmente
-  const t = discursosMap.get(num);
-  if (t) setVal("tituloDiscurso", t);
-}
+async function firestoreVisitFor(fechaISO){
+  // 1) doc id = fecha
+  try{
+    const snap = await getDoc(doc(db, "visitas", fechaISO));
+    if(snap.exists()) return { id: snap.id, ...snap.data() };
+  }catch(_){/* ignore */}
 
-// ---------- Data loading ----------
-let personas = []; // {id, nombre, roles[], activo}
-let personasByNameLower = new Map();
-
-async function cargarPersonas() {
-  try {
-    const q = query(collection(db, "personas"), where("activo", "==", true));
-    const snap = await getDocs(q);
-    personas = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      .filter(p => p?.nombre);
-  } catch (e) {
-    const snap = await getDocs(collection(db, "personas"));
-    personas = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      .filter(p => p?.nombre);
+  // 2) query por campos comunes
+  const fields = ["fecha","fechaISO","semana","dia"]; // probar
+  for(const f of fields){
+    try{
+      const qy = query(collection(db, "visitas"), where(f, "==", fechaISO));
+      const s = await getDocs(qy);
+      if(!s.empty) return { id: s.docs[0].id, ...s.docs[0].data() };
+    }catch(_){/* ignore */}
   }
 
-  personas.sort((a, b) => displayNombre(a).localeCompare(displayNombre(b), "es"));
-
-  personasByNameLower = new Map();
-  for (const p of personas) {
-    // Guardamos múltiples llaves para encontrar por nombre aun si cambia el formato
-    const k1 = nameKey(displayNombre(p));
-    if (k1) personasByNameLower.set(k1, p);
-    const k2 = nameKey(p.nombre);
-    if (k2) personasByNameLower.set(k2, p);
-  }
-}
-
-function poblarSelectsConPersonas() {
-  // Listas (basadas en tu lista de roles)
-  // Nota: si alguien NO está en la lista, igual podés seleccionarlo si ya estaba guardado.
-  const LISTAS = {
-    conductoresAtalaya: ["Marcelo Palavecino", "Leonardo Araya"],
-    multimedia: [
-      "Marcelo Rodríguez",
-      "Eduardo Rivadeneira",
-      "Hugo García",
-      "Marcelo Palavecino",
-      "Brian Rivadeneira",
-      "Braian Rivadeneira",
-      "Isaías Schell",
-      "Isaías Schel",
-      "Martin Zerda",
-      "Roberto Lazarte",
-      "Sergio Saldaña"
-    ],
-    acomodadores: [
-      "Marcelo Rodríguez",
-      "Omar Santucho",
-      "Epifanio Pedraza",
-      "Hugo García",
-      "Eduardo Rivadeneira",
-      "Marcelo Palavecino",
-      "Leonardo Araya",
-      "Luis Navarro",
-      "Sergio Saldaña",
-      "Sergio Lazarte",
-      "Roberto Lazarte",
-      "Rodolfo Santucho"
-    ],
-    plataforma: ["Brian Torres",
-      "Braian Torres", "Braian Torres", "Brian Rivadeneira",
-      "Braian Rivadeneira", "Braian Rivadeneira", "Martin Zerda Jr", "Martin Zerda (hijo)", "Martin Zerda", "Omar Santucho", "Facundo Reinoso"],
-    microfonistas: [
-      "David Salica",
-      "Emanuel Salica",
-      "Martin Zerda (padre)",
-      "Martin Zerda (hijo)",
-      "Facundo Reinoso",
-      "Maxi Navarro",
-      "Eduar Salinas",
-      "Misael Salinas",
-      "Isaías Schell",
-      "Isaías Schel",
-      "Roberto Lazarte",
-      "Eduardo Rivadeneira",
-      "Hugo García",
-      "Brian Rivadeneira",
-      "Braian Rivadeneira",
-      "Brian Torres",
-      "Braian Torres",
-      "Epifanio Pedraza",
-      "Omar Santucho",
-      "Marcelo Rodríguez",
-      "Sergio Lazarte",
-      "José Lazarte",
-      "Rodolfo Santucho"
-    ]
-  };
-
-  function listaPara(id) {
-    if (id === "conductorAtalaya") return LISTAS.conductoresAtalaya;
-    if (id === "multimedia1" || id === "multimedia2") return LISTAS.multimedia;
-    if (id === "plataforma") return LISTAS.plataforma;
-    if (id === "acomodadorEntrada" || id === "acomodadorAuditorio") return LISTAS.acomodadores;
-    if (id === "microfonista1" || id === "microfonista2") return LISTAS.microfonistas;
-    return null;
-  }
-  const selectsIds = [
-    "presidente",
-    "oracionInicial",
-    "conductorAtalaya",
-    "lectorAtalaya",
-    "multimedia1",
-    "multimedia2",
-    "plataforma",
-    "acomodadorEntrada",
-    "acomodadorAuditorio",
-    "microfonista1",
-    "microfonista2"];
-
-  for (const id of selectsIds) {
-    const sel = $(id);
-    if (!sel) continue;
-
-    // Guardamos el valor previo (si estabas editando)
-    const previo = (sel.value || "").trim();
-
-    clearSelect(sel);
-    addOption(sel, "", "— Seleccionar —");
-
-    const lista = listaPara(id);
-
-    // Filtro por lista cerrada (por nombre) o por rol (según reglas)
-    let elegibles = personas;
-
-    if (Array.isArray(lista)) {
-      const set = new Set(lista.map(nameKey));
-
-      elegibles = personas.filter(p => {
-        // Casos especiales por ID (para padre/hijo y nombres iguales)
-        if (id === "plataforma" && p.id === ID_MARTIN_JR) return true;
-        if (id === "microfonista1" || id === "microfonista2") {
-          if (set.has(nameKey(displayNombre(p)))) return true;
-          return false;
-        }
-        return set.has(nameKey(displayNombre(p)));
-      });
-    } else {
-      // Reglas por roles
-      elegibles = personas.filter(p => {
-        const rs = getRoleSet(p);
-        const esAnciano = rs.has("anciano") || rs.has("anciano.");
-        const esSiervo = rs.has("siervoministerial");
-        const esLectorAtalaya = rs.has("lectoratalaya");
-        const esConductorAtalaya = rs.has("conductoratalaya");
-
-        if (id === "presidente" || id === "oracionInicial") {
-          return esAnciano || esSiervo;
-        }
-        if (id === "lectorAtalaya") {
-          return esAnciano || esSiervo || esLectorAtalaya;
-        }
-        if (id === "conductorAtalaya") {
-          return esAnciano || esConductorAtalaya;
-        }
-        // Por defecto, no filtramos
-        return true;
-      });
+  // 3) fallback: leer todo (suele ser chico)
+  try{
+    const s = await getDocs(collection(db, "visitas"));
+    for(const d of s.docs){
+      const data = d.data() || {};
+      const fx = (data.fecha || data.fechaISO || data.semana || data.dia || "").toString().slice(0,10);
+      if(fx === fechaISO) return { id:d.id, ...data };
     }
+  }catch(_){/* ignore */}
 
-    for (const p of elegibles) {
-      const nom = displayNombre(p);
-      addOption(sel, nom, nom);
+  return null;
+}
+
+function extractVisitFields(v){
+  if(!v) return null;
+  // admitimos varias claves según como venga del excel
+  const nombre = v.orador || v.oradorPublico || v.nombre || v.conferenciante || "";
+  const congregacion = v.congregacion || v.congregacionVisitante || v.congreg || "";
+  const titulo = v.titulo || v.tituloDiscurso || v.tema || "";
+  const bosquejo = v.bosquejo || v.numero || v.discursoNumero || v.b || "";
+  const cancion = v.cancion || v.cancionNumero || v.c || "";
+  return { nombre, congregacion, titulo, bosquejo, cancion };
+}
+
+async function aplicarAutoVisitante(semanaISO){
+  if(!semanaISO) return;
+
+  // esta semana
+  let v = await firestoreVisitFor(semanaISO);
+  let vf = extractVisitFields(v);
+  if(!vf){
+    const local = localVisitanteFor(semanaISO);
+    vf = local ? { nombre: local.nombre||"", congregacion: local.congregacion||"", titulo: local.titulo||"", bosquejo: local.bosquejo||"", cancion: local.cancion||"" } : null;
+  }
+
+  if(vf){
+    if(!getVal("oradorPublico").trim() && vf.nombre) setVal("oradorPublico", vf.nombre);
+    if(!getVal("congregacionVisitante").trim() && vf.congregacion) setVal("congregacionVisitante", vf.congregacion);
+    if(!getVal("tituloDiscurso").trim() && vf.titulo) setVal("tituloDiscurso", vf.titulo);
+    if(!getVal("cancionNumero").trim() && vf.cancion) setVal("cancionNumero", String(vf.cancion));
+  }
+
+  // próxima semana: solo título
+  const nextISO = addDaysISO(semanaISO, 7);
+  if(!getVal("tituloSiguienteSemana").trim() && nextISO){
+    let v2 = await firestoreVisitFor(nextISO);
+    let v2f = extractVisitFields(v2);
+    if(!v2f){
+      const local2 = localVisitanteFor(nextISO);
+      v2f = local2 ? { titulo: local2.titulo||"" } : null;
     }
-
-    // Si ya había un valor guardado que no está en la lista/filtro, lo agregamos para no romper
-    if (previo && !Array.from(sel.options).some(o => (o.value || "").trim() === previo)) {
-      addOption(sel, previo, previo);
-    }
-
-    // Restauramos el valor previo si existe
-    if (previo) sel.value = previo;
+    if(v2f?.titulo) setVal("tituloSiguienteSemana", v2f.titulo);
   }
 }
 
-// ---------- Form <-> Object ----------
-function getFormData() {
+async function poblarDatalistOradores(){
+  const dl = $("listaOradoresVisitantes");
+  if(!dl) return;
+
+  const set = new Set();
+  // local
+  for(const k of Object.keys(visitantesLocal||{})){
+    const v = visitantesLocal[k];
+    if(v?.nombre) set.add(v.nombre);
+  }
+  // firestore
+  try{
+    const s = await getDocs(collection(db, "visitas"));
+    for(const d of s.docs){
+      const data = d.data()||{};
+      const name = data.orador || data.oradorPublico || data.nombre || data.conferenciante;
+      if(name) set.add(String(name));
+    }
+  }catch(_){/* ignore */}
+
+  dl.innerHTML = "";
+  Array.from(set).sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})).forEach(v=>{
+    const opt=document.createElement('option');
+    opt.value=v;
+    dl.appendChild(opt);
+  });
+}
+
+// ---------------- Guardar / cargar ----------------
+function semanaISO(){
+  return (getVal("semana")||"").trim();
+}
+
+function formData(){
+  // Guardamos IDs de personas para no depender de nombres.
   return {
-    presidente: val("presidente") || "",
+    presidenteId: getVal("presidente"),
+    oracionInicialId: getVal("oracionInicial"),
+    oracionFinalId: getVal("oracionFinal"),
+    conductorAtalayaId: getVal("conductorAtalaya"),
+    lectorAtalayaId: getVal("lectorAtalaya"),
+    multimedia1Id: getVal("multimedia1"),
+    multimedia2Id: getVal("multimedia2"),
+    plataformaId: getVal("plataforma"),
+    microfonista1Id: getVal("microfonista1"),
+    microfonista2Id: getVal("microfonista2"),
+    acomodadorEntradaId: getVal("acomodadorEntrada"),
+    acomodadorAuditorioId: getVal("acomodadorAuditorio"),
 
-    cancionNumero: (val("cancionNumero") || "").trim(),
-    cancionTitulo: (val("cancionTitulo") || "").trim(),
-
-    oracionInicial: val("oracionInicial") || "",
-    oradorPublico: val("oradorPublico") || "",
-
-    congregacionVisitante: (val("congregacionVisitante") || "").trim(),
-
-    discursoNumero: (val("discursoNumero") || "").trim(),
-    tituloDiscurso: (val("tituloDiscurso") || "").trim(),
-
-    tituloSiguienteSemana: (val("tituloSiguienteSemana") || "").trim(),
-
-    conductorAtalaya: val("conductorAtalaya") || "",
-    lectorAtalaya: val("lectorAtalaya") || "",
-
-    multimedia1: val("multimedia1") || "",
-    multimedia2: val("multimedia2") || "",
-
-    plataforma: val("plataforma") || "",
-
-    // compat: si existe el viejo campo en el HTML, lo tomamos también
-    acomodadorPlataforma: (val("plataforma") || val("acomodadorPlataforma") || ""),
-    acomodadorEntrada: val("acomodadorEntrada") || "",
-    acomodadorAuditorio: val("acomodadorAuditorio") || "",
-
-    microfonista1: val("microfonista1") || "",
-    microfonista2: val("microfonista2") || "",
-
-    oracionFinal: val("oracionFinal") || ""
+    cancionNumero: getVal("cancionNumero"),
+    oradorPublico: getVal("oradorPublico"),
+    congregacionVisitante: getVal("congregacionVisitante"),
+    tituloDiscurso: getVal("tituloDiscurso"),
+    tituloSiguienteSemana: getVal("tituloSiguienteSemana"),
   };
 }
 
-function setFormData(data = {}) {
-  setVal("presidente", data.presidente || "");
+function hydrateToUI(a){
+  if(!a) return;
+  // asegurar opciones presentes
+  [
+    ["presidente", a.presidenteId],
+    ["oracionInicial", a.oracionInicialId],
+    ["oracionFinal", a.oracionFinalId],
+    ["conductorAtalaya", a.conductorAtalayaId],
+    ["lectorAtalaya", a.lectorAtalayaId],
+    ["multimedia1", a.multimedia1Id],
+    ["multimedia2", a.multimedia2Id],
+    ["plataforma", a.plataformaId],
+    ["microfonista1", a.microfonista1Id],
+    ["microfonista2", a.microfonista2Id],
+    ["acomodadorEntrada", a.acomodadorEntradaId],
+    ["acomodadorAuditorio", a.acomodadorAuditorioId],
+  ].forEach(([sid, pid])=> ensureOptionById(sid, pid));
 
-  setVal("cancionNumero", data.cancionNumero || "");
-  setVal("cancionTitulo", data.cancionTitulo || "");
+  setVal("presidente", a.presidenteId||"");
+  setVal("oracionInicial", a.oracionInicialId||"");
+  setVal("oracionFinal", a.oracionFinalId||"");
+  setVal("conductorAtalaya", a.conductorAtalayaId||"");
+  setVal("lectorAtalaya", a.lectorAtalayaId||"");
+  setVal("multimedia1", a.multimedia1Id||"");
+  setVal("multimedia2", a.multimedia2Id||"");
+  setVal("plataforma", a.plataformaId||"");
+  setVal("microfonista1", a.microfonista1Id||"");
+  setVal("microfonista2", a.microfonista2Id||"");
+  setVal("acomodadorEntrada", a.acomodadorEntradaId||"");
+  setVal("acomodadorAuditorio", a.acomodadorAuditorioId||"");
 
-  setVal("oracionInicial", data.oracionInicial || "");
-  setVal("oradorPublico", data.oradorPublico || "");
-
-  setVal("congregacionVisitante", data.congregacionVisitante || "");
-
-  setVal("discursoNumero", data.discursoNumero || "");
-  setVal("tituloDiscurso", data.tituloDiscurso || "");
-
-  setVal("tituloSiguienteSemana", data.tituloSiguienteSemana || "");
-
-  setVal("conductorAtalaya", data.conductorAtalaya || "");
-  setVal("lectorAtalaya", data.lectorAtalaya || "");
-
-  setVal("multimedia1", data.multimedia1 || "");
-  setVal("multimedia2", data.multimedia2 || "");
-
-  setVal("plataforma", (data.plataforma || data.acomodadorPlataforma || ""));
-  // compat: si existe el viejo select en HTML, también lo cargamos
-  setVal("acomodadorPlataforma", data.acomodadorPlataforma || "");
-  setVal("acomodadorEntrada", data.acomodadorEntrada || "");
-  setVal("acomodadorAuditorio", data.acomodadorAuditorio || "");
-
-  setVal("microfonista1", data.microfonista1 || "");
-  setVal("microfonista2", data.microfonista2 || "");
-
-  setVal("oracionFinal", data.oracionFinal || "");
+  setVal("cancionNumero", a.cancionNumero||"");
+  setVal("oradorPublico", a.oradorPublico||"");
+  setVal("congregacionVisitante", a.congregacionVisitante||"");
+  setVal("tituloDiscurso", a.tituloDiscurso||"");
+  setVal("tituloSiguienteSemana", a.tituloSiguienteSemana||"");
 }
 
-function limpiarFormulario() {
-  setFormData({});
-  setStatus("Formulario limpio.");
-  aplicarAutoCancion();
-  aplicarAutoDiscurso();
-  refrescarBotonesOracionFinal();
-  aplicarOracionFinalAutomatica(false);
-}
-
-// ---------- Conductor suggestion ----------
-function hasRole(p, role) {
-  const roles = Array.isArray(p?.roles) ? p.roles : [];
-  return roles.map(r => String(r).toLowerCase()).includes(String(role).toLowerCase());
-}
-
-function sugerirConductorAtalaya() {
-  const preferidos = [
-    "Marcelo Palavecino",
-    "Leonardo Araya",
-    "Marcelo Rodríguez",
-    "Eduardo Rivadeneira"
+function validateNoDuplicates(){
+  const fields = [
+    { id: "multimedia1", label: "Multimedia 1" },
+    { id: "multimedia2", label: "Multimedia 2" },
+    { id: "acomodadorEntrada", label: "Acomodador Entrada" },
+    { id: "acomodadorAuditorio", label: "Acomodador Auditorio" },
   ];
+  const chosen = fields
+    .map(f=>({ ...f, value: getVal(f.id)}))
+    .filter(x=>x.value);
 
-  for (const nombre of preferidos.slice(0, 2)) {
-    if (personasByNameLower.has(nombre.toLowerCase())) {
-      setVal("conductorAtalaya", nombre);
-      setStatus(`Sugerencia aplicada: Conductor Atalaya → ${nombre}`);
-      return;
+  const seen = new Map();
+  for(const c of chosen){
+    if(seen.has(c.value)){
+      const a = seen.get(c.value);
+      const p = personas.find(pp=>pp.id===c.value);
+      const name = p ? displayName(p) : "(persona)";
+      return `No podés asignar a ${name} en ${a.label} y ${c.label}.`;
     }
+    seen.set(c.value, c);
   }
+  return null;
+}
 
-  const anciano = personas.find(p => hasRole(p, "anciano"));
-  if (anciano) {
-    setVal("conductorAtalaya", anciano.nombre);
-    setStatus(`Sugerencia aplicada: Conductor Atalaya → ${anciano.nombre} (anciano disponible)`);
-    return;
-  }
+async function cargarSemana(){
+  const s = semanaISO();
+  if(!s) return setStatus("Elegí una semana (fecha).", true);
 
-  for (const nombre of preferidos.slice(2)) {
-    if (personasByNameLower.has(nombre.toLowerCase())) {
-      setVal("conductorAtalaya", nombre);
-      setStatus(`Sugerencia aplicada: Conductor Atalaya → ${nombre}`);
-      return;
+  setStatus("Cargando…");
+  try{
+    const snap = await getDoc(doc(db, "asignaciones", s));
+    if(snap.exists()){
+      const data = snap.data();
+      const a = data.asignaciones || data;
+      hydrateToUI(a);
+      setStatus("Datos cargados.");
+    }else{
+      setStatus("No hay datos guardados para esta semana. Podés cargar y guardar.");
+      // sugerencias automáticas
+      await aplicarAutoVisitante(s);
     }
-  }
-
-  setStatus("No pude sugerir conductor: no encontré los nombres ni ancianos en Personas.", true);
-}
-
-// ---------- Oración final (auto + botones con nombres) ----------
-let oracionFinalFueEditada = false;
-
-function refrescarBotonesOracionFinal() {
-  const orador = val("oradorPublico") || "";
-  const pres = val("presidente") || "";
-
-  $("btnOracionFinalOrador").textContent = orador
-    ? `Usar orador público: ${orador}`
-    : "Usar orador público";
-
-  $("btnOracionFinalPresidente").textContent = pres
-    ? `Usar presidente: ${pres}`
-    : "Usar presidente";
-}
-
-function sugerirOracionFinal() {
-  const orador = val("oradorPublico") || "";
-  const pres = val("presidente") || "";
-  return orador || pres || "";
-}
-
-/**
- * Si force=true, reemplaza siempre.
- * Si force=false, solo completa si:
- *  - está vacío, o
- *  - todavía no fue editado manualmente.
- */
-function aplicarOracionFinalAutomatica(force = false) {
-  const sugerida = sugerirOracionFinal();
-  if (!sugerida) return;
-
-  const actual = val("oracionFinal") || "";
-  if (force || !actual || !oracionFinalFueEditada) {
-    setVal("oracionFinal", sugerida);
-  }
-}
-
-// ---------- Firestore persistence ----------
-function getSemanaId() {
-  const semana = val("semana");
-  return (semana && semana.trim()) ? semana.trim() : "";
-}
-
-async function cargarAsignaciones() {
-  const semanaId = getSemanaId();
-  if (!semanaId) {
-    setStatus("Elegí una fecha en 'Semana' para cargar.", true);
-    return;
-  }
-
-  const ref = doc(db, "asignaciones", semanaId);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) {
-    limpiarFormulario();
-    setStatus(`No hay datos guardados para ${semanaId}. Podés cargarlos y guardar.`);
-    return;
-  }
-
-  const data = snap.data() || {};
-  const asign = data.asignaciones || data;
-  setFormData(asign);
-
-  // completa datos de visitante si existen en planilla y campos vacíos
-  aplicarAutoVisitante();
-
-  // al cargar: si no hay título guardado, lo completamos con catálogo
-  aplicarAutoCancion();
-  aplicarAutoDiscurso();
-
-  // refrescar botones y sugerencia (sin pisar si ya está guardado)
-  refrescarBotonesOracionFinal();
-  oracionFinalFueEditada = Boolean((("" + val("oracionFinal")) || "").trim());
-  aplicarOracionFinalAutomatica(false);
-
-  setStatus(`Datos cargados para ${semanaId}.`);
-}
-
-async function guardarAsignaciones() {
-  const semanaId = getSemanaId();
-  if (!semanaId) {
-    setStatus("Elegí una fecha en 'Semana' para guardar.", true);
-    return;
-  }
-
-  // mantener títulos sincronizados antes de guardar
-  aplicarAutoCancion();
-  aplicarAutoDiscurso();
-
-  const asignaciones = getFormData();
-
-  // Validación: evitar repetir la misma persona en Multimedia 1/2 y Acomodadores Entrada/Auditorio
-  if (!validarNoRepetidos(asignaciones)) return;
-
-  if (!asignaciones.presidente) {
-    setStatus("Falta Presidente.", true);
-    return;
-  }
-
-  const ref = doc(db, "asignaciones", semanaId);
-
-  await setDoc(
-    ref,
-    {
-      semana: semanaId,
-      updatedAt: serverTimestamp(),
-      asignaciones
-    },
-    { merge: true }
-  );
-
-    // Si hay orador visitante, guardamos/actualizamos estadística de visitantes
-  const orador = (asignaciones.oradorPublico || "").trim();
-  if (orador) {
-    const refVis = doc(db, "visitas", semanaId);
-    await setDoc(refVis, {
-      fecha: semanaId,
-      nombre: orador,
-      congregacion: (asignaciones.congregacionVisitante || "").trim(),
-      bosquejo: (asignaciones.discursoNumero || "").trim(),
-      titulo: (asignaciones.tituloDiscurso || "").trim(),
-      cancion: (asignaciones.cancionNumero || "").trim(),
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-  }
-
-  setStatus(`Guardado OK para ${semanaId}.`);
-}
-
-// ---------- Botones Oración final ----------
-function usarOradorComoOracionFinal() {
-  const orador = val("oradorPublico") || "";
-  if (!orador) {
-    setStatus("Primero elegí el Orador público.", true);
-    return;
-  }
-  setVal("oracionFinal", orador);
-  oracionFinalFueEditada = true;
-  setStatus(`Oración final asignada a: ${orador}`);
-}
-
-function usarPresidenteComoOracionFinal() {
-  const pres = val("presidente") || "";
-  if (!pres) {
-    setStatus("Primero elegí el Presidente.", true);
-    return;
-  }
-  setVal("oracionFinal", pres);
-  oracionFinalFueEditada = true;
-  setStatus(`Oración final asignada a: ${pres}`);
-}
-
-// ---------- Logout ----------
-async function logout() {
-  try { await signOut(auth); } catch (e) {}
-  window.location.href = "index.html";
-}
-
-// ---------- Init ----------
-async function init() {
-  try {
-    setVal("semana", isoToday());
-
-    setStatus(`Cargando personas... (Canciones: ${cancionesMap.size}, Discursos: ${discursosMap.size})`);
-    await cargarPersonas();
-    poblarSelectsConPersonas();
-
-    // Datalists
-    const dlOradores = document.getElementById("listaOradoresVisitantes");
-    const dlOracionFinal = document.getElementById("listaOracionFinal");
-
-    // Lista de visitantes (nombres únicos)
-    const oradoresVisit = Array.from(new Set(Object.values(visitantes).map(v => v?.nombre).filter(Boolean))).sort((a,b)=>a.localeCompare(b,"es"));
-    fillDatalist(dlOradores, oradoresVisit);
-
-    // Para oración final: mezcla personas + visitantes
-    const personasNombres = personas.map(p => p.nombre).filter(Boolean);
-    const oracionFinalOpts = Array.from(new Set([...personasNombres, ...oradoresVisit])).sort((a,b)=>a.localeCompare(b,"es"));
-    fillDatalist(dlOracionFinal, oracionFinalOpts);
-
-
-    // autocompletes
-    on("cancionNumero","input", () => aplicarAutoCancion());
-    on("discursoNumero","input", () => aplicarAutoDiscurso());
-
-    // auto visitante según semana
-    on("semana","change", () => {
-      aplicarAutoVisitante();
-      aplicarAutoCancion();
-      aplicarAutoDiscurso();
-      refrescarBotonesOracionFinal();
-      aplicarOracionFinalAutomatica(false);
-    });
-
-    // oración final
-    on("oracionFinal","change", () => { oracionFinalFueEditada = true; });
-
-    on("oradorPublico","change", () => {
-      refrescarBotonesOracionFinal();
-      aplicarOracionFinalAutomatica(false);
-    });
-    on("presidente","change", () => {
-      refrescarBotonesOracionFinal();
-      aplicarOracionFinalAutomatica(false);
-    });
-
-    refrescarBotonesOracionFinal();
-    aplicarOracionFinalAutomatica(false);
-
-    setStatus(`Listo. Personas cargadas: ${personas.length}.`);
-  } catch (e) {
+  }catch(e){
     console.error(e);
     setStatus("Error cargando datos. Revisá consola (F12) y permisos de Firestore.", true);
   }
+}
 
-  on("btnCargar","click", () => cargarAsignaciones());
-  on("btnGuardar","click", () => guardarAsignaciones());
-  on("btnImprimir","click", () => window.open("imprimir.html", "_blank"));
-  on("btnPdfPresidente","click", () => {
-    const semanaId = getSemanaId();
-    if(!semanaId){
-      setStatus("Elegí una fecha en 'Semana' para generar el PDF del presidente.", true);
-      return;
-    }
-    window.open(`presidente.html?semana=${encodeURIComponent(semanaId)}`, "_blank");
+async function guardar(){
+  const s = semanaISO();
+  if(!s) return setStatus("Elegí una semana (fecha).", true);
+
+  const dup = validateNoDuplicates();
+  if(dup) return setStatus(dup, true);
+
+  setStatus("Guardando…");
+  const data = formData();
+
+  try{
+    await setDoc(doc(db, "asignaciones", s), {
+      asignaciones: data,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    setStatus("Guardado OK.");
+  }catch(e){
+    console.error(e);
+    setStatus("No pude guardar. Revisá permisos de Firestore.", true);
+  }
+}
+
+function limpiar(){
+  [
+    "presidente","oracionInicial","oracionFinal","conductorAtalaya","lectorAtalaya",
+    "multimedia1","multimedia2","plataforma","microfonista1","microfonista2",
+    "acomodadorEntrada","acomodadorAuditorio",
+    "cancionNumero","oradorPublico","congregacionVisitante","tituloDiscurso","tituloSiguienteSemana"
+  ].forEach(id=> setVal(id, ""));
+  setStatus("Formulario limpio.");
+}
+
+function abrirPdfPresidente(){
+  const s = semanaISO();
+  if(!s) return setStatus("Elegí una semana primero.", true);
+  window.location.href = `presidente.html?semana=${encodeURIComponent(s)}`;
+}
+
+// ---------------- init ----------------
+async function init(){
+  $("semana") && ( $("semana").value = isoToday() );
+
+  // Auth gate
+  await new Promise((resolve)=>{
+    onAuthStateChanged(auth, async (user)=>{
+      if(!user){ window.location.href = "index.html"; return; }
+      resolve(user);
+    });
   });
-  on("btnLimpiar","click", () => limpiarFormulario());
 
-  on("btnSugerirConductor","click", () => sugerirConductorAtalaya());
-  on("btnOracionFinalOrador","click", () => usarOradorComoOracionFinal());
-  on("btnOracionFinalPresidente","click", () => usarPresidenteComoOracionFinal());
+  // Eventos
+  $("btnSalir")?.addEventListener("click", async ()=>{ await signOut(auth); window.location.href="index.html"; });
+  $("btnCargar")?.addEventListener("click", cargarSemana);
+  $("btnGuardar")?.addEventListener("click", guardar);
+  $("btnLimpiar")?.addEventListener("click", limpiar);
+  $("btnPdfPresidente")?.addEventListener("click", abrirPdfPresidente);
 
-  const btnSalir = document.getElementById("btnSalir");
-  if (btnSalir) btnSalir.addEventListener("click", () => logout());
+  // Autocompletado
+  $("cancionNumero")?.addEventListener("change", aplicarAutoCancion);
+  $("tituloDiscurso")?.addEventListener("blur", ()=>{});
+
+  // cargar personas y poblar selects
+  try{
+    await cargarPersonas();
+    poblarSelects();
+    await poblarDatalistOradores();
+    setStatus("Listo. Elegí una semana y cargá.");
+  }catch(e){
+    console.error(e);
+    setStatus("No pude cargar personas. Revisá permisos de Firestore.", true);
+  }
+
+  // Autocompletar visitante al cambiar semana (sin pisar)
+  $("semana")?.addEventListener("change", async ()=>{
+    const s = semanaISO();
+    if(s) await aplicarAutoVisitante(s);
+  });
+
+  // Primer carga sugerida
+  const s0 = semanaISO();
+  if(s0) await aplicarAutoVisitante(s0);
 }
 
 init();
-
-function validarNoRepetidos(data) {
-  // No permitir asignar a la misma persona en estos campos
-  const campos = [
-    ["Multimedia 1", data.multimedia1],
-    ["Multimedia 2", data.multimedia2],
-    ["Acomodador Entrada", data.acomodadorEntrada],
-    ["Acomodador Auditorio", data.acomodadorAuditorio],
-  ]
-    .map(([k,v]) => [k, String(v || "").trim()])
-    .filter(([,v]) => v !== "");
-
-  const seen = new Map(); // key normalizada -> {campo, valorOriginal}
-  const repetidos = [];
-  for (const [campo, valor] of campos) {
-    const k = nameKey(valor);
-    if (seen.has(k)) {
-      const prev = seen.get(k);
-      repetidos.push({ nombre: valor, campo1: prev.campo, campo2: campo });
-    } else {
-      seen.set(k, { campo, valor });
-    }
-  }
-
-  if (repetidos.length) {
-    const detalle = repetidos
-      .map(r => `${r.nombre} (${r.campo1} y ${r.campo2})`)
-      .join("
-");
-    alert("No se puede asignar a la misma persona en estos campos:
-
-" + detalle);
-    return false;
-  }
-  return true;
-}

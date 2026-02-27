@@ -1,4 +1,4 @@
-// Discursantes (visitantes + salidas) y Conferenciantes locales
+// Discursantes (visitas (visitantes + salidas)) y Conferenciantes locales
 // Requiere: firebase-config.js exporte { auth, db }
 
 import { auth, db } from "../firebase-config.js";
@@ -170,7 +170,7 @@ function renderVis() {
       }
       if (act === "del") {
         if (!confirm("¿Borrar este registro?")) return;
-        await deleteDoc(doc(db, "visitantes", id));
+        await deleteDoc(doc(db, "visitas", id));
         await cargarVis();
         toast("Borrado.");
       }
@@ -179,7 +179,7 @@ function renderVis() {
 }
 
 async function cargarVis() {
-  const qy = query(collection(db, "visitantes"), orderBy("fecha", "desc"));
+  const qy = query(collection(db, "visitas"), orderBy("fecha", "desc"));
   const snap = await getDocs(qy);
   cacheVis = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   renderVis();
@@ -197,12 +197,12 @@ async function guardarVis() {
 
   try {
     if (editVisId) {
-      await updateDoc(doc(db, "visitantes", editVisId), payload);
+      await updateDoc(doc(db, "visitas", editVisId), payload);
       toast("Actualizado.");
     } else {
       // Usamos la fecha como id si está libre (compatibilidad con asignaciones.js)
       // Si ya existe, Firestore no permite setear el id con addDoc, así que lo dejamos como auto-id.
-      await addDoc(collection(db, "visitantes"), { ...payload, createdAt: serverTimestamp() });
+      await addDoc(collection(db, "visitas"), { ...payload, createdAt: serverTimestamp() });
       toast("Guardado.");
     }
     limpiarVisForm();
@@ -238,6 +238,7 @@ function generarMensajeVis() {
 // -------------------- CONFERENCIANTES LOCALES --------------------
 let cacheLoc = []; // {id,nombre,telefono,bosquejos[],activo,proximo,provisorio,updatedAt}
 let editLocId = "";
+let localesFromPersonasFallback = false;
 
 function locFromForm() {
   const bosquejosRaw = (document.getElementById("l_bosquejos")?.value || "").trim();
@@ -268,10 +269,46 @@ function limpiarLocForm() {
 }
 
 async function cargarLocales() {
-  const qy = query(collection(db, "conferenciantesLocales"), orderBy("nombre", "asc"));
-  const snap = await getDocs(qy);
-  cacheLoc = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  renderLocales();
+  // Intento 1: colección dedicada (si tus reglas la permiten)
+  try {
+    localesFromPersonasFallback = false;
+    const qy = query(collection(db, "conferenciantesLocales"), orderBy("nombre", "asc"));
+    const snap = await getDocs(qy);
+    cacheLoc = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    renderLocales();
+    return;
+  } catch (e) {
+    console.warn("No pude leer conferenciantesLocales; uso Personas como respaldo.", e);
+    localesFromPersonasFallback = true;
+  }
+
+  // Respaldo: usar Personas (roles contiene "discursante")
+  // Nota: si querés editar/crear locales, hacelo desde Personas.
+  try {
+    const snap = await getDocs(query(collection(db, "personas"), orderBy("nombre", "asc")));
+    const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    cacheLoc = all
+      .filter((p) => p.activo !== false)
+      .filter((p) => Array.isArray(p.roles) && p.roles.map((r)=>String(r).toLowerCase()).includes("discursante"))
+      .map((p) => ({
+        id: p.id,
+        nombre: p.nombre || "",
+        telefono: p.telefono || "",
+        bosquejos: Array.isArray(p.bosquejos) ? p.bosquejos : [],
+        proximo: false,
+        provisorio: false,
+        activo: p.activo !== false
+      }));
+    renderLocales();
+    // Deshabilitar botones de guardado local si estamos en fallback
+    document.getElementById("btnGuardarLocal")?.setAttribute("disabled", "disabled");
+    document.getElementById("btnLimpiarLocal")?.setAttribute("disabled", "disabled");
+    document.getElementById("btnMsgLocales")?.removeAttribute("disabled");
+    toast("Locales: leyendo desde Personas. Para editar/agregar, usá la pantalla Personas.");
+  } catch (e) {
+    console.error(e);
+    toast("No pude cargar conferenciantes locales. Revisá permisos.", true);
+  }
 }
 
 function renderLocales() {
@@ -297,8 +334,8 @@ function renderLocales() {
         <div class="small">${Array.isArray(l.bosquejos) && l.bosquejos.length ? `Bosquejos: ${l.bosquejos.join(", ")}` : "Bosquejos: —"}</div>
       </td>
       <td class="no-print">
-        <button class="btn" data-act="edit" data-id="${l.id}">Editar</button>
-        <button class="btn" data-act="toggle" data-id="${l.id}">Desactivar</button>
+        ${localesFromPersonasFallback ? `<span class="small muted">Editar desde Personas</span>` : `<button class="btn" data-act="edit" data-id="${l.id}">Editar</button>
+        <button class="btn" data-act="toggle" data-id="${l.id}">Desactivar</button>`}
       </td>
     `;
     tbody.appendChild(tr);
