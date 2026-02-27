@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Asignaciones · Arreglos Discursos</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <div class="container">
+    <div id="toastHost"></div>
+
+    <div class="row">
+      <div class="col">
+        <div class="card pad">
+          <h2 class="h1" style="margin-bottom:6px;">Asignaciones semanales</h2>
+          <div class="muted">Creá una semana (sábado y opcional domingo) y asigná responsabilidades.</div>
+
+          <hr class="sep"/>
+
+          <div class="row">
+            <div class="col">
+              <label>Fecha sábado</label>
+              <input id="fechaSab" class="input" type="date">
+            </div>
+            <div class="col">
+              <label>Hora sábado</label>
+              <input id="horaSab" class="input" type="time" value="19:30">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label>¿Hay reunión domingo (Santa Rosa u otra)?</label>
+              <select id="hayDom">
+                <option value="no" selected>No</option>
+                <option value="si">Sí</option>
+              </select>
+            </div>
+            <div class="col">
+              <label>Fecha domingo</label>
+              <input id="fechaDom" class="input" type="date" disabled>
+            </div>
+            <div class="col">
+              <label>Hora domingo</label>
+              <input id="horaDom" class="input" type="time" value="10:00" disabled>
+            </div>
+          </div>
+
+          <hr class="sep"/>
+
+          <div class="row">
+            <div class="col">
+              <label>Presidente</label>
+              <select id="presidente" class="input"></select>
+            </div>
+            <div class="col">
+              <label>Acomodador plataforma</label>
+              <select id="plataforma" class="input"></select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label>Microfonista 1</label>
+              <select id="micro1" class="input"></select>
+            </div>
+            <div class="col">
+              <label>Microfonista 2</label>
+              <select id="micro2" class="input"></select>
+            </div>
+            <div class="col">
+              <label>Acomodador salón</label>
+              <select id="acomodador" class="input"></select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label>Audio</label>
+              <select id="audio" class="input"></select>
+            </div>
+            <div class="col">
+              <label>Video</label>
+              <select id="video" class="input"></select>
+            </div>
+          </div>
+
+          <label>Notas (opcional)</label>
+          <textarea id="notas" class="input" placeholder="Ej: domingo en Santa Rosa / cambios especiales / etc."></textarea>
+
+          <div class="row" style="margin-top:12px;">
+            <button id="btnCrear" class="btn primary">Guardar semana</button>
+            <button id="btnNuevo" class="btn">Nuevo</button>
+          </div>
+
+          <hr class="sep"/>
+          <div class="small muted">
+            Esto guarda en <b>/asignaciones</b> con id automático y luego lo ves abajo.
+          </div>
+        </div>
+      </div>
+
+      <div class="col-2">
+        <div class="card pad">
+          <div class="row" style="align-items:end;">
+            <div class="col">
+              <label>Buscar por fecha o nombre</label>
+              <input id="q" class="input" placeholder="ej: 2026-03 o Eduardo">
+            </div>
+            <div class="col" style="max-width:240px;">
+              <label>Orden</label>
+              <select id="orden">
+                <option value="desc" selected>Más nuevas primero</option>
+                <option value="asc">Más viejas primero</option>
+              </select>
+            </div>
+          </div>
+
+          <hr class="sep"/>
+
+          <table class="table" id="tbl">
+            <thead>
+              <tr>
+                <th>Semana</th>
+                <th>Asignaciones</th>
+                <th class="no-print">Acciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <div class="small muted" style="margin-top:10px;">
+            Desde <b>Imprimir</b> podés sacar el tablero mensual.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="js/asignaciones.js"></script>
+</body>
+</html>

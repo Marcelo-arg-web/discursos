@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Discursantes · Arreglos Discursos</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <div class="container">
+    <div id="toastHost"></div>
+
+    <div class="row">
+      <div class="col">
+        <div class="card pad">
+          <h2 class="h1" style="margin-bottom:6px;">Discursantes</h2>
+          <div class="muted">Guardá visitantes y salidas, y generá un mensaje para WhatsApp.</div>
+
+          <hr class="sep"/>
+
+          <div class="row">
+            <div class="col">
+              <label>Nombre</label>
+              <input id="v_nombre" class="input" placeholder="Ej: Carlos Gómez">
+            </div>
+            <div class="col">
+              <label>Congregación</label>
+              <input id="v_cong" class="input" placeholder="Ej: Santa Rosa">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label>Teléfono (opcional)</label>
+              <input id="v_tel" class="input" placeholder="Ej: 381 123-4567">
+            </div>
+            <div class="col">
+              <label>Tipo</label>
+              <select id="v_tipo" class="input">
+                <option value="visitante" selected>Visitante que viene</option>
+                <option value="salida">Salida (nosotros vamos)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label>Fecha</label>
+              <input id="v_fecha" class="input" type="date">
+            </div>
+            <div class="col">
+              <label>Hora</label>
+              <input id="v_hora" class="input" type="time" value="19:30">
+            </div>
+          </div>
+
+          <label>Notas</label>
+          <textarea id="v_notas" class="input" placeholder="Ej: discurso público #__ / tema / coordinaciones…"></textarea>
+
+          <div class="row" style="margin-top:12px;">
+            <button id="btnGuardar" class="btn primary">Guardar</button>
+            <button id="btnMsg" class="btn">Generar mensaje WhatsApp</button>
+          </div>
+
+          <hr class="sep"/>
+          <div class="small muted">
+            El botón de WhatsApp arma un mensaje en texto (copiar/pegar). No envía nada automáticamente.
+          </div>
+        </div>
+      </div>
+
+      <div class="col-2">
+        <div class="card pad">
+          <div class="row" style="align-items:end;">
+            <div class="col">
+              <label>Buscar</label>
+              <input id="q" class="input" placeholder="nombre, congregación, fecha…">
+            </div>
+          </div>
+
+          <hr class="sep"/>
+
+          <table class="table" id="tbl">
+            <thead>
+              <tr>
+                <th>Detalle</th>
+                <th class="no-print">Acciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <hr class="sep"/>
+          <div class="h2">Mensaje</div>
+          <textarea id="msg" class="input" readonly placeholder="Acá se genera el mensaje…"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/discursantes.js"></script>
+</body>
+</html>

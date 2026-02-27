@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Panel · Arreglos Discursos</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <div class="container">
+    <div id="toastHost"></div>
+
+    <div class="row">
+      <div class="col-2">
+        <div class="card pad">
+          <h2 class="h1" style="margin-bottom:6px;">Panel</h2>
+          <div class="muted">Accesos rápidos para cargar personas, asignar y luego imprimir.</div>
+
+          <hr class="sep"/>
+
+          <div class="row">
+            <a class="btn primary" href="asignaciones.html">Crear / editar asignaciones</a>
+            <a class="btn" href="imprimir.html">Imprimir tablero</a>
+            <a class="btn" href="personas.html">Personas</a>
+            <a class="btn" href="importar.html">Importar Excel</a>
+          </div>
+
+          <hr class="sep"/>
+
+          <div class="small muted">
+            <b>Consejo:</b> cargá primero las personas (con roles), después asignaciones semanales, y por último imprimí.
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="card pad">
+          <div class="h2">Estado del usuario</div>
+          <div id="who" class="muted">—</div>
+          <hr class="sep"/>
+          <div class="h2">Estructura en Firestore</div>
+          <div class="small muted">
+            <div class="pill">/usuarios/{uid}</div>
+            <div class="pill">/personas/{id}</div>
+            <div class="pill">/asignaciones/{id}</div>
+            <div class="pill">/visitas/{id}</div>
+            <div class="pill">/discursos/{num}</div>
+            <div class="pill">/canciones/{num}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="js/panel.js"></script>
+</body>
+</html>

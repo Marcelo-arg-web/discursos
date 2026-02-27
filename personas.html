@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Personas · Arreglos Discursos</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <div class="container">
+    <div id="toastHost"></div>
+
+    <div class="row">
+      <div class="col">
+        <div class="card pad">
+          <h2 class="h1" style="margin-bottom:6px;">Personas</h2>
+          <div class="muted">Cargá hermanos (y visitantes si querés) con roles para asignaciones.</div>
+
+          <hr class="sep"/>
+
+          <div class="row">
+            <div class="col">
+              <label>Nombre y apellido</label>
+              <input id="p_nombre" class="input" placeholder="Ej: Juan Pérez">
+            </div>
+            <div class="col">
+              <label>Teléfono (opcional)</label>
+              <input id="p_tel" class="input" placeholder="Ej: 381 123-4567">
+            </div>
+          </div>
+
+          <label>Roles (separados por coma)</label>
+          <input id="p_roles" class="input" placeholder="Ej: anciano, discursante, microfonista">
+
+          <div class="row" style="margin-top:12px;">
+            <button id="btnGuardar" class="btn primary">Guardar</button>
+            <button id="btnLimpiar" class="btn">Limpiar</button>
+          </div>
+
+          <hr class="sep"/>
+          <div class="small muted">
+            Roles sugeridos: anciano, siervo, presidente, conductor, lector, oracion, microfonista, acomodador, audio, video, plataforma, discursante, visitante.
+          </div>
+        </div>
+      </div>
+
+      <div class="col-2">
+        <div class="card pad">
+          <div class="row" style="align-items:end;">
+            <div class="col">
+              <label>Buscar</label>
+              <input id="q" class="input" placeholder="escribí para filtrar...">
+            </div>
+            <div class="col" style="max-width:260px;">
+              <label>Mostrar</label>
+              <select id="filtroRol">
+                <option value="">Todas</option>
+                <option value="anciano">Ancianos</option>
+                <option value="siervo">Siervos</option>
+                <option value="discursante">Discursantes</option>
+                <option value="microfonista">Microfonistas</option>
+                <option value="acomodador">Acomodadores</option>
+                <option value="audio">Audio</option>
+                <option value="video">Video</option>
+              </select>
+            </div>
+          </div>
+
+          <hr class="sep"/>
+
+          <table class="table" id="tbl">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Tel</th>
+                <th>Roles</th>
+                <th class="no-print">Acciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <div class="small muted" style="margin-top:10px;">
+            Tip: si querés evitar duplicados, usá nombres consistentes (Ej: “Eduardo Rivadeneira” siempre igual).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/personas.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Imprimir · Arreglos Discursos</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <div class="container">
+    <div id="toastHost"></div>
+
+    <div class="card pad">
+      <div class="row" style="align-items:end;">
+        <div class="col">
+          <h2 class="h1" style="margin-bottom:6px;">Imprimir tablero</h2>
+          <div class="muted">Filtrá por mes y luego imprimí (Ctrl+P).</div>
+        </div>
+        <div class="col no-print" style="max-width:320px;">
+          <label>Mes (YYYY-MM)</label>
+          <input id="mes" class="input" placeholder="Ej: 2026-03">
+        </div>
+        <div class="col no-print" style="max-width:200px;">
+          <label>&nbsp;</label>
+          <button id="btnPrint" class="btn primary" style="width:100%;">Imprimir</button>
+        </div>
+      </div>
+
+      <hr class="sep"/>
+
+      <div id="contenido" class="card pad" style="border-radius:14px; border:1px dashed var(--border); box-shadow:none;">
+        <div class="muted">Cargando…</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/imprimir.js"></script>
+</body>
+</html>

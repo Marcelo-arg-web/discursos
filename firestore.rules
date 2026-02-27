@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    function activeUser() {
+      return signedIn() && userDoc().data.activo == true;
+    }
+
+    function role() {
+      return activeUser() ? (userDoc().data.rol) : "none";
+    }
+
+    function isEditor() {
+      return role() in ["editor","admin","superadmin"];
+    }
+
+    function isAdmin() {
+      return role() in ["admin","superadmin"];
+    }
+
+    function isSuperadmin() {
+      return role() == "superadmin";
+    }
+
+    // Usuarios: cada uno puede leer su doc; admins pueden leer y editar; superadmin todo
+    match /usuarios/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid; // registro crea su doc
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow delete: if isSuperadmin();
+    }
+
+    // Personas, asignaciones, visitas: lectura para usuarios activos; escritura para editores
+    match /personas/{id} {
+      allow read: if activeUser();
+      allow write: if isEditor();
+    }
+
+    match /asignaciones/{id} {
+      allow read: if activeUser();
+      allow write: if isEditor();
+    }
+
+    match /visitas/{id} {
+      allow read: if activeUser();
+      allow write: if isEditor();
+    }
+
+    // Catálogos: solo lectura a activos; escritura admin
+    match /discursos/{id} {
+      allow read: if activeUser();
+      allow write: if isAdmin();
+    }
+    match /canciones/{id} {
+      allow read: if activeUser();
+      allow write: if isAdmin();
+    }
+  }
+}

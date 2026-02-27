@@ -1,53 +1,40 @@
-export function $(sel, root=document){ return root.querySelector(sel); }
-export function $$ (sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+export function qs(sel, root=document){ return root.querySelector(sel); }
+export function qsa(sel, root=document){ return [...root.querySelectorAll(sel)]; }
 
-export function escapeHtml(s=""){
-  return String(s)
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
+export function fmtDate(d){
+  if(!d) return "";
+  const dt = (d instanceof Date) ? d : new Date(d);
+  const pad = n => String(n).padStart(2,'0');
+  return `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}/${dt.getFullYear()}`;
 }
 
-export function initials(nameOrEmail=""){
-  const s = (nameOrEmail || "").trim();
-  if(!s) return "??";
-  const parts = s.includes("@") ? s.split("@")[0].split(/[._-]/) : s.split(" ");
-  const letters = parts.filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()||"").join("");
-  return letters || "??";
+export function fmtTime(d){
+  const dt = (d instanceof Date) ? d : new Date(d);
+  const pad = n => String(n).padStart(2,'0');
+  return `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
 }
 
-export function formatDateISO(iso){
-  // iso: YYYY-MM-DD
-  if(!iso) return "";
-  const [y,m,d] = iso.split("-").map(Number);
-  const dt = new Date(y, m-1, d);
-  return dt.toLocaleDateString("es-AR", { weekday:"short", year:"numeric", month:"short", day:"2-digit" });
-}
-
-export function toast(msg){
-  const el = document.getElementById("toast");
-  if(!el) return;
+export function toast(msg, type="ok"){
+  const el = document.createElement("div");
+  el.className = `toast ${type==="err"?"err":"ok"}`;
   el.textContent = msg;
-  el.classList.add("show");
-  clearTimeout(el._t);
-  el._t = setTimeout(()=> el.classList.remove("show"), 2200);
+  const host = document.querySelector("#toastHost") || document.body;
+  host.prepend(el);
+  setTimeout(()=>el.remove(), 4200);
 }
 
-export function downloadText(filename, text, mime="text/plain"){
-  const blob = new Blob([text], {type:mime});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+export function safeId(s){
+  return String(s||"").trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
 }
 
-export function csvEscape(v){
-  const s = (v ?? "").toString();
-  if(/[",\n]/.test(s)) return '"' + s.replaceAll('"','""') + '"';
-  return s;
+export function groupBy(arr, keyFn){
+  const m = new Map();
+  for(const x of arr){
+    const k = keyFn(x);
+    if(!m.has(k)) m.set(k, []);
+    m.get(k).push(x);
+  }
+  return m;
 }
