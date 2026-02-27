@@ -1,239 +1,318 @@
-import { db } from "../firebase.js";
+// asignaciones.js
+// Requiere: firebase-config.js que exporte { db, auth }
+// Requiere: colección "personas" con campos { nombre: string, roles: array, activo: boolean }
+// Guarda en: colección "asignacionesSemanales" docId = semana (YYYY-MM-DD)
+
+// ✅ FIX: como este archivo está en js/pages, firebase-config está en ../
+import { db } from "../firebase-config.js";
+
 import {
   collection,
-  addDoc,
-  serverTimestamp,
-  onSnapshot,
+  getDocs,
   query,
-  orderBy,
-  deleteDoc,
+  where,
   doc,
-} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-import { mountTopbar, requireAuth } from "../guard.js";
-import { qs, toast } from "../utils.js";
-
-mountTopbar("asignaciones");
-const session = await requireAuth({ minRole: "viewer" });
-const canEdit = session.canEdit;
-if (!canEdit) toast("Modo solo lectura: no podés crear/editar asignaciones.", "err");
-
-const $ = (id) => qs(id);
-const tbody = qs("#tbl tbody");
-
-function setDomEnabled() {
-  const on = $("#hayDom").value === "si";
-  $("#fechaDom").disabled = !on;
-  $("#horaDom").disabled = !on;
-}
-$("#hayDom").addEventListener("change", setDomEnabled);
-setDomEnabled();
-
-let personas = [];
-
-import {
-  onSnapshot as onSnapP,
-  collection as colP,
-  query as qP,
-  orderBy as obP,
+  getDoc,
+  setDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-onSnapP(qP(colP(db, "personas"), obP("nombre", "asc")), (snap) => {
-  personas = snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((p) => p.activo !== false);
-  fillSelects();
-});
+// ---------- Helpers UI ----------
+const $ = (id) => document.getElementById(id);
 
-function optHtml(list, placeholder = "—") {
-  return (
-    `<option value="">${placeholder}</option>` +
-    list.map((p) => `<option value="${p.nombre}">${p.nombre}</option>`).join("")
-  );
+const statusBox = $("status");
+function setStatus(msg, isError = false) {
+  statusBox.textContent = msg;
+  statusBox.style.background = isError ? "#fff1f2" : "#f8fafc";
+  statusBox.style.borderColor = isError ? "#fecdd3" : "#e5e7eb";
+  statusBox.style.color = isError ? "#9f1239" : "#111827";
 }
 
-function byRole(role) {
-  const r = role.toLowerCase();
-  return personas.filter((p) =>
-    (p.roles || []).map((x) => String(x).toLowerCase()).includes(r)
-  );
+function isoToday() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
-function pickList(roleFallback, rolePrimary) {
-  const pri = byRole(rolePrimary);
-  if (pri.length) return pri;
-
-  const fb = byRole(roleFallback);
-  if (fb.length) return fb;
-
-  return personas;
+function clearSelect(sel) {
+  sel.innerHTML = "";
 }
 
-function fillSelects() {
-  $("#presidente").innerHTML = optHtml(pickList("presidente", "presidente"), "Seleccionar…");
-  $("#plataforma").innerHTML = optHtml(pickList("plataforma", "plataforma"), "Seleccionar…");
-  $("#micro1").innerHTML = optHtml(pickList("microfonista", "microfonista"), "Seleccionar…");
-  $("#micro2").innerHTML = optHtml(pickList("microfonista", "microfonista"), "Seleccionar…");
-
-  $("#acomodadorAuditorio").innerHTML = optHtml(
-    pickList("acomodador", "acomodador-auditorio"),
-    "Seleccionar…"
-  );
-  $("#acomodadorEntrada").innerHTML = optHtml(
-    pickList("acomodador", "acomodador-entrada"),
-    "Seleccionar…"
-  );
-
-  $("#audio").innerHTML = optHtml(pickList("audio", "audio"), "Seleccionar…");
-  $("#video").innerHTML = optHtml(pickList("video", "video"), "Seleccionar…");
+function addOption(sel, value, label) {
+  const opt = document.createElement("option");
+  opt.value = value;
+  opt.textContent = label;
+  sel.appendChild(opt);
 }
 
-function getVal(id) {
-  return ($(id).value || "").trim();
-}
+// ---------- Data loading ----------
+let personas = []; // {id, nombre, roles[], activo}
+let personasByNameLower = new Map();
 
-async function crear() {
-  if (!canEdit) return;
-
-  const fechaSab = getVal("#fechaSab");
-  const horaSab = getVal("#horaSab") || "19:30";
-  const hayDom = $("#hayDom").value === "si";
-  const fechaDom = hayDom ? getVal("#fechaDom") : "";
-  const horaDom = hayDom ? (getVal("#horaDom") || "10:00") : "";
-
-  if (!fechaSab) return toast("Elegí la fecha del sábado.", "err");
-  if (hayDom && !fechaDom) return toast("Elegí la fecha del domingo.", "err");
-
-  const data = {
-    fechaSab,
-    horaSab,
-    hayDom,
-    fechaDom,
-    horaDom,
-    roles: {
-      presidente: getVal("#presidente"),
-      plataforma: getVal("#plataforma"),
-      micro1: getVal("#micro1"),
-      micro2: getVal("#micro2"),
-      acomodadorAuditorio: getVal("#acomodadorAuditorio"),
-      acomodadorEntrada: getVal("#acomodadorEntrada"),
-      audio: getVal("#audio"),
-      video: getVal("#video"),
-    },
-    notas: ($("#notas").value || "").trim(),
-    creadoEn: serverTimestamp(),
-    creadoPor: session.user.email || "",
-  };
-
+async function cargarPersonas() {
+  // Solo activos (si tu campo activo existe). Si no existe, igualmente trae todo.
+  // Para no romperte nada, hacemos un intento con filtro, y si falla, sin filtro.
   try {
-    await addDoc(collection(db, "asignaciones"), data);
-    toast("Semana guardada.", "ok");
+    const q = query(collection(db, "personas"), where("activo", "==", true));
+    const snap = await getDocs(q);
+    personas = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => p?.nombre);
   } catch (e) {
-    toast("Error al guardar: " + (e?.message || e), "err");
+    // Si no existe índice o campo activo, cargamos sin filtro
+    const snap = await getDocs(collection(db, "personas"));
+    personas = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => p?.nombre);
+  }
+
+  // Orden alfabético por nombre
+  personas.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
+
+  personasByNameLower = new Map();
+  for (const p of personas) {
+    personasByNameLower.set(String(p.nombre).toLowerCase(), p);
   }
 }
 
-$("#btnCrear").addEventListener("click", crear);
+function poblarSelectsConPersonas() {
+  const selectsIds = [
+    "presidente",
+    "oracionInicial",
+    "oradorPublico",
+    "conductorAtalaya",
+    "lectorAtalaya",
+    "multimedia1",
+    "multimedia2",
+    "acomodadorPlataforma",
+    "acomodadorEntrada",
+    "acomodadorAuditorio",
+    "microfonista1",
+    "microfonista2",
+    "oracionFinal"
+  ];
 
-$("#btnNuevo").addEventListener("click", () => {
-  $("#fechaSab").value = "";
-  $("#horaSab").value = "19:30";
-  $("#hayDom").value = "no";
-  setDomEnabled();
-  $("#fechaDom").value = "";
-  $("#horaDom").value = "10:00";
+  for (const id of selectsIds) {
+    const sel = $(id);
+    clearSelect(sel);
 
-  [
-    "#presidente",
-    "#plataforma",
-    "#micro1",
-    "#micro2",
-    "#acomodadorAuditorio",
-    "#acomodadorEntrada",
-    "#audio",
-    "#video",
-  ].forEach((id) => ($(id).value = ""));
-
-  $("#notas").value = "";
-});
-
-let all = [];
-
-function showAcomodadores(x) {
-  const aud = x.roles?.acomodadorAuditorio || "";
-  const ent = x.roles?.acomodadorEntrada || "";
-  const viejo = x.roles?.acomodador || "";
-
-  if (aud || ent) return `Aud: ${aud || "—"} · Ent: ${ent || "—"}`;
-  if (viejo) return viejo;
-  return "—";
+    addOption(sel, "", "— Seleccionar —");
+    for (const p of personas) {
+      addOption(sel, p.nombre, p.nombre);
+    }
+  }
 }
 
-function render() {
-  const q = ($("#q").value || "").toLowerCase();
-  const ord = $("#orden").value;
+// ---------- Form <-> Object ----------
+function getFormData() {
+  return {
+    presidente: $("presidente").value || "",
+    cancionNumero: $("cancionNumero").value?.trim() || "",
+    oracionInicial: $("oracionInicial").value || "",
+    oradorPublico: $("oradorPublico").value || "",
+    congregacionVisitante: $("congregacionVisitante").value?.trim() || "",
+    tituloDiscurso: $("tituloDiscurso").value?.trim() || "",
+    tituloSiguienteSemana: $("tituloSiguienteSemana").value?.trim() || "",
 
-  const sorted = [...all].sort((a, b) => {
-    const da = a.fechaSab || "";
-    const db = b.fechaSab || "";
-    return ord === "asc" ? da.localeCompare(db) : db.localeCompare(da);
-  });
+    conductorAtalaya: $("conductorAtalaya").value || "",
+    lectorAtalaya: $("lectorAtalaya").value || "",
 
-  const rows = sorted.filter((x) => JSON.stringify(x).toLowerCase().includes(q));
+    multimedia1: $("multimedia1").value || "",
+    multimedia2: $("multimedia2").value || "",
 
-  tbody.innerHTML = rows
-    .map(
-      (x) => `
-    <tr>
-      <td>
-        <b>Sáb ${x.fechaSab} ${x.horaSab || ""}</b>
-        ${
-          x.hayDom
-            ? `<div class="small muted">Dom ${x.fechaDom} ${x.horaDom || ""}</div>`
-            : `<div class="small muted">Sin domingo</div>`
-        }
-      </td>
-      <td>
-        <div class="small">
-          <b>Pres:</b> ${x.roles?.presidente || "—"} ·
-          <b>Plat:</b> ${x.roles?.plataforma || "—"} ·
-          <b>Mic:</b> ${(x.roles?.micro1 || "—")} / ${(x.roles?.micro2 || "—")} ·
-          <b>Acom:</b> ${showAcomodadores(x)} ·
-          <b>A/V:</b> ${(x.roles?.audio || "—")} / ${(x.roles?.video || "—")}
-        </div>
-        ${x.notas ? `<div class="small muted">${x.notas}</div>` : ``}
-      </td>
-      <td class="no-print">
-        ${
-          canEdit
-            ? `<button class="btn danger" data-id="${x.id}">Borrar</button>`
-            : `<span class="muted small">Solo lectura</span>`
-        }
-      </td>
-    </tr>
-  `
-    )
-    .join("");
+    acomodadorPlataforma: $("acomodadorPlataforma").value || "",
+    acomodadorEntrada: $("acomodadorEntrada").value || "",
+    acomodadorAuditorio: $("acomodadorAuditorio").value || "",
+
+    microfonista1: $("microfonista1").value || "",
+    microfonista2: $("microfonista2").value || "",
+
+    oracionFinal: $("oracionFinal").value || ""
+  };
 }
 
-$("#q").addEventListener("input", render);
-$("#orden").addEventListener("change", render);
+function setFormData(data = {}) {
+  $("presidente").value = data.presidente || "";
+  $("cancionNumero").value = data.cancionNumero || "";
+  $("oracionInicial").value = data.oracionInicial || "";
+  $("oradorPublico").value = data.oradorPublico || "";
+  $("congregacionVisitante").value = data.congregacionVisitante || "";
+  $("tituloDiscurso").value = data.tituloDiscurso || "";
+  $("tituloSiguienteSemana").value = data.tituloSiguienteSemana || "";
 
-tbody.addEventListener("click", async (e) => {
-  const b = e.target.closest("button");
-  if (!b || !canEdit) return;
+  $("conductorAtalaya").value = data.conductorAtalaya || "";
+  $("lectorAtalaya").value = data.lectorAtalaya || "";
 
-  const id = b.dataset.id;
-  if (!confirm("¿Borrar esta semana?")) return;
+  $("multimedia1").value = data.multimedia1 || "";
+  $("multimedia2").value = data.multimedia2 || "";
 
+  $("acomodadorPlataforma").value = data.acomodadorPlataforma || "";
+  $("acomodadorEntrada").value = data.acomodadorEntrada || "";
+  $("acomodadorAuditorio").value = data.acomodadorAuditorio || "";
+
+  $("microfonista1").value = data.microfonista1 || "";
+  $("microfonista2").value = data.microfonista2 || "";
+
+  $("oracionFinal").value = data.oracionFinal || "";
+}
+
+function limpiarFormulario() {
+  setFormData({});
+  setStatus("Formulario limpio.");
+}
+
+// ---------- Conductor suggestion ----------
+function hasRole(p, role) {
+  const roles = Array.isArray(p?.roles) ? p.roles : [];
+  return roles.map(r => String(r).toLowerCase()).includes(String(role).toLowerCase());
+}
+
+function sugerirConductorAtalaya() {
+  // Orden:
+  // 1) Marcelo Palavecino
+  // 2) Leonardo Araya
+  // 3) cualquier anciano
+  // 4) Marcelo Rodríguez
+  // 5) Eduardo Rivadeneira
+
+  const preferidos = [
+    "Marcelo Palavecino",
+    "Leonardo Araya",
+    "Marcelo Rodríguez",
+    "Eduardo Rivadeneira"
+  ];
+
+  // 1 y 2 directos
+  for (const nombre of preferidos.slice(0, 2)) {
+    if (personasByNameLower.has(nombre.toLowerCase())) {
+      $("conductorAtalaya").value = nombre;
+      setStatus(`Sugerencia aplicada: Conductor Atalaya → ${nombre}`);
+      return;
+    }
+  }
+
+  // 3 cualquier anciano
+  const anciano = personas.find(p => hasRole(p, "anciano"));
+  if (anciano) {
+    $("conductorAtalaya").value = anciano.nombre;
+    setStatus(`Sugerencia aplicada: Conductor Atalaya → ${anciano.nombre} (anciano disponible)`);
+    return;
+  }
+
+  // 4 y 5 fallback
+  for (const nombre of preferidos.slice(2)) {
+    if (personasByNameLower.has(nombre.toLowerCase())) {
+      $("conductorAtalaya").value = nombre;
+      setStatus(`Sugerencia aplicada: Conductor Atalaya → ${nombre}`);
+      return;
+    }
+  }
+
+  setStatus("No pude sugerir conductor: no encontré los nombres ni ancianos en Personas.", true);
+}
+
+// ---------- Firestore persistence ----------
+function getSemanaId() {
+  const semana = $("semana").value;
+  return (semana && semana.trim()) ? semana.trim() : "";
+}
+
+async function cargarAsignaciones() {
+  const semanaId = getSemanaId();
+  if (!semanaId) {
+    setStatus("Elegí una fecha en 'Semana' para cargar.", true);
+    return;
+  }
+
+  const ref = doc(db, "asignacionesSemanales", semanaId);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    limpiarFormulario();
+    setStatus(`No hay datos guardados para ${semanaId}. Podés cargarlos y guardar.`);
+    return;
+  }
+
+  const data = snap.data() || {};
+  // Guardamos dentro de "asignaciones" (si existe) para no mezclar.
+  const asign = data.asignaciones || data; // compatibilidad si antes guardabas plano
+  setFormData(asign);
+  setStatus(`Datos cargados para ${semanaId}.`);
+}
+
+async function guardarAsignaciones() {
+  const semanaId = getSemanaId();
+  if (!semanaId) {
+    setStatus("Elegí una fecha en 'Semana' para guardar.", true);
+    return;
+  }
+
+  const asignaciones = getFormData();
+
+  // Validación mínima (podés sacar esto si querés)
+  if (!asignaciones.presidente) {
+    setStatus("Falta Presidente.", true);
+    return;
+  }
+
+  const ref = doc(db, "asignacionesSemanales", semanaId);
+
+  // setDoc con merge = true: agrega/actualiza sin borrar otros campos del documento
+  await setDoc(
+    ref,
+    {
+      semana: semanaId,
+      updatedAt: serverTimestamp(),
+      asignaciones
+    },
+    { merge: true }
+  );
+
+  setStatus(`Guardado OK para ${semanaId}.`);
+}
+
+// ---------- Oración final helpers ----------
+function usarOradorComoOracionFinal() {
+  const orador = $("oradorPublico").value || "";
+  if (!orador) {
+    setStatus("Primero elegí el Orador público.", true);
+    return;
+  }
+  $("oracionFinal").value = orador;
+  setStatus(`Oración final asignada a: ${orador}`);
+}
+
+function usarPresidenteComoOracionFinal() {
+  const pres = $("presidente").value || "";
+  if (!pres) {
+    setStatus("Primero elegí el Presidente.", true);
+    return;
+  }
+  $("oracionFinal").value = pres;
+  setStatus(`Oración final asignada a: ${pres}`);
+}
+
+// ---------- Init ----------
+async function init() {
   try {
-    await deleteDoc(doc(db, "asignaciones", id));
-    toast("Borrado.", "ok");
-  } catch (err) {
-    toast("Error: " + (err?.message || err), "err");
-  }
-});
+    $("semana").value = isoToday();
 
-onSnapshot(query(collection(db, "asignaciones"), orderBy("fechaSab", "desc")), (snap) => {
-  all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  render();
-});
+    setStatus("Cargando personas...");
+    await cargarPersonas();
+    poblarSelectsConPersonas();
+    setStatus(`Personas cargadas: ${personas.length}. Elegí semana y cargá o guardá.`);
+  } catch (e) {
+    console.error(e);
+    setStatus("Error cargando personas. Revisá consola (F12) y permisos de Firestore.", true);
+  }
+
+  $("btnCargar").addEventListener("click", () => cargarAsignaciones());
+  $("btnGuardar").addEventListener("click", () => guardarAsignaciones());
+  $("btnLimpiar").addEventListener("click", () => limpiarFormulario());
+
+  $("btnSugerirConductor").addEventListener("click", () => sugerirConductorAtalaya());
+  $("btnOracionFinalOrador").addEventListener("click", () => usarOradorComoOracionFinal());
+  $("btnOracionFinalPresidente").addEventListener("click", () => usarPresidenteComoOracionFinal());
+}
+
+init();
