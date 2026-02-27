@@ -2,8 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-// IMPORTANTE: trae la config real desde firebase-config.js
-import { firebaseConfig } from "./firebase-config.js?v=20260227";
+import { firebaseConfig } from "./firebase-config.js?v=3";
 
 const app = initializeApp(firebaseConfig);
 
