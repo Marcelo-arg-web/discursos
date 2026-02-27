@@ -18,7 +18,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-import { signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
 // ---------- Helpers UI ----------
 const $ = (id) => document.getElementById(id);
@@ -231,7 +231,11 @@ function poblarSelectsConPersonas() {
     ],
     plataforma: [
       "Brian Torres",
+      "Braian Torres",
       "Brian Rivadeneira",
+      "Braian Rivadeneira",
+      "Martin Zerda Jr",
+      "Martin Zerda (hijo)",
       "Martin Zerda",
       "Omar Santucho"
     ],
@@ -281,7 +285,7 @@ function poblarSelectsConPersonas() {
   const microfonistasIds = new Set([IDS.martinPadre, IDS.martinHijo, IDS.isaias]);
 
   // Plataforma: usar Martin padre por ID (por defecto)
-  const plataformaIds = new Set([IDS.martinPadre]);
+  const plataformaIds = new Set([IDS.martinHijo]);
 
   // Multimedia: incluir Isaías (acompañante) y Martin padre (acompañante) por ID
   const multimediaIds = new Set([IDS.isaias, IDS.martinPadre]);
@@ -763,4 +767,16 @@ async function init() {
   if (btnSalir) btnSalir.addEventListener("click", () => logout());
 }
 
-init();
+
+// Esperar autenticación (reglas suelen requerir request.auth)
+let __initDone = false;
+onAuthStateChanged(auth, (user) => {
+  if (__initDone) return;
+  if (!user) {
+    // si no hay sesión, volver al login
+    window.location.href = "index.html";
+    return;
+  }
+  __initDone = true;
+  init();
+});
