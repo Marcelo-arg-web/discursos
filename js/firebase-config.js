@@ -1,18 +1,8 @@
-/**
- * Pega acá tu configuración de Firebase (SDK web) desde:
- * Firebase Console → Project settings → Your apps → SDK setup and configuration.
- *
- * IMPORTANTE:
- * - Para GitHub Pages: agregá tu dominio en Authentication → Settings → Authorized domains
- *   Ej: marcelo-arg-web.github.io
- * - Asegurate de habilitar Email/Password en Authentication.
- */
-
 export const firebaseConfig = {
-  apiKey: "PEGAR_ACA",
-  authDomain: "PEGAR_ACA",
-  projectId: "PEGAR_ACA",
-  storageBucket: "PEGAR_ACA",
-  messagingSenderId: "PEGAR_ACA",
-  appId: "PEGAR_ACA"
+  apiKey: "AIzaSyDARHGnQMk3ZU1H48n2pfJ_FhusAkl0kfk",
+  authDomain: "discursos-147ba.firebaseapp.com",
+  projectId: "discursos-147ba",
+  storageBucket: "discursos-147ba.appspot.com",
+  messagingSenderId: "778635238055",
+  appId: "1:778635238055:web:100e08b496f0b6d6c35982"
 };
