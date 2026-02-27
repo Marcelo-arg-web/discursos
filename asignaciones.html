@@ -1,147 +1,277 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Asignaciones · Arreglos Discursos</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Asignaciones de la semana (Admin)</title>
+  <style>
+    body{
+      font-family: Arial, sans-serif;
+      background:#f0f6ff;
+      margin:0;
+      padding:24px;
+      display:flex;
+      justify-content:center;
+    }
+    .container{
+      width: min(980px, 100%);
+      background:#fff;
+      border-radius:14px;
+      box-shadow:0 12px 40px rgba(0,0,0,.08);
+      padding:22px;
+    }
+    h1{
+      margin:0 0 8px 0;
+      color:#143d8f;
+      font-size:22px;
+    }
+    .sub{
+      margin:0 0 18px 0;
+      color:#4b5563;
+      font-size:14px;
+    }
+    .bar{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:end;
+      margin-bottom:16px;
+      padding:12px;
+      background:#f7fbff;
+      border:1px solid #e6eefb;
+      border-radius:12px;
+    }
+    label{
+      font-size:12px;
+      color:#374151;
+      display:block;
+      margin-bottom:6px;
+    }
+    input, select, textarea{
+      width:100%;
+      box-sizing:border-box;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid #d1d5db;
+      outline:none;
+      font-size:14px;
+      background:#fff;
+    }
+    textarea{ min-height: 40px; resize: vertical; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:14px;
+    }
+    @media (max-width: 800px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+    .section{
+      margin-top:18px;
+      padding-top:12px;
+      border-top:1px solid #eef2ff;
+    }
+    .section h2{
+      margin:0 0 12px 0;
+      font-size:16px;
+      color:#1f2937;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top:10px;
+    }
+    .row .btn{
+      border:1px solid #c7d2fe;
+      background:#eef2ff;
+      color:#1e3a8a;
+      padding:10px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:13px;
+    }
+    .row .btn.primary{
+      background:#1a4fa3;
+      border-color:#1a4fa3;
+      color:#fff;
+    }
+    .row .btn.danger{
+      background:#fff1f2;
+      border-color:#fecdd3;
+      color:#9f1239;
+    }
+
+    .status{
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius:10px;
+      background:#f8fafc;
+      border:1px solid #e5e7eb;
+      color:#111827;
+      font-size:13px;
+      min-height: 18px;
+    }
+    .small{
+      font-size:12px;
+      color:#6b7280;
+      margin-top:6px;
+    }
+  </style>
 </head>
 <body>
-  <div id="topbar"></div>
-
   <div class="container">
-    <div id="toastHost"></div>
+    <h1>Asignaciones de la semana (Admin)</h1>
+    <p class="sub">Cargá, guardá e imprimí las asignaciones semanales. Se guarda en Firestore con “merge” (no borra lo anterior).</p>
 
-    <div class="row">
-      <div class="col">
-        <div class="card pad">
-          <h2 class="h1" style="margin-bottom:6px;">Asignaciones semanales</h2>
-          <div class="muted">Creá una semana (sábado y opcional domingo) y asigná responsabilidades.</div>
-
-          <hr class="sep"/>
-
-          <div class="row">
-            <div class="col">
-              <label>Fecha sábado</label>
-              <input id="fechaSab" class="input" type="date">
-            </div>
-            <div class="col">
-              <label>Hora sábado</label>
-              <input id="horaSab" class="input" type="time" value="19:30">
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col">
-              <label>¿Hay reunión domingo (Santa Rosa u otra)?</label>
-              <select id="hayDom">
-                <option value="no" selected>No</option>
-                <option value="si">Sí</option>
-              </select>
-            </div>
-            <div class="col">
-              <label>Fecha domingo</label>
-              <input id="fechaDom" class="input" type="date" disabled>
-            </div>
-            <div class="col">
-              <label>Hora domingo</label>
-              <input id="horaDom" class="input" type="time" value="10:00" disabled>
-            </div>
-          </div>
-
-          <hr class="sep"/>
-
-          <div class="row">
-            <div class="col">
-              <label>Presidente</label>
-              <select id="presidente" class="input"></select>
-            </div>
-            <div class="col">
-              <label>Acomodador plataforma</label>
-              <select id="plataforma" class="input"></select>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col">
-              <label>Microfonista 1</label>
-              <select id="micro1" class="input"></select>
-            </div>
-            <div class="col">
-              <label>Microfonista 2</label>
-              <select id="micro2" class="input"></select>
-            </div>
-            <div class="col">
-              <label>Acomodador salón</label>
-              <select id="acomodador" class="input"></select>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col">
-              <label>Audio</label>
-              <select id="audio" class="input"></select>
-            </div>
-            <div class="col">
-              <label>Video</label>
-              <select id="video" class="input"></select>
-            </div>
-          </div>
-
-          <label>Notas (opcional)</label>
-          <textarea id="notas" class="input" placeholder="Ej: domingo en Santa Rosa / cambios especiales / etc."></textarea>
-
-          <div class="row" style="margin-top:12px;">
-            <button id="btnCrear" class="btn primary">Guardar semana</button>
-            <button id="btnNuevo" class="btn">Nuevo</button>
-          </div>
-
-          <hr class="sep"/>
-          <div class="small muted">
-            Esto guarda en <b>/asignaciones</b> con id automático y luego lo ves abajo.
-          </div>
-        </div>
+    <div class="bar">
+      <div style="min-width:230px;">
+        <label for="semana">Semana (fecha de referencia)</label>
+        <input type="date" id="semana" />
+        <div class="small">Sugerencia: elegí el sábado de esa semana.</div>
       </div>
 
-      <div class="col-2">
-        <div class="card pad">
-          <div class="row" style="align-items:end;">
-            <div class="col">
-              <label>Buscar por fecha o nombre</label>
-              <input id="q" class="input" placeholder="ej: 2026-03 o Eduardo">
-            </div>
-            <div class="col" style="max-width:240px;">
-              <label>Orden</label>
-              <select id="orden">
-                <option value="desc" selected>Más nuevas primero</option>
-                <option value="asc">Más viejas primero</option>
-              </select>
-            </div>
+      <div style="min-width:180px;">
+        <button class="btn primary" id="btnCargar">Cargar</button>
+      </div>
+
+      <div style="min-width:180px;">
+        <button class="btn" id="btnLimpiar">Limpiar formulario</button>
+      </div>
+
+      <div style="min-width:180px;">
+        <button class="btn primary" id="btnGuardar">Guardar</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Programa</h2>
+      <div class="grid">
+        <div>
+          <label for="presidente">Presidente</label>
+          <select id="presidente"></select>
+        </div>
+
+        <div>
+          <label for="cancionNumero">Canción (número)</label>
+          <input id="cancionNumero" type="text" placeholder="Ej: 23" />
+        </div>
+
+        <div>
+          <label for="oracionInicial">Oración inicial</label>
+          <select id="oracionInicial"></select>
+        </div>
+
+        <div>
+          <label for="oradorPublico">Orador público</label>
+          <select id="oradorPublico"></select>
+        </div>
+
+        <div>
+          <label for="congregacionVisitante">De qué congregación nos visita</label>
+          <input id="congregacionVisitante" type="text" placeholder="Ej: Santa Rosa" />
+        </div>
+
+        <div>
+          <label for="tituloDiscurso">Título del discurso</label>
+          <textarea id="tituloDiscurso" placeholder="Ej: ‘Mantengamos la fe…’"></textarea>
+        </div>
+
+        <div>
+          <label for="tituloSiguienteSemana">Título de la siguiente semana</label>
+          <textarea id="tituloSiguienteSemana" placeholder="Ej: ‘La amistad con Jehová…’"></textarea>
+        </div>
+
+        <div>
+          <label for="conductorAtalaya">Conductor Atalaya</label>
+          <select id="conductorAtalaya"></select>
+          <div class="row">
+            <button class="btn" id="btnSugerirConductor">Sugerir conductor</button>
           </div>
+          <div class="small">
+            Orden: Marcelo Palavecino → Leonardo Araya → cualquier anciano → Marcelo Rodríguez → Eduardo Rivadeneira.
+          </div>
+        </div>
 
-          <hr class="sep"/>
+        <div>
+          <label for="lectorAtalaya">Lector de Atalaya</label>
+          <select id="lectorAtalaya"></select>
+        </div>
+      </div>
+    </div>
 
-          <table class="table" id="tbl">
-            <thead>
-              <tr>
-                <th>Semana</th>
-                <th>Asignaciones</th>
-                <th class="no-print">Acciones</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+    <div class="section">
+      <h2>Multimedia</h2>
+      <div class="grid">
+        <div>
+          <label for="multimedia1">Multimedia 1</label>
+          <select id="multimedia1"></select>
+        </div>
+        <div>
+          <label for="multimedia2">Multimedia 2</label>
+          <select id="multimedia2"></select>
+        </div>
+      </div>
+    </div>
 
-          <div class="small muted" style="margin-top:10px;">
-            Desde <b>Imprimir</b> podés sacar el tablero mensual.
+    <div class="section">
+      <h2>Acomodadores</h2>
+      <div class="grid">
+        <div>
+          <label for="acomodadorPlataforma">Acomodador plataforma</label>
+          <select id="acomodadorPlataforma"></select>
+        </div>
+        <div>
+          <label for="acomodadorEntrada">Acomodador entrada</label>
+          <select id="acomodadorEntrada"></select>
+        </div>
+        <div>
+          <label for="acomodadorAuditorio">Acomodador auditorio</label>
+          <select id="acomodadorAuditorio"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Microfonistas</h2>
+      <div class="grid">
+        <div>
+          <label for="microfonista1">Microfonista 1</label>
+          <select id="microfonista1"></select>
+        </div>
+        <div>
+          <label for="microfonista2">Microfonista 2</label>
+          <select id="microfonista2"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Cierre</h2>
+      <div class="grid">
+        <div>
+          <label for="oracionFinal">Oración final</label>
+          <select id="oracionFinal"></select>
+
+          <div class="row">
+            <button class="btn" id="btnOracionFinalOrador">Usar orador público</button>
+            <button class="btn" id="btnOracionFinalPresidente">Usar presidente</button>
+          </div>
+          <div class="small">
+            Generalmente la hace el orador público; si no se queda, presidente u otro hermano.
           </div>
         </div>
       </div>
     </div>
 
+    <div class="status" id="status"></div>
+
   </div>
 
-  <script type="module" src="js/pages/asignaciones.js"></script>
+  <script type="module" src="js/pages/admin-asignaciones.js"></script>
 </body>
 </html>
