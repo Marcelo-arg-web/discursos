@@ -97,6 +97,58 @@
           <div class="h2">Mensaje</div>
           <textarea id="msg" class="input" readonly placeholder="Acá se genera el mensaje…"></textarea>
         </div>
+
+        <div class="card pad" style="margin-top:14px;">
+          <h3 class="h2" style="margin:0;">Conferenciantes locales</h3>
+          <div class="muted">Cargá teléfonos y bosquejos, y generá un mensaje listo para WhatsApp.</div>
+
+          <hr class="sep"/>
+
+          <label>Nombre</label>
+          <input id="l_nombre" class="input" placeholder="Ej: Juan Pérez">
+
+          <div class="row">
+            <div class="col">
+              <label>Teléfono</label>
+              <input id="l_tel" class="input" placeholder="Ej: 381 123-4567">
+            </div>
+            <div class="col">
+              <label>Bosquejos (separados por coma)</label>
+              <input id="l_bosquejos" class="input" placeholder="Ej: 1, 12, 45">
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:6px;">
+            <label style="display:flex;gap:8px;align-items:center;">
+              <input id="l_provisorio" type="checkbox"> Provisorio
+            </label>
+            <label style="display:flex;gap:8px;align-items:center;">
+              <input id="l_proximo" type="checkbox"> Próximo (a aprobar)
+            </label>
+          </div>
+
+          <div class="row" style="margin-top:12px;">
+            <button id="btnGuardarLocal" class="btn primary">Guardar local</button>
+            <button id="btnLimpiarLocal" class="btn">Limpiar</button>
+            <button id="btnMsgLocales" class="btn">Mensaje WhatsApp (locales)</button>
+          </div>
+
+          <hr class="sep"/>
+
+          <table class="table" id="tblLocales">
+            <thead>
+              <tr>
+                <th>Detalle</th>
+                <th class="no-print">Acciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <hr class="sep"/>
+          <div class="h2">Mensaje (locales)</div>
+          <textarea id="msgLocales" class="input" readonly placeholder="Acá se genera el mensaje de locales…"></textarea>
+        </div>
       </div>
     </div>
   </div>

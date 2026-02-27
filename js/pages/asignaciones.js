@@ -143,6 +143,68 @@ async function cargarPersonas() {
 }
 
 function poblarSelectsConPersonas() {
+  // Listas (basadas en tu lista de roles)
+  // Nota: si alguien NO está en la lista, igual podés seleccionarlo si ya estaba guardado.
+  const LISTAS = {
+    conductoresAtalaya: ["Marcelo Palavecino", "Leonardo Araya"],
+    multimedia: [
+      "Marcelo Rodríguez",
+      "Eduardo Rivadeneira",
+      "Hugo García",
+      "Marcelo Palavecino",
+      "Brian Rivadeneira",
+      "Isaías Schell",
+      "Martin Zerda",
+      "Roberto Lazarte",
+      "Sergio Saldaña"
+    ],
+    acomodadores: [
+      "Marcelo Rodríguez",
+      "Omar Santucho",
+      "Epifanio Pedraza",
+      "Hugo García",
+      "Eduardo Rivadeneira",
+      "Marcelo Palavecino",
+      "Leonardo Araya",
+      "Luis Navarro",
+      "Sergio Saldaña",
+      "Sergio Lazarte",
+      "Roberto Lazarte",
+      "Rodolfo Santucho"
+    ],
+    plataforma: ["Brian Torres", "Brian Rivadeneira", "Martin Zerda", "Omar Santucho"],
+    microfonistas: [
+      "David Salica",
+      "Emanuel Salica",
+      "Martin Zerda (padre)",
+      "Martin Zerda (hijo)",
+      "Facundo Reinoso",
+      "Maxi Navarro",
+      "Eduar Salinas",
+      "Misael Salinas",
+      "Isaías Schell",
+      "Roberto Lazarte",
+      "Eduardo Rivadeneira",
+      "Hugo García",
+      "Brian Rivadeneira",
+      "Brian Torres",
+      "Epifanio Pedraza",
+      "Omar Santucho",
+      "Marcelo Rodríguez",
+      "Sergio Lazarte",
+      "José Lazarte",
+      "Rodolfo Santucho"
+    ]
+  };
+
+  function listaPara(id) {
+    if (id === "conductorAtalaya") return LISTAS.conductoresAtalaya;
+    if (id === "multimedia1" || id === "multimedia2") return LISTAS.multimedia;
+    if (id === "acomodadorPlataforma") return LISTAS.plataforma;
+    if (id === "acomodadorEntrada" || id === "acomodadorAuditorio") return LISTAS.acomodadores;
+    if (id === "microfonista1" || id === "microfonista2") return LISTAS.microfonistas;
+    return null;
+  }
   const selectsIds = [
     "presidente",
     "oracionInicial",
@@ -160,7 +222,23 @@ function poblarSelectsConPersonas() {
     const sel = $(id);
     clearSelect(sel);
     addOption(sel, "", "— Seleccionar —");
-    for (const p of personas) addOption(sel, p.nombre, p.nombre);
+
+    const lista = listaPara(id);
+    if (Array.isArray(lista)) {
+      // Lista cerrada (por nombre)
+      const set = new Set(lista.map(n => String(n).toLowerCase()));
+      const filtradas = personas.filter(p => set.has(String(p.nombre).toLowerCase()));
+      for (const p of filtradas) addOption(sel, p.nombre, p.nombre);
+
+      // Si ya había un valor guardado que no está en la lista, lo agregamos para no romper
+      const actual = (sel.value || "").trim();
+      if (actual && !set.has(actual.toLowerCase())) {
+        addOption(sel, actual, actual);
+      }
+    } else {
+      // Sin filtro
+      for (const p of personas) addOption(sel, p.nombre, p.nombre);
+    }
   }
 }
 
@@ -195,7 +273,7 @@ function getFormData() {
     microfonista1: $("microfonista1").value || "",
     microfonista2: $("microfonista2").value || "",
 
-    oracionFinal: $().value || ""
+    oracionFinal: $("oracionFinal").value || ""
   };
 }
 
@@ -228,7 +306,7 @@ function setFormData(data = {}) {
   $("microfonista1").value = data.microfonista1 || "";
   $("microfonista2").value = data.microfonista2 || "";
 
-  $().value = data.oracionFinal || "";
+  $("oracionFinal").value = data.oracionFinal || "";
 }
 
 function limpiarFormulario() {
@@ -312,9 +390,9 @@ function aplicarOracionFinalAutomatica(force = false) {
   const sugerida = sugerirOracionFinal();
   if (!sugerida) return;
 
-  const actual = $().value || "";
+  const actual = $("oracionFinal").value || "";
   if (force || !actual || !oracionFinalFueEditada) {
-    $().value = sugerida;
+    $("oracionFinal").value = sugerida;
   }
 }
 
@@ -353,7 +431,7 @@ async function cargarAsignaciones() {
 
   // refrescar botones y sugerencia (sin pisar si ya está guardado)
   refrescarBotonesOracionFinal();
-  oracionFinalFueEditada = Boolean(($().value || "").trim());
+  oracionFinalFueEditada = Boolean((("" + $("oracionFinal").value) || "").trim());
   aplicarOracionFinalAutomatica(false);
 
   setStatus(`Datos cargados para ${semanaId}.`);
@@ -414,7 +492,7 @@ function usarOradorComoOracionFinal() {
     setStatus("Primero elegí el Orador público.", true);
     return;
   }
-  $().value = orador;
+  $("oracionFinal").value = orador;
   oracionFinalFueEditada = true;
   setStatus(`Oración final asignada a: ${orador}`);
 }
@@ -425,7 +503,7 @@ function usarPresidenteComoOracionFinal() {
     setStatus("Primero elegí el Presidente.", true);
     return;
   }
-  $().value = pres;
+  $("oracionFinal").value = pres;
   oracionFinalFueEditada = true;
   setStatus(`Oración final asignada a: ${pres}`);
 }
@@ -473,7 +551,7 @@ async function init() {
     });
 
     // oración final
-    $().addEventListener("change", () => { oracionFinalFueEditada = true; });
+    $("oracionFinal").addEventListener("change", () => { oracionFinalFueEditada = true; });
 
     $("oradorPublico").addEventListener("change", () => {
       refrescarBotonesOracionFinal();
