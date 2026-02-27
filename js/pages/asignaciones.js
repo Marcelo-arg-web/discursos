@@ -317,8 +317,10 @@ function poblarSelectsConPersonas() {
     }
 
     if (fieldId === "acomodadorPlataforma") {
-      // Plataforma: lista + (si querés) base (anciano/siervo)
-      return hasBase(p) || inSetByNameOrId(p, setPlataforma, plataformaIds);
+      // Plataforma (MULTIMEDIA): SOLO lista de plataforma (no incluye acomodadores entrada/auditorio)
+      // Nota: No agregamos "base" aquí para evitar que, por ser anciano/siervo,
+      // aparezcan personas que no hacen plataforma (ej. Braian Torres solo plataforma).
+      return inSetByNameOrId(p, setPlataforma, plataformaIds);
     }
 
     // default: todo activo
@@ -368,40 +370,52 @@ function poblarSelectsConPersonas() {
 
 // ---------- Form <-> Object ----------
 function getFormData() {
+  // Lectura segura: evita errores si algún campo no existe en el DOM
+  const getVal = (id) => {
+    const el = $(id);
+    return el ? (el.value ?? "") : "";
+  };
+  const getTrim = (id) => String(getVal(id) || "").trim();
+
   return {
-    presidente: $("presidente").value || "",
+    presidente: getVal("presidente") || "",
 
-    cancionNumero: ($("cancionNumero").value || "").trim(),
-    cancionTitulo: ($("cancionTitulo").value || "").trim(),
+    cancionNumero: getTrim("cancionNumero"),
+    cancionTitulo: getTrim("cancionTitulo"),
 
-    oracionInicial: $("oracionInicial").value || "",
-    oradorPublico: $("oradorPublico").value || "",
+    oracionInicial: getVal("oracionInicial") || "",
+    oradorPublico: getVal("oradorPublico") || "",
 
-    congregacionVisitante: ($("congregacionVisitante").value || "").trim(),
+    congregacionVisitante: getTrim("congregacionVisitante"),
 
-    discursoNumero: ($("discursoNumero").value || "").trim(),
-    tituloDiscurso: ($("tituloDiscurso").value || "").trim(),
+    discursoNumero: getTrim("discursoNumero"),
+    tituloDiscurso: getTrim("tituloDiscurso"),
 
-    tituloSiguienteSemana: ($("tituloSiguienteSemana").value || "").trim(),
+    tituloSiguienteSemana: getTrim("tituloSiguienteSemana"),
 
-    conductorAtalaya: $("conductorAtalaya").value || "",
-    lectorAtalaya: $("lectorAtalaya").value || "",
+    conductorAtalaya: getVal("conductorAtalaya") || "",
+    lectorAtalaya: getVal("lectorAtalaya") || "",
 
-    multimedia1: $("multimedia1").value || "",
-    multimedia2: $("multimedia2").value || "",
+    multimedia1: getVal("multimedia1") || "",
+    multimedia2: getVal("multimedia2") || "",
 
-    acomodadorPlataforma: $("acomodadorPlataforma").value || "",
-    acomodadorEntrada: $("acomodadorEntrada").value || "",
-    acomodadorAuditorio: $("acomodadorAuditorio").value || "",
+    acomodadorPlataforma: getVal("acomodadorPlataforma") || "",
+    acomodadorEntrada: getVal("acomodadorEntrada") || "",
+    acomodadorAuditorio: getVal("acomodadorAuditorio") || "",
 
-    microfonista1: $("microfonista1").value || "",
-    microfonista2: $("microfonista2").value || "",
+    microfonista1: getVal("microfonista1") || "",
+    microfonista2: getVal("microfonista2") || "",
 
-    oracionFinal: $("oracionFinal").value || ""
+    oracionFinal: getVal("oracionFinal") || ""
   };
 }
 
 function setFormData(data = {}) {
+  const setVal = (id, value) => {
+    const el = $(id);
+    if (el) el.value = value ?? "";
+  };
+
   const ensure = window.__ensureOptionAsignaciones;
   if (typeof ensure === "function") {
     ensure("presidente", data.presidente || "");
@@ -418,35 +432,35 @@ function setFormData(data = {}) {
     ensure("oracionFinal", data.oracionFinal || "");
   }
 
-  $("presidente").value = data.presidente || "";
+  setVal("presidente", data.presidente || "");
 
-  $("cancionNumero").value = data.cancionNumero || "";
-  $("cancionTitulo").value = data.cancionTitulo || "";
+  setVal("cancionNumero", data.cancionNumero || "");
+  setVal("cancionTitulo", data.cancionTitulo || "");
 
-  $("oracionInicial").value = data.oracionInicial || "";
-  $("oradorPublico").value = data.oradorPublico || "";
+  setVal("oracionInicial", data.oracionInicial || "");
+  setVal("oradorPublico", data.oradorPublico || "");
 
-  $("congregacionVisitante").value = data.congregacionVisitante || "";
+  setVal("congregacionVisitante", data.congregacionVisitante || "");
 
-  $("discursoNumero").value = data.discursoNumero || "";
-  $("tituloDiscurso").value = data.tituloDiscurso || "";
+  setVal("discursoNumero", data.discursoNumero || "");
+  setVal("tituloDiscurso", data.tituloDiscurso || "");
 
-  $("tituloSiguienteSemana").value = data.tituloSiguienteSemana || "";
+  setVal("tituloSiguienteSemana", data.tituloSiguienteSemana || "");
 
-  $("conductorAtalaya").value = data.conductorAtalaya || "";
-  $("lectorAtalaya").value = data.lectorAtalaya || "";
+  setVal("conductorAtalaya", data.conductorAtalaya || "");
+  setVal("lectorAtalaya", data.lectorAtalaya || "");
 
-  $("multimedia1").value = data.multimedia1 || "";
-  $("multimedia2").value = data.multimedia2 || "";
+  setVal("multimedia1", data.multimedia1 || "");
+  setVal("multimedia2", data.multimedia2 || "");
 
-  $("acomodadorPlataforma").value = data.acomodadorPlataforma || "";
-  $("acomodadorEntrada").value = data.acomodadorEntrada || "";
-  $("acomodadorAuditorio").value = data.acomodadorAuditorio || "";
+  setVal("acomodadorPlataforma", data.acomodadorPlataforma || "");
+  setVal("acomodadorEntrada", data.acomodadorEntrada || "");
+  setVal("acomodadorAuditorio", data.acomodadorAuditorio || "");
 
-  $("microfonista1").value = data.microfonista1 || "";
-  $("microfonista2").value = data.microfonista2 || "";
+  setVal("microfonista1", data.microfonista1 || "");
+  setVal("microfonista2", data.microfonista2 || "");
 
-  $("oracionFinal").value = data.oracionFinal || "";
+  setVal("oracionFinal", data.oracionFinal || "");
 }
 
 function limpiarFormulario() {
