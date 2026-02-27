@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Imprimir · Arreglos Discursos</title>
+  <title>Imprimir · Congregación Villa Fiad</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -16,17 +16,26 @@
     <div class="card pad">
       <div class="row" style="align-items:end;">
         <div class="col">
-          <h2 class="h1" style="margin-bottom:6px;">Imprimir tablero</h2>
-          <div class="muted">Filtrá por mes y luego imprimí (Ctrl+P).</div>
+          <h2 class="h1" style="margin-bottom:6px;">Impresión mensual</h2>
+          <div class="muted">Elegí el mes y generá las hojas para imprimir. (Ctrl+P → Guardar como PDF si querés).</div>
         </div>
         <div class="col no-print" style="max-width:320px;">
           <label>Mes (YYYY-MM)</label>
           <input id="mes" class="input" placeholder="Ej: 2026-03">
         </div>
-        <div class="col no-print" style="max-width:200px;">
+        <div class="col no-print" style="max-width:220px;">
           <label>&nbsp;</label>
-          <button id="btnPrint" class="btn primary" style="width:100%;">Imprimir</button>
+          <button id="btnRecargar" class="btn" style="width:100%;">Actualizar</button>
         </div>
+        <div class="col no-print" style="max-width:220px;">
+          <label>&nbsp;</label>
+          <button id="btnPrint" class="btn primary" style="width:100%;">Imprimir (3 hojas)</button>
+        </div>
+      </div>
+
+      <div class="row no-print" style="margin-top:10px;">
+        <a class="btn" id="btnPresidente" href="presidente.html" target="_blank" rel="noopener">Hoja del Presidente (por semana)</a>
+        <span class="pill">Tip: abrí la semana desde Asignaciones → “PDF Presidente”.</span>
       </div>
 
       <hr class="sep"/>
@@ -36,6 +45,39 @@
       </div>
     </div>
   </div>
+
+  <style>
+    /* Bloques imprimibles */
+    .print-page{background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; margin:18px 0;}
+    .print-header{display:flex; align-items:stretch; gap:14px; padding:0; border-bottom:1px solid var(--border);}
+    .print-header .imgwrap{width:42%; max-width:360px; min-height:120px; overflow:hidden;}
+    .print-header img{width:100%; height:140px; object-fit:cover; object-position:top; display:block;}
+    .print-header .titles{padding:14px 14px 10px 0; flex:1; display:flex; flex-direction:column; justify-content:center;}
+    .print-header .cong{font-weight:900; font-size:18px;}
+    .print-header .doc{font-weight:800; font-size:16px; color:#1e40af; margin-top:2px;}
+    .print-header .mes{margin-top:6px; font-weight:700; color:#334155;}
+    .print-body{padding:14px;}
+
+    .wk{border:1px solid #cbd5e1; border-radius:14px; overflow:hidden; margin:14px 0;}
+    .wk .wk-title{background:#e0f2fe; padding:10px 12px; font-weight:900; text-transform:lowercase;}
+    .wk table{width:100%; border-collapse:collapse;}
+    .wk td{border-top:1px solid #cbd5e1; padding:8px 10px; font-size:14px;}
+    .wk td.k{width:140px; font-weight:800; background:#f8fafc;}
+    .wk td.k2{width:110px; font-weight:800; background:#f8fafc;}
+
+    .board-table{width:100%; border-collapse:collapse;}
+    .board-table th,.board-table td{border:1px solid #cbd5e1; padding:8px 10px; font-size:14px;}
+    .board-table th{background:#e0f2fe; font-weight:900;}
+    .month-split{background:#dbeafe; font-weight:900; text-align:center;}
+
+    @media print{
+      .print-page{margin:0; border:none; border-radius:0;}
+      .print-page{page-break-after:always;}
+      .print-page:last-child{page-break-after:auto;}
+      .print-header .imgwrap{width:44%;}
+      .print-header img{height:130px;}
+    }
+  </style>
 
   <script type="module" src="js/pages/imprimir.js"></script>
 </body>
