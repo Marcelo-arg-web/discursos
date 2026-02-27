@@ -112,7 +112,7 @@ function renderItems(items){
         <td>${a.lectorAtalaya||""}</td>
         <td>${a.multimedia1||""}</td>
         <td>${a.multimedia2||""}</td>
-        <td>${a.acomodadorPlataforma||""}</td>
+        <td>${(a.plataforma||a.acomodadorPlataforma)||""}</td>
         <td>${a.acomodadorEntrada||""}</td>
         <td>${a.acomodadorAuditorio||""}</td>
         <td>${a.microfonista1||""}</td>
@@ -139,7 +139,7 @@ function renderItems(items){
           <th>Lector</th>
           <th>MM1</th>
           <th>MM2</th>
-          <th>Acom. plat</th>
+          <th>Plataforma</th>
           <th>Acom. ent</th>
           <th>Acom. aud</th>
           <th>Mic1</th>
@@ -180,6 +180,18 @@ async function cargarMes(){
   // mes por defecto = mes actual
   const now = new Date();
   document.getElementById("mes").value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  // Si viene una semana en querystring (desde Asignaciones), preseleccionar ese mes
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const semana = (sp.get("semana") || "").trim();
+    if (semana) {
+      const d = new Date(semana + "T00:00:00");
+      if (!isNaN(d.getTime())) {
+        document.getElementById("mes").value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+      }
+    }
+  } catch(e) {}
+
   document.getElementById("btnPrint")?.addEventListener("click", ()=>window.print());
   document.getElementById("mes")?.addEventListener("change", cargarMes);
 

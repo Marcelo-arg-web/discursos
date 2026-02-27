@@ -316,7 +316,7 @@ function poblarSelectsConPersonas() {
       return hasBase(p) || inSetByNameOrId(p, setAcomodadores, null);
     }
 
-    if (fieldId === "acomodadorPlataforma") {
+    if (fieldId === "acomodadorPlataforma" || fieldId === "plataforma") {
       // Plataforma (MULTIMEDIA): SOLO lista de plataforma (no incluye acomodadores entrada/auditorio)
       // Nota: No agregamos "base" aquí para evitar que, por ser anciano/siervo,
       // aparezcan personas que no hacen plataforma (ej. Braian Torres solo plataforma).
@@ -341,7 +341,7 @@ function poblarSelectsConPersonas() {
     "lectorAtalaya",
     "multimedia1",
     "multimedia2",
-    "acomodadorPlataforma",
+    "plataforma",
     "acomodadorEntrada",
     "acomodadorAuditorio",
     "microfonista1",
@@ -398,8 +398,8 @@ function getFormData() {
 
     multimedia1: getVal("multimedia1") || "",
     multimedia2: getVal("multimedia2") || "",
+    plataforma: getVal("plataforma") || getVal("acomodadorPlataforma") || "",
 
-    acomodadorPlataforma: getVal("acomodadorPlataforma") || "",
     acomodadorEntrada: getVal("acomodadorEntrada") || "",
     acomodadorAuditorio: getVal("acomodadorAuditorio") || "",
 
@@ -424,7 +424,7 @@ function setFormData(data = {}) {
     ensure("lectorAtalaya", data.lectorAtalaya || "");
     ensure("multimedia1", data.multimedia1 || "");
     ensure("multimedia2", data.multimedia2 || "");
-    ensure("acomodadorPlataforma", data.acomodadorPlataforma || "");
+    ensure("plataforma", data.plataforma || data.acomodadorPlataforma || "");
     ensure("acomodadorEntrada", data.acomodadorEntrada || "");
     ensure("acomodadorAuditorio", data.acomodadorAuditorio || "");
     ensure("microfonista1", data.microfonista1 || "");
@@ -453,7 +453,7 @@ function setFormData(data = {}) {
   setVal("multimedia1", data.multimedia1 || "");
   setVal("multimedia2", data.multimedia2 || "");
 
-  setVal("acomodadorPlataforma", data.acomodadorPlataforma || "");
+  setVal("plataforma", data.plataforma || data.acomodadorPlataforma || "");
   setVal("acomodadorEntrada", data.acomodadorEntrada || "");
   setVal("acomodadorAuditorio", data.acomodadorAuditorio || "");
 
@@ -604,6 +604,23 @@ async function guardarAsignaciones() {
 
   const asignaciones = getFormData();
 
+  // Validación: multimedia1, multimedia2, acomodadorEntrada y acomodadorAuditorio no pueden ser la misma persona
+  const mustBeDistinct = ["multimedia1","multimedia2","acomodadorEntrada","acomodadorAuditorio"];
+  const picked = mustBeDistinct
+    .map((k) => [k, (asignaciones[k] || "").trim()])
+    .filter(([, v]) => v);
+  const seen = new Map();
+  const dup = [];
+  for (const [k, v] of picked) {
+    if (seen.has(v)) dup.push([seen.get(v), k, v]);
+    else seen.set(v, k);
+  }
+  if (dup.length) {
+    setStatus("No se puede asignar a la misma persona en Multimedia 1/2 y Acomodador (entrada/auditorio).", true);
+    return;
+  }
+
+
   if (!asignaciones.presidente) {
     setStatus("Falta Presidente.", true);
     return;
@@ -727,6 +744,15 @@ async function init() {
 
   $("btnCargar").addEventListener("click", () => cargarAsignaciones());
   $("btnGuardar").addEventListener("click", () => guardarAsignaciones());
+  const btnImp = $("btnImprimir");
+  if (btnImp) {
+    btnImp.addEventListener("click", () => {
+      // Abrir impresión. Si hay una semana elegida, preselecciona el mes en la pantalla de impresión.
+      const semana = ($("semana") && $("semana").value) ? $("semana").value : "";
+      const url = semana ? `imprimir.html?semana=${encodeURIComponent(semana)}` : "imprimir.html";
+      window.open(url, "_blank");
+    });
+  }
   $("btnLimpiar").addEventListener("click", () => limpiarFormulario());
 
   $("btnSugerirConductor").addEventListener("click", () => sugerirConductorAtalaya());
