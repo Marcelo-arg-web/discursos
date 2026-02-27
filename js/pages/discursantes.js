@@ -170,7 +170,7 @@ function renderVis() {
       }
       if (act === "del") {
         if (!confirm("¿Borrar este registro?")) return;
-        await deleteDoc(doc(db, "visitantes", id));
+        await deleteDoc(doc(db, "visitas", id));
         await cargarVis();
         toast("Borrado.");
       }
@@ -179,7 +179,7 @@ function renderVis() {
 }
 
 async function cargarVis() {
-  const qy = query(collection(db, "visitantes"), orderBy("fecha", "desc"));
+  const qy = query(collection(db, "visitas"), orderBy("fecha", "desc"));
   const snap = await getDocs(qy);
   cacheVis = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   renderVis();
@@ -197,12 +197,12 @@ async function guardarVis() {
 
   try {
     if (editVisId) {
-      await updateDoc(doc(db, "visitantes", editVisId), payload);
+      await updateDoc(doc(db, "visitas", editVisId), payload);
       toast("Actualizado.");
     } else {
       // Usamos la fecha como id si está libre (compatibilidad con asignaciones.js)
       // Si ya existe, Firestore no permite setear el id con addDoc, así que lo dejamos como auto-id.
-      await addDoc(collection(db, "visitantes"), { ...payload, createdAt: serverTimestamp() });
+      await addDoc(collection(db, "visitas"), { ...payload, createdAt: serverTimestamp() });
       toast("Guardado.");
     }
     limpiarVisForm();

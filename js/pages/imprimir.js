@@ -158,7 +158,7 @@ async function cargarMes(){
   if(!r) return toast("Escribí el mes como YYYY-MM.", true);
 
   const q = query(
-    collection(db,"asignacionesSemanales"),
+    collection(db,"asignaciones"),
     where("semana", ">=", r.start),
     where("semana", "<", r.end),
     orderBy("semana","asc")

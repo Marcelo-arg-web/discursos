@@ -567,7 +567,7 @@ async function cargarAsignaciones() {
     return;
   }
 
-  const ref = doc(db, "asignacionesSemanales", semanaId);
+  const ref = doc(db, "asignaciones", semanaId);
   const snap = await getDoc(ref);
 
   if (!snap.exists()) {
@@ -630,7 +630,7 @@ async function guardarAsignaciones() {
     return;
   }
 
-  const ref = doc(db, "asignacionesSemanales", semanaId);
+  const ref = doc(db, "asignaciones", semanaId);
 
   await setDoc(
     ref,
@@ -645,7 +645,7 @@ async function guardarAsignaciones() {
     // Si hay orador visitante, guardamos/actualizamos estadística de visitantes
   const orador = (asignaciones.oradorPublico || "").trim();
   if (orador) {
-    const refVis = doc(db, "visitantes", semanaId);
+    const refVis = doc(db, "visitas", semanaId);
     await setDoc(refVis, {
       fecha: semanaId,
       nombre: orador,
