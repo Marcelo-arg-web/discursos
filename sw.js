@@ -9,7 +9,8 @@ const CORE_ASSETS = [
   "./icons/icon-512-maskable.png",
   "./js/pages/asignaciones.js",
   "./js/data/canciones.js",
-  "./js/data/bosquejos.js"
+  "./js/data/bosquejos.js",
+  "./js/data/visitantes.js"
   // Nota: NO cacheamos firebase-config.js para no tocarlo; igual el navegador lo va a pedir online.
 ];
 

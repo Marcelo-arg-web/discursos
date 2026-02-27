@@ -3,13 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Asignaciones de la semana</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#1a4fa3">
-  <link rel="icon" href="icons/icon-192.png">
-
+  <title>Asignaciones de la semana (Admin)</title>
   <style>
     body{
       font-family: Arial, sans-serif;
@@ -26,46 +20,113 @@
       box-shadow:0 12px 40px rgba(0,0,0,.08);
       padding:22px;
     }
-    h1{ margin:0 0 8px 0; color:#143d8f; font-size:22px; }
-    .sub{ margin:0 0 18px 0; color:#4b5563; font-size:14px; }
+    h1{
+      margin:0 0 8px 0;
+      color:#143d8f;
+      font-size:22px;
+    }
+    .sub{
+      margin:0 0 18px 0;
+      color:#4b5563;
+      font-size:14px;
+    }
     .bar{
-      display:flex; gap:12px; flex-wrap:wrap; align-items:end;
-      margin-bottom:16px; padding:12px;
-      background:#f7fbff; border:1px solid #e6eefb; border-radius:12px;
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:end;
+      margin-bottom:16px;
+      padding:12px;
+      background:#f7fbff;
+      border:1px solid #e6eefb;
+      border-radius:12px;
     }
-    label{ font-size:12px; color:#374151; display:block; margin-bottom:6px; }
+    label{
+      font-size:12px;
+      color:#374151;
+      display:block;
+      margin-bottom:6px;
+    }
     input, select, textarea{
-      width:100%; box-sizing:border-box; padding:10px;
-      border-radius:10px; border:1px solid #d1d5db; outline:none;
-      font-size:14px; background:#fff;
+      width:100%;
+      box-sizing:border-box;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid #d1d5db;
+      outline:none;
+      font-size:14px;
+      background:#fff;
     }
-    input[readonly]{ background:#f9fafb; }
-    textarea{ min-height: 44px; resize: vertical; }
-    .grid{ display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:14px; }
-    @media (max-width: 800px){ .grid{ grid-template-columns: 1fr; } }
-    .section{ margin-top:18px; padding-top:12px; border-top:1px solid #eef2ff; }
-    .section h2{ margin:0 0 12px 0; font-size:16px; color:#1f2937; }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; }
-    .btn{
-      border:1px solid #c7d2fe; background:#eef2ff; color:#1e3a8a;
-      padding:10px 12px; border-radius:10px; cursor:pointer; font-weight:700; font-size:13px;
+    textarea{ min-height: 40px; resize: vertical; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:14px;
     }
-    .btn.primary{ background:#1a4fa3; border-color:#1a4fa3; color:#fff; }
-    .btn.danger{ background:#fff1f2; border-color:#fecdd3; color:#9f1239; }
+    @media (max-width: 800px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+    .section{
+      margin-top:18px;
+      padding-top:12px;
+      border-top:1px solid #eef2ff;
+    }
+    .section h2{
+      margin:0 0 12px 0;
+      font-size:16px;
+      color:#1f2937;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top:10px;
+    }
+    .row .btn{
+      border:1px solid #c7d2fe;
+      background:#eef2ff;
+      color:#1e3a8a;
+      padding:10px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:13px;
+    }
+    .row .btn.primary{
+      background:#1a4fa3;
+      border-color:#1a4fa3;
+      color:#fff;
+    }
+    .row .btn.danger{
+      background:#fff1f2;
+      border-color:#fecdd3;
+      color:#9f1239;
+    }
+
     .status{
-      margin-top:12px; padding:10px 12px; border-radius:10px;
-      background:#f8fafc; border:1px solid #e5e7eb; color:#111827;
-      font-size:13px; min-height: 18px;
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius:10px;
+      background:#f8fafc;
+      border:1px solid #e5e7eb;
+      color:#111827;
+      font-size:13px;
+      min-height: 18px;
     }
-    .small{ font-size:12px; color:#6b7280; margin-top:6px; }
-    .pair{ display:flex; gap:10px; align-items:stretch; }
-    .pair .n{ width:92px; }
+    .small{
+      font-size:12px;
+      color:#6b7280;
+      margin-top:6px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Asignaciones de la semana</h1>
-    <p class="sub">Carga y guarda asignaciones semanales. Canciones y discursos se completan automáticamente por número. Se puede instalar como app (Android/Windows).</p>
+    <h1>Asignaciones de la semana (Admin)</h1>
+    <p class="sub">Cargá, guardá e imprimí las asignaciones semanales. Se guarda en Firestore con “merge” (no borra lo anterior).</p>
 
     <div class="bar">
       <div style="min-width:230px;">
@@ -96,12 +157,8 @@
         </div>
 
         <div>
-          <label for="cancionNumero">Canción</label>
-          <div class="pair">
-            <input id="cancionNumero" class="n" type="text" inputmode="numeric" placeholder="N°" />
-            <input id="cancionTitulo" type="text" placeholder="Título automático" readonly />
-          </div>
-          <div class="small">Escribí el número y se completa el título.</div>
+          <label for="cancionNumero">Canción (número)</label>
+          <input id="cancionNumero" type="text" placeholder="Ej: 23" />
         </div>
 
         <div>
@@ -111,7 +168,8 @@
 
         <div>
           <label for="oradorPublico">Orador público</label>
-          <select id="oradorPublico"></select>
+          <input id="oradorPublico" type="text" list="listaOradoresVisitantes" placeholder="Nombre del orador (visitante)" />
+          <datalist id="listaOradoresVisitantes"></datalist>
         </div>
 
         <div>
@@ -120,12 +178,8 @@
         </div>
 
         <div>
-          <label for="discursoNumero">Discurso público</label>
-          <div class="pair">
-            <input id="discursoNumero" class="n" type="text" inputmode="numeric" placeholder="N°" />
-            <input id="tituloDiscurso" type="text" placeholder="Título automático (podés editar)" />
-          </div>
-          <div class="small">Escribí el número del discurso y se completa el título.</div>
+          <label for="tituloDiscurso">Título del discurso</label>
+          <textarea id="tituloDiscurso" placeholder="Ej: ‘Mantengamos la fe…’"></textarea>
         </div>
 
         <div>
@@ -198,33 +252,28 @@
     </div>
 
     <div class="section">
-      <h2>Oración final</h2>
+      <h2>Cierre</h2>
       <div class="grid">
         <div>
           <label for="oracionFinal">Oración final</label>
-          <select id="oracionFinal"></select>
+          <input id="oracionFinal" type="text" list="listaOracionFinal" placeholder="Nombre (orador/presidente/u otro)" />
+          <datalist id="listaOracionFinal"></datalist>
+
           <div class="row">
             <button class="btn" id="btnOracionFinalOrador">Usar orador público</button>
             <button class="btn" id="btnOracionFinalPresidente">Usar presidente</button>
           </div>
           <div class="small">
-            Se sugiere automáticamente: primero Orador público, si no, Presidente. Igual podés elegir otro hermano.
+            Generalmente la hace el orador público; si no se queda, presidente u otro hermano.
           </div>
         </div>
       </div>
     </div>
 
     <div class="status" id="status"></div>
+
   </div>
 
-  <script>
-    // Registrar Service Worker (PWA)
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js").catch(() => {});
-      });
-    }
-  </script>
-  <script type="module" src="js/pages/asignaciones.js"></script>
+  <script type="module" src="js/pages/admin-asignaciones.js"></script>
 </body>
 </html>
