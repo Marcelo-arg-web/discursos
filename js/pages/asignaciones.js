@@ -5,6 +5,7 @@
 import { db } from "../firebase-config.js";
 import { canciones } from "../data/canciones.js";
 import { bosquejos } from "../data/bosquejos.js";
+import { visitantes } from "../data/visitantes.js";
 
 import {
   collection,
@@ -45,12 +46,62 @@ function addOption(sel, value, label) {
   sel.appendChild(opt);
 }
 
+function fillDatalist(datalistEl, values) {
+  datalistEl.innerHTML = "";
+  for (const v of values) {
+    const opt = document.createElement("option");
+    opt.value = v;
+    datalistEl.appendChild(opt);
+  }
+}
+
 function normNumero(v) {
   const n = parseInt(String(v || "").trim(), 10);
   return Number.isFinite(n) ? n : null;
 }
 
 // ---------- Catálogos (desde tus archivos JS) ----------
+const visitantesMap = new Map(Object.entries(visitantes));
+
+function findVisitanteCerca(fechaISO) {
+  // busca exacto; si no, prueba +1 día y -1 día (para cubrir fin de semana)
+  const exact = visitantesMap.get(fechaISO);
+  if (exact) return exact;
+  const d = new Date(fechaISO + "T00:00:00");
+  if (isNaN(d.getTime())) return null;
+  const plus = new Date(d); plus.setDate(plus.getDate() + 1);
+  const minus = new Date(d); minus.setDate(minus.getDate() - 1);
+  const isoPlus = plus.toISOString().slice(0,10);
+  const isoMinus = minus.toISOString().slice(0,10);
+  return visitantesMap.get(isoPlus) || visitantesMap.get(isoMinus) || null;
+}
+
+function aplicarAutoVisitante() {
+  const semanaId = getSemanaId();
+  if (!semanaId) return;
+  const v = findVisitanteCerca(semanaId);
+  if (!v) return;
+
+  // Solo completamos si el campo está vacío (para no pisar lo que editaste)
+  if (!($("oradorPublico").value || "").trim()) $("oradorPublico").value = v.nombre || "";
+  if (!($("congregacionVisitante").value || "").trim()) $("congregacionVisitante").value = v.congregacion || "";
+
+  const b = v.bosquejo;
+  if (!($("discursoNumero").value || "").trim() && b !== undefined && b !== null && String(b).trim() !== "") {
+    $("discursoNumero").value = String(b);
+  }
+  // Título: si está vacío, ponemos el de la planilla; si no, dejamos el que tenga
+  if (!($("tituloDiscurso").value || "").trim() && (v.titulo || "").trim()) {
+    $("tituloDiscurso").value = v.titulo;
+  }
+
+  const c = v.cancion;
+  if (!($("cancionNumero").value || "").trim() && c !== undefined && c !== null && String(c).trim() !== "") {
+    $("cancionNumero").value = String(c);
+    aplicarAutoCancion();
+  }
+}
+
 const cancionesMap = new Map(Object.entries(canciones).map(([k,v]) => [Number(k), String(v)]));
 const discursosMap = new Map(Object.entries(bosquejos).map(([k,v]) => [Number(k), String(v)]));
 
@@ -93,7 +144,6 @@ function poblarSelectsConPersonas() {
   const selectsIds = [
     "presidente",
     "oracionInicial",
-    "oradorPublico",
     "conductorAtalaya",
     "lectorAtalaya",
     "multimedia1",
@@ -102,9 +152,7 @@ function poblarSelectsConPersonas() {
     "acomodadorEntrada",
     "acomodadorAuditorio",
     "microfonista1",
-    "microfonista2",
-    "oracionFinal"
-  ];
+    "microfonista2"];
 
   for (const id of selectsIds) {
     const sel = $(id);
@@ -145,7 +193,7 @@ function getFormData() {
     microfonista1: $("microfonista1").value || "",
     microfonista2: $("microfonista2").value || "",
 
-    oracionFinal: $("oracionFinal").value || ""
+    oracionFinal: $().value || ""
   };
 }
 
@@ -178,7 +226,7 @@ function setFormData(data = {}) {
   $("microfonista1").value = data.microfonista1 || "";
   $("microfonista2").value = data.microfonista2 || "";
 
-  $("oracionFinal").value = data.oracionFinal || "";
+  $().value = data.oracionFinal || "";
 }
 
 function limpiarFormulario() {
@@ -262,9 +310,9 @@ function aplicarOracionFinalAutomatica(force = false) {
   const sugerida = sugerirOracionFinal();
   if (!sugerida) return;
 
-  const actual = $("oracionFinal").value || "";
+  const actual = $().value || "";
   if (force || !actual || !oracionFinalFueEditada) {
-    $("oracionFinal").value = sugerida;
+    $().value = sugerida;
   }
 }
 
@@ -294,13 +342,16 @@ async function cargarAsignaciones() {
   const asign = data.asignaciones || data;
   setFormData(asign);
 
+  // completa datos de visitante si existen en planilla y campos vacíos
+  aplicarAutoVisitante();
+
   // al cargar: si no hay título guardado, lo completamos con catálogo
   aplicarAutoCancion();
   aplicarAutoDiscurso();
 
   // refrescar botones y sugerencia (sin pisar si ya está guardado)
   refrescarBotonesOracionFinal();
-  oracionFinalFueEditada = Boolean(($("oracionFinal").value || "").trim());
+  oracionFinalFueEditada = Boolean(($().value || "").trim());
   aplicarOracionFinalAutomatica(false);
 
   setStatus(`Datos cargados para ${semanaId}.`);
@@ -336,6 +387,21 @@ async function guardarAsignaciones() {
     { merge: true }
   );
 
+    // Si hay orador visitante, guardamos/actualizamos estadística de visitantes
+  const orador = (asignaciones.oradorPublico || "").trim();
+  if (orador) {
+    const refVis = doc(db, "visitantes", semanaId);
+    await setDoc(refVis, {
+      fecha: semanaId,
+      nombre: orador,
+      congregacion: (asignaciones.congregacionVisitante || "").trim(),
+      bosquejo: (asignaciones.discursoNumero || "").trim(),
+      titulo: (asignaciones.tituloDiscurso || "").trim(),
+      cancion: (asignaciones.cancionNumero || "").trim(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }
+
   setStatus(`Guardado OK para ${semanaId}.`);
 }
 
@@ -346,7 +412,7 @@ function usarOradorComoOracionFinal() {
     setStatus("Primero elegí el Orador público.", true);
     return;
   }
-  $("oracionFinal").value = orador;
+  $().value = orador;
   oracionFinalFueEditada = true;
   setStatus(`Oración final asignada a: ${orador}`);
 }
@@ -357,7 +423,7 @@ function usarPresidenteComoOracionFinal() {
     setStatus("Primero elegí el Presidente.", true);
     return;
   }
-  $("oracionFinal").value = pres;
+  $().value = pres;
   oracionFinalFueEditada = true;
   setStatus(`Oración final asignada a: ${pres}`);
 }
@@ -371,12 +437,35 @@ async function init() {
     await cargarPersonas();
     poblarSelectsConPersonas();
 
+    // Datalists
+    const dlOradores = document.getElementById("listaOradoresVisitantes");
+    const dlOracionFinal = document.getElementById("listaOracionFinal");
+
+    // Lista de visitantes (nombres únicos)
+    const oradoresVisit = Array.from(new Set(Object.values(visitantes).map(v => v?.nombre).filter(Boolean))).sort((a,b)=>a.localeCompare(b,"es"));
+    fillDatalist(dlOradores, oradoresVisit);
+
+    // Para oración final: mezcla personas + visitantes
+    const personasNombres = personas.map(p => p.nombre).filter(Boolean);
+    const oracionFinalOpts = Array.from(new Set([...personasNombres, ...oradoresVisit])).sort((a,b)=>a.localeCompare(b,"es"));
+    fillDatalist(dlOracionFinal, oracionFinalOpts);
+
+
     // autocompletes
     $("cancionNumero").addEventListener("input", () => aplicarAutoCancion());
     $("discursoNumero").addEventListener("input", () => aplicarAutoDiscurso());
 
+    // auto visitante según semana
+    $("semana").addEventListener("change", () => {
+      aplicarAutoVisitante();
+      aplicarAutoCancion();
+      aplicarAutoDiscurso();
+      refrescarBotonesOracionFinal();
+      aplicarOracionFinalAutomatica(false);
+    });
+
     // oración final
-    $("oracionFinal").addEventListener("change", () => { oracionFinalFueEditada = true; });
+    $().addEventListener("change", () => { oracionFinalFueEditada = true; });
 
     $("oradorPublico").addEventListener("change", () => {
       refrescarBotonesOracionFinal();
