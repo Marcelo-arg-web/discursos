@@ -1,168 +1,216 @@
-import { db } from "../firebase.js";
-import {
+import { auth, db } from "../firebase-config.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+const $ = (id) => document.getElementById(id);
+
+function toast(msg, isError=false){
+  const host = $("toastHost");
+  if(!host) return alert(msg);
+  host.innerHTML = `<div class="toast ${isError ? "err" : ""}">${msg}</div>`;
+  setTimeout(()=>{ host.innerHTML=""; }, 5000);
+}
+
+async function getUsuario(uid){
+  const snap = await getDoc(doc(db,"usuarios",uid));
+  return snap.exists() ? snap.data() : null;
+}
+
+function renderTopbar(active){
+  const el = document.getElementById("topbar");
+  if(!el) return;
+  el.innerHTML = `
+    <div class="topbar">
+      <div class="brand">Villa Fiad</div>
+      <div class="links">
+        <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
+        <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
+        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
+        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
+        <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
+        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
+        <button id="btnSalir" class="btn danger" type="button">Salir</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("btnSalir")?.addEventListener("click", async ()=>{
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+}
+
+function ensureTopbarStyles(){
+  if(document.getElementById("topbarStyle")) return;
+  const s = document.createElement("style");
+  s.id="topbarStyle";
+  s.textContent = `
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;
+      background:#1a4fa3;color:#fff;padding:10px 14px;border-radius:14px;margin:14px auto;max-width:1100px;}
+    .topbar .brand{font-weight:800}
+    .topbar .links{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .topbar a{color:#fff;text-decoration:none;font-weight:700;font-size:13px;opacity:.92}
+    .topbar a.active{text-decoration:underline;opacity:1}
+    .topbar .btn.danger{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239}
+  `;
+  document.head.appendChild(s);
+}
+
+async function requireActiveUser(activePage){
+  ensureTopbarStyles();
+  renderTopbar(activePage);
+
+  return new Promise((resolve)=>{
+    onAuthStateChanged(auth, async (user)=>{
+      if(!user){ window.location.href="index.html"; return; }
+      const u = await getUsuario(user.uid);
+      if(!u?.activo){
+        await signOut(auth);
+        window.location.href="index.html";
+        return;
+      }
+      resolve({ user, usuario:u });
+    });
+  });
+}import {
   collection,
+  getDocs,
   addDoc,
-  serverTimestamp,
-  onSnapshot,
-  query,
-  orderBy,
-  deleteDoc,
-  doc,
   updateDoc,
+  deleteDoc,
+  doc as docRef,
+  serverTimestamp,
+  query,
+  where
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-import { mountTopbar, requireAuth } from "../guard.js";
-import { qs, toast } from "../utils.js";
 
-mountTopbar("personas");
-const session = await requireAuth({ minRole: "viewer" });
+let cache = []; // {id, nombre, telefono, roles[], activo}
 
-const canEdit = session.canEdit;
-if (!canEdit) toast("Modo solo lectura: no podés modificar personas.", "err");
-
-const $ = (id) => qs(id);
-const tbody = qs("#tbl tbody");
-
-function parseRoles(s) {
-  return (s || "")
+function parseRoles(raw){
+  return (raw || "")
     .split(",")
-    .map((x) => x.trim().toLowerCase())
+    .map(s=>s.trim())
     .filter(Boolean);
 }
 
-async function save() {
-  if (!canEdit) return;
-
-  const nombre = ($("#p_nombre").value || "").trim();
-  const telefono = ($("#p_tel").value || "").trim();
-  const roles = parseRoles($("#p_roles").value);
-
-  if (!nombre) {
-    toast("Falta el nombre.", "err");
-    return;
-  }
-
-  try {
-    await addDoc(collection(db, "personas"), {
-      nombre,
-      telefono,
-      roles,
-      activo: true,
-      creadoEn: serverTimestamp(),
-    });
-    toast("Guardado.", "ok");
-    $("#p_nombre").value = "";
-    $("#p_tel").value = "";
-    $("#p_roles").value = "";
-  } catch (e) {
-    toast("Error al guardar: " + (e?.message || e), "err");
-  }
+function hasRole(p, role){
+  const roles = Array.isArray(p.roles) ? p.roles : [];
+  return roles.map(r=>String(r).toLowerCase()).includes(String(role).toLowerCase());
 }
 
-$("#btnGuardar").addEventListener("click", save);
-$("#btnLimpiar").addEventListener("click", () => {
-  $("#p_nombre").value = "";
-  $("#p_tel").value = "";
-  $("#p_roles").value = "";
-});
+function render(){
+  const q = (document.getElementById("q")?.value || "").toLowerCase();
+  const filtro = (document.getElementById("filtroRol")?.value || "").toLowerCase();
 
-let all = [];
+  const tbody = document.querySelector("#tbl tbody");
+  if(!tbody) return;
+  tbody.innerHTML = "";
 
-function render() {
-  const q = ($("#q").value || "").toLowerCase();
-  const rol = ($("#filtroRol").value || "").toLowerCase();
+  const rows = cache
+    .filter(p => (p.nombre || "").toLowerCase().includes(q))
+    .filter(p => !filtro || hasRole(p, filtro))
+    .sort((a,b)=> (a.nombre||"").localeCompare(b.nombre||"","es"));
 
-  const rows = all.filter((p) => {
-    const hit =
-      (p.nombre || "").toLowerCase().includes(q) ||
-      (p.telefono || "").toLowerCase().includes(q);
-    const hitRol = !rol || (p.roles || []).includes(rol);
-    return hit && hitRol;
-  });
-
-  tbody.innerHTML = rows
-    .map(
-      (p) => `
-    <tr>
-      <td>
-        <b>${p.nombre || ""}</b>
-        <div class="small muted">${p.activo === false ? "INACTIVO" : ""}</div>
-      </td>
+  for(const p of rows){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${p.nombre || ""}${p.activo===false ? ' <span class="pill" style="background:#fff1f2;border-color:#fecdd3;color:#9f1239">inactivo</span>' : ""}</td>
       <td>${p.telefono || ""}</td>
-      <td>${(p.roles || []).map((r) => `<span class="pill">${r}</span>`).join(" ")}</td>
+      <td class="small">${(p.roles||[]).join(", ")}</td>
       <td class="no-print">
-        ${
-          canEdit
-            ? `
-          <button class="btn" data-act="edit" data-id="${p.id}">Editar</button>
-          <button class="btn" data-act="toggle" data-id="${p.id}">
-            ${p.activo === false ? "Activar" : "Desactivar"}
-          </button>
-          <button class="btn danger" data-act="del" data-id="${p.id}">Borrar</button>
-        `
-            : `<span class="muted small">Solo lectura</span>`
-        }
+        <button class="btn" data-act="edit" data-id="${p.id}">Editar</button>
+        <button class="btn" data-act="toggle" data-id="${p.id}">${p.activo===false ? "Activar" : "Desactivar"}</button>
       </td>
-    </tr>
-  `
-    )
-    .join("");
+    `;
+    tbody.appendChild(tr);
+  }
+
+  tbody.querySelectorAll("button[data-act]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const id = btn.getAttribute("data-id");
+      const act = btn.getAttribute("data-act");
+      const p = cache.find(x=>x.id===id);
+      if(!p) return;
+
+      if(act==="edit"){
+        document.getElementById("p_nombre").value = p.nombre || "";
+        document.getElementById("p_tel").value = p.telefono || "";
+        document.getElementById("p_roles").value = (p.roles||[]).join(", ");
+        document.getElementById("p_id").value = p.id;
+        toast("Editando: "+(p.nombre||""), false);
+      }
+
+      if(act==="toggle"){
+        const nuevo = !(p.activo===false);
+        await updateDoc(docRef(db,"personas",id), { activo: !nuevo, updatedAt: serverTimestamp() });
+        await cargar();
+        toast((!nuevo) ? "Activado." : "Desactivado.");
+      }
+    });
+  });
 }
 
-$("#q").addEventListener("input", render);
-$("#filtroRol").addEventListener("change", render);
-
-tbody.addEventListener("click", async (e) => {
-  const btn = e.target.closest("button");
-  if (!btn || !canEdit) return;
-
-  const id = btn.dataset.id;
-  const act = btn.dataset.act;
-
-  try {
-    if (act === "del") {
-      if (!confirm("¿Borrar esta persona?")) return;
-      await deleteDoc(doc(db, "personas", id));
-      toast("Borrado.", "ok");
-      return;
-    }
-
-    if (act === "toggle") {
-      const p = all.find((x) => x.id === id);
-      await updateDoc(doc(db, "personas", id), { activo: !(p?.activo === true) });
-      toast("Actualizado.", "ok");
-      return;
-    }
-
-    if (act === "edit") {
-      const p = all.find((x) => x.id === id);
-      if (!p) return;
-
-      const nuevoNombre = prompt("Nombre:", p.nombre || "");
-      if (!nuevoNombre) return;
-
-      const nuevoTel = prompt("Teléfono (opcional):", p.telefono || "");
-      const nuevosRoles = prompt(
-        "Roles (separados por coma):",
-        (p.roles || []).join(", ")
-      );
-
-      const roles = parseRoles(nuevosRoles || "");
-
-      await updateDoc(doc(db, "personas", id), {
-        nombre: nuevoNombre.trim(),
-        telefono: (nuevoTel || "").trim(),
-        roles,
-      });
-
-      toast("Persona actualizada.", "ok");
-      return;
-    }
-  } catch (err) {
-    toast("Error: " + (err?.message || err), "err");
-  }
-});
-
-onSnapshot(query(collection(db, "personas"), orderBy("nombre", "asc")), (snap) => {
-  all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+async function cargar(){
+  // Traemos todo, incluidos inactivos (para editar sin borrarlos)
+  const snap = await getDocs(collection(db,"personas"));
+  cache = snap.docs.map(d=>({ id:d.id, ...d.data() })).filter(p=>p?.nombre);
   render();
-});
+}
+
+function limpiar(){
+  document.getElementById("p_id").value = "";
+  document.getElementById("p_nombre").value = "";
+  document.getElementById("p_tel").value = "";
+  document.getElementById("p_roles").value = "";
+}
+
+async function guardar(){
+  const nombre = (document.getElementById("p_nombre").value || "").trim();
+  const telefono = (document.getElementById("p_tel").value || "").trim();
+  const roles = parseRoles(document.getElementById("p_roles").value);
+  const id = (document.getElementById("p_id").value || "").trim();
+
+  if(!nombre) return toast("Falta nombre.", true);
+
+  const payload = {
+    nombre,
+    telefono,
+    roles,
+    activo: true,
+    updatedAt: serverTimestamp()
+  };
+
+  try{
+    if(id){
+      await updateDoc(docRef(db,"personas",id), payload);
+      toast("Actualizado.");
+    }else{
+      payload.createdAt = serverTimestamp();
+      await addDoc(collection(db,"personas"), payload);
+      toast("Guardado.");
+    }
+    limpiar();
+    await cargar();
+  }catch(e){
+    console.error(e);
+    toast("No pude guardar. Revisá permisos.", true);
+  }
+}
+
+(async function(){
+  await requireActiveUser("personas");
+
+  // hidden id for editing
+  if(!document.getElementById("p_id")){
+    const hid = document.createElement("input");
+    hid.type="hidden"; hid.id="p_id";
+    document.body.appendChild(hid);
+  }
+
+  document.getElementById("btnGuardar")?.addEventListener("click", guardar);
+  document.getElementById("btnLimpiar")?.addEventListener("click", ()=>{ limpiar(); toast("Formulario limpio."); });
+
+  document.getElementById("q")?.addEventListener("input", render);
+  document.getElementById("filtroRol")?.addEventListener("change", render);
+
+  await cargar();
+})();

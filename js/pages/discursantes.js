@@ -1,120 +1,77 @@
-import { db } from "../firebase.js";
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-import { mountTopbar, requireAuth } from "../guard.js";
-import { qs, toast } from "../utils.js";
+import { auth, db } from "../firebase-config.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-mountTopbar("discursantes");
-const session = await requireAuth({ minRole:"viewer" });
-const canEdit = session.canEdit;
+const $ = (id) => document.getElementById(id);
 
-if(!canEdit) toast("Modo solo lectura: no podés modificar.", "err");
-
-const $ = (id)=>qs(id);
-const tbody = qs("#tbl tbody");
-
-function getVal(id){ return ($(id).value||"").trim(); }
-
-function makeMessage(v){
-  const tipo = v.tipo === "salida" ? "Salida" : "Visita";
-  const fecha = v.fecha || "—";
-  const hora = v.hora || "—";
-  const tel = v.telefono ? ` (Tel: ${v.telefono})` : "";
-  const notas = v.notas ? `\n\nNotas: ${v.notas}` : "";
-  if(v.tipo === "salida"){
-    return `Hola ${v.nombre || ""}. Te escribo por la salida programada.\n\n📌 ${tipo}\n📍 Congregación: ${v.congregacion||"—"}\n🗓️ Fecha: ${fecha}\n🕒 Hora: ${hora}${tel}${notas}\n\nGracias por la colaboración.`;
-  }
-  return `Hola ${v.nombre || ""}. Te escribo por la visita programada a Villa Fiad.\n\n📌 ${tipo}\n📍 Congregación: ${v.congregacion||"—"}\n🗓️ Fecha: ${fecha}\n🕒 Hora: ${hora}${tel}${notas}\n\nGracias.`;
+function toast(msg, isError=false){
+  const host = $("toastHost");
+  if(!host) return alert(msg);
+  host.innerHTML = `<div class="toast ${isError ? "err" : ""}">${msg}</div>`;
+  setTimeout(()=>{ host.innerHTML=""; }, 5000);
 }
 
-async function guardar(){
-  if(!canEdit) return;
-  const nombre = getVal("#v_nombre");
-  const congregacion = getVal("#v_cong");
-  const telefono = getVal("#v_tel");
-  const tipo = getVal("#v_tipo") || "visitante";
-  const fecha = getVal("#v_fecha");
-  const hora = getVal("#v_hora") || "";
-  const notas = getVal("#v_notas");
+async function getUsuario(uid){
+  const snap = await getDoc(doc(db,"usuarios",uid));
+  return snap.exists() ? snap.data() : null;
+}
 
-  if(!nombre){ toast("Falta el nombre.", "err"); return; }
-  if(!fecha){ toast("Falta la fecha.", "err"); return; }
+function renderTopbar(active){
+  const el = document.getElementById("topbar");
+  if(!el) return;
+  el.innerHTML = `
+    <div class="topbar">
+      <div class="brand">Villa Fiad</div>
+      <div class="links">
+        <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
+        <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
+        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
+        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
+        <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
+        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
+        <button id="btnSalir" class="btn danger" type="button">Salir</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("btnSalir")?.addEventListener("click", async ()=>{
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+}
 
-  try{
-    await addDoc(collection(db,"visitas"), {
-      nombre, congregacion, telefono, tipo, fecha, hora, notas,
-      creadoEn: serverTimestamp(),
-      creadoPor: session.user.email || ""
+function ensureTopbarStyles(){
+  if(document.getElementById("topbarStyle")) return;
+  const s = document.createElement("style");
+  s.id="topbarStyle";
+  s.textContent = `
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;
+      background:#1a4fa3;color:#fff;padding:10px 14px;border-radius:14px;margin:14px auto;max-width:1100px;}
+    .topbar .brand{font-weight:800}
+    .topbar .links{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .topbar a{color:#fff;text-decoration:none;font-weight:700;font-size:13px;opacity:.92}
+    .topbar a.active{text-decoration:underline;opacity:1}
+    .topbar .btn.danger{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239}
+  `;
+  document.head.appendChild(s);
+}
+
+async function requireActiveUser(activePage){
+  ensureTopbarStyles();
+  renderTopbar(activePage);
+
+  return new Promise((resolve)=>{
+    onAuthStateChanged(auth, async (user)=>{
+      if(!user){ window.location.href="index.html"; return; }
+      const u = await getUsuario(user.uid);
+      if(!u?.activo){
+        await signOut(auth);
+        window.location.href="index.html";
+        return;
+      }
+      resolve({ user, usuario:u });
     });
-    toast("Guardado.", "ok");
-  }catch(e){
-    toast("Error: "+(e?.message||e), "err");
-  }
-}
-
-$("#btnGuardar").addEventListener("click", guardar);
-
-$("#btnMsg").addEventListener("click", ()=>{
-  const v = {
-    nombre:getVal("#v_nombre"),
-    congregacion:getVal("#v_cong"),
-    telefono:getVal("#v_tel"),
-    tipo:getVal("#v_tipo"),
-    fecha:getVal("#v_fecha"),
-    hora:getVal("#v_hora"),
-    notas:getVal("#v_notas"),
-  };
-  $("#msg").value = makeMessage(v);
-  $("#msg").focus();
-  $("#msg").select();
-  toast("Mensaje generado (copiar/pegar).", "ok");
-});
-
-let all = [];
-function render(){
-  const q = ($("#q").value||"").toLowerCase();
-  const rows = all.filter(x => JSON.stringify(x).toLowerCase().includes(q));
-  tbody.innerHTML = rows.map(x=>`
-    <tr>
-      <td>
-        <b>${x.nombre||""}</b> <span class="pill">${x.tipo||"visitante"}</span>
-        <div class="small muted">${x.congregacion||"—"} · ${x.fecha||"—"} ${x.hora||""}</div>
-        ${x.notas?`<div class="small">${x.notas}</div>`:""}
-      </td>
-      <td class="no-print">
-        <button class="btn" data-act="msg" data-id="${x.id}">Mensaje</button>
-        ${canEdit?`<button class="btn danger" data-act="del" data-id="${x.id}">Borrar</button>`:`<span class="muted small">Solo lectura</span>`}
-      </td>
-    </tr>
-  `).join("");
-}
-
-$("#q").addEventListener("input", render);
-
-tbody.addEventListener("click", async (e)=>{
-  const b = e.target.closest("button");
-  if(!b) return;
-  const id = b.dataset.id;
-  const act = b.dataset.act;
-  const v = all.find(x=>x.id===id);
-  if(act==="msg"){
-    $("#msg").value = makeMessage(v||{});
-    $("#msg").focus();
-    $("#msg").select();
-    toast("Mensaje generado.", "ok");
-  }
-  if(act==="del"){
-    if(!canEdit) return;
-    if(!confirm("¿Borrar este registro?")) return;
-    try{
-      await deleteDoc(doc(db,"visitas", id));
-      toast("Borrado.", "ok");
-    }catch(err){
-      toast("Error: "+(err?.message||err), "err");
-    }
-  }
-});
-
-onSnapshot(query(collection(db,"visitas"), orderBy("fecha","desc")), (snap)=>{
-  all = snap.docs.map(d=>({id:d.id, ...d.data()}));
-  render();
-});
+  });
+}(async function(){
+  await requireActiveUser("discursantes");
+  toast("Discursantes: pantalla base. Si querés, la conecto a la colección 'visitantes' para estadística y edición.");
+})();
