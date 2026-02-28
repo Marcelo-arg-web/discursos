@@ -46,6 +46,19 @@ function setStatus(msg, isError = false) {
   box.style.color = isError ? "#9f1239" : "#111827";
 }
 
+function setBusy(btnId, busy, busyLabel = "Procesando…") {
+  const b = $(btnId);
+  if (!b) return;
+  if (busy) {
+    b.dataset._prevLabel = b.textContent;
+    b.textContent = busyLabel;
+    b.disabled = true;
+  } else {
+    b.textContent = b.dataset._prevLabel || b.textContent;
+    b.disabled = false;
+  }
+}
+
 function isoToday() {
   const d = new Date();
   const y = d.getFullYear();
@@ -59,6 +72,14 @@ function addDaysISO(iso, days) {
   if (Number.isNaN(d.getTime())) return "";
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+function fmtAR(iso) {
+  // 2026-02-28 -> 28/02/2026
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
 }
 
 function addOpt(sel, value, label) {
@@ -352,6 +373,7 @@ async function guardarMes() {
   const mesISO = (getVal("mes") || "").trim();
   if (!mesISO) return setStatus("Elegí un mes.", true);
   setStatus("Guardando mes…");
+  setBusy("btnGuardarMes", true, "Guardando…");
   const weekKey = currentMesSemana();
   const weekData = formMesData();
   try {
@@ -374,6 +396,8 @@ async function guardarMes() {
   } catch (e) {
     console.error(e);
     setStatus("No pude guardar el mes. Revisá permisos de Firestore.", true);
+  } finally {
+    setBusy("btnGuardarMes", false);
   }
 }
 
@@ -729,6 +753,7 @@ async function guardar() {
   if (dup) return setStatus(dup, true);
 
   setStatus("Guardando…");
+  setBusy("btnGuardar", true, "Guardando…");
   const data = formData();
 
   try {
@@ -742,9 +767,13 @@ async function guardar() {
     );
 
     setStatus("Guardado OK.");
+    // deja el aviso listo para WhatsApp
+    generarAviso();
   } catch (e) {
     console.error(e);
     setStatus("No pude guardar. Revisá permisos de Firestore.", true);
+  } finally {
+    setBusy("btnGuardar", false);
   }
 }
 
@@ -777,6 +806,83 @@ function abrirPdfPresidente() {
   window.location.href = `presidente.html?semana=${encodeURIComponent(s)}`;
 }
 
+// ---------------- Aviso semanal (acomodadores + multimedia) ----------------
+function buildAvisoSemanal(semanaSatISO, a) {
+  const sab = semanaSatISO;
+  const jue = addDaysISO(semanaSatISO, -2);
+
+  const m1 = personaNameById(a?.multimedia1Id) || "—";
+  const m2 = personaNameById(a?.multimedia2Id) || "—";
+  const plat = personaNameById(a?.plataformaId) || "—";
+  const ent = personaNameById(a?.acomodadorEntradaId) || "—";
+  const aud = personaNameById(a?.acomodadorAuditorioId) || "—";
+
+  const lines = [];
+  lines.push(`*Asignaciones de esta semana*`);
+  lines.push(`Jueves ${fmtAR(jue)} (20:00) y Sábado ${fmtAR(sab)} (19:30)`);
+  lines.push("");
+  lines.push(`*Acomodadores*`);
+  lines.push(`• Plataforma: ${plat}`);
+  lines.push(`• Entrada: ${ent}`);
+  lines.push(`• Auditorio: ${aud}`);
+  lines.push("");
+  lines.push(`*Multimedia*`);
+  lines.push(`• ${m1} / ${m2}`);
+  return lines.join("\n");
+}
+
+function setAvisoText(text) {
+  const t = $("avisoText");
+  if (t) t.value = text || "";
+}
+
+async function generarAviso() {
+  const s = semanaISO();
+  if (!s) {
+    setStatus("Elegí una semana (preferentemente el sábado) para generar el aviso.", true);
+    return;
+  }
+  const a = formData();
+  const msg = buildAvisoSemanal(s, a);
+  setAvisoText(msg);
+  setStatus("Aviso generado. Podés copiarlo o abrir WhatsApp Web.");
+}
+
+async function copiarAviso() {
+  const t = $("avisoText");
+  const msg = t?.value || "";
+  if (!msg.trim()) {
+    setStatus("Primero generá el aviso.", true);
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(msg);
+    setStatus("Aviso copiado ✅");
+  } catch (e) {
+    console.error(e);
+    try {
+      t?.focus();
+      t?.select();
+      document.execCommand("copy");
+      setStatus("Aviso copiado ✅");
+    } catch (err) {
+      console.error(err);
+      setStatus("No pude copiar automáticamente. Copialo manualmente.", true);
+    }
+  }
+}
+
+function whatsappAviso() {
+  const t = $("avisoText");
+  const msg = t?.value || "";
+  if (!msg.trim()) {
+    setStatus("Primero generá el aviso.", true);
+    return;
+  }
+  const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, "_blank");
+}
+
 // ---------------- init ----------------
 async function init() {
   if ($("semana")) $("semana").value = isoToday();
@@ -799,6 +905,10 @@ async function init() {
   $("btnGuardar")?.addEventListener("click", guardar);
   $("btnLimpiar")?.addEventListener("click", limpiar);
   $("btnPdfPresidente")?.addEventListener("click", abrirPdfPresidente);
+
+  $("btnGenerarAviso")?.addEventListener("click", generarAviso);
+  $("btnCopiarAviso")?.addEventListener("click", copiarAviso);
+  $("btnWhatsappAviso")?.addEventListener("click", whatsappAviso);
 
   $("btnCargarMes")?.addEventListener("click", cargarMes);
   $("btnGuardarMes")?.addEventListener("click", guardarMes);
@@ -851,6 +961,8 @@ async function init() {
     const s = semanaISO();
     if (!s) return;
     await cargarSemana();
+    // deja el aviso listo (si ya hay asignaciones cargadas)
+    generarAviso();
   });
 
   const s0 = semanaISO();
