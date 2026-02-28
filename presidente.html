@@ -3,51 +3,19 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Hoja del Presidente · Congregación Villa Fiad</title>
+  <title>Presidente · Villa Fiad</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/styles.css">
-  <style>
-    .page{background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden;}
-    .hdr{display:flex; gap:14px; border-bottom:1px solid var(--border);}
-    .hdr .img{width:42%; max-width:360px; overflow:hidden;}
-    .hdr img{width:100%; height:150px; object-fit:cover; object-position:top; display:block;}
-    .hdr .t{padding:14px 14px 10px 0; flex:1; display:flex; flex-direction:column; justify-content:center;}
-    .hdr .cong{font-weight:900; font-size:18px;}
-    .hdr .doc{font-weight:900; font-size:20px; color:#1e40af; margin-top:2px;}
-    .hdr .fecha{margin-top:6px; font-weight:800; color:#334155;}
-    .body{padding:14px;}
-    .tbl{width:100%; border-collapse:collapse; border:1px solid #cbd5e1;}
-    .tbl td{border:1px solid #cbd5e1; padding:10px; font-size:15px;}
-    .tbl td.k{width:170px; font-weight:900; background:#e0f2fe;}
-    .tbl td.v{font-weight:800; color:#1e40af;}
-    .sec-title{margin:14px 0 8px 0; font-weight:900; background:#1a4fa3; color:#fff; padding:8px 10px; border-radius:10px;}
-    .big{font-size:18px; font-weight:900;}
-    .muted2{color:#475569; font-weight:700;}
-    @media print{
-      body{background:#fff}
-      .no-print{display:none !important}
-      .container{padding:0; max-width:none}
-      .page{border:none; border-radius:0}
-    }
-  </style>
 </head>
 <body>
   <div class="container">
-    <div class="row no-print" style="align-items:center; justify-content:space-between;">
-      <div>
-        <h2 class="h2" style="margin:0;">Hoja del Presidente</h2>
-        <div class="muted small">Imprimí (Ctrl+P) y elegí “Guardar como PDF” para enviarlo por WhatsApp.</div>
+    <div class="card pad">
+      <div class="section-title no-print">
+        <h2 class="h1" style="margin:0;">Documento del presidente</h2>
+        <button class="btn primary" id="btnPrint" type="button">Imprimir / PDF</button>
       </div>
-      <div class="row no-print">
-        <button id="btnPrint" class="btn primary" type="button">Imprimir / PDF</button>
-        <a class="btn" href="asignaciones.html">Volver</a>
-      </div>
-    </div>
 
-    <div style="height:12px" class="no-print"></div>
-
-    <div id="contenido" class="page">
-      <div class="card pad"><div class="muted">Cargando…</div></div>
+      <div id="contenido"></div>
     </div>
   </div>
 

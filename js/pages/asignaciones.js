@@ -37,6 +37,15 @@ const setVal = (id, v) => {
   if (el) el.value = v ?? "";
 };
 
+function escapeHtml(str){
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function setStatus(msg, isError = false) {
   const box = $("status");
   if (!box) return;
@@ -162,6 +171,30 @@ async function getUsuario(uid){
     console.error(e);
     return null;
   }
+}
+
+
+function renderTopbar(active, rol){
+  const el = document.getElementById("topbar");
+  if(!el) return;
+  const admin = isAdminRole(rol);
+  el.innerHTML = `
+    <div class="topbar">
+      <div class="brand">Villa Fiad</div>
+      <div class="links">
+        <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
+        <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
+        ${admin ? `<a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>` : ``}
+        <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
+        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
+        <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
+      </div>
+      <div class="actions">
+        <span class="chip">${rol || 'usuario'}</span>
+        <button class="btn small" type="button" id="btnSalir">Salir</button>
+      </div>
+    </div>
+  `;
 }
 
 function isAdminRole(rol){
@@ -1049,52 +1082,51 @@ function renderIndividualMessages(list){
   }
 
   const cards = list.map((m,i)=>{
-    const waBtn = m.wa ? `<button class="btn" data-wa="${m.wa}" data-idx="${i}">WhatsApp</button>` : `<span class="small">(sin teléfono)</span>`;
+    const waBtn = m.wa
+      ? `<button class="btn small" type="button" data-wa="${m.wa}" data-idx="${i}">WhatsApp</button>`
+      : `<span class="small">(sin teléfono)</span>`;
+
     return `
-      <div class="card" style="border:1px solid #e5e7eb;border-radius:14px;padding:12px;margin:10px 0;background:#fff;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div class="card mini">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
           <div>
-            <div style="font-weight:800;">${m.nombre}</div>
-            <div class="small">${m.telefono ? `Tel: ${m.telefono}` : ""}</div>
+            <div style="font-weight:800;">${escapeHtml(m.nombre || "")}</div>
+            <div class="small">${escapeHtml(m.rol || "")}</div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn" data-copy="1" data-idx="${i}">Copiar</button>
+          <div class="row no-print" style="gap:8px; align-items:center;">
+            <button class="btn small" type="button" data-copy="${i}">Copiar</button>
             ${waBtn}
           </div>
         </div>
-        <textarea style="width:100%;min-height:90px;margin-top:10px;" readonly>${m.text}</textarea>
+        <textarea class="input" rows="3" readonly style="margin-top:10px; resize:vertical;">${escapeHtml(m.texto || "")}</textarea>
       </div>
     `;
   }).join("");
 
-  host.innerHTML = cards;
+  host.innerHTML = `<div class="grid">${cards}</div>`;
 
-  host.querySelectorAll("button[data-copy]").forEach(btn=>{
+  host.querySelectorAll("[data-copy]").forEach(btn=>{
     btn.addEventListener("click", async ()=>{
-      const idx = parseInt(btn.getAttribute("data-idx"),10);
-      const msg = list[idx]?.text || "";
-      if(!msg) return;
+      const idx = Number(btn.getAttribute("data-copy"));
+      const t = list[idx]?.texto || "";
       try{
-        await navigator.clipboard.writeText(msg);
+        await navigator.clipboard.writeText(t);
         setStatus("Mensaje copiado ✅");
       }catch(e){
         console.error(e);
-        setStatus("No pude copiar automáticamente. Copialo manualmente.", true);
+        setStatus("No se pudo copiar. Probá seleccionar y copiar manualmente.", true);
       }
     });
   });
 
-  host.querySelectorAll("button[data-wa]").forEach(btn=>{
+  host.querySelectorAll("[data-wa]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      const idx = parseInt(btn.getAttribute("data-idx"),10);
-      const wa = btn.getAttribute("data-wa") || "";
-      const msg = list[idx]?.text || "";
-      if(!wa || !msg) return;
-      const url = `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`;
-      window.open(url, "_blank");
+      const url = btn.getAttribute("data-wa");
+      if(url) window.open(url, "_blank");
     });
   });
 }
+
 
 function setAvisoText(text) {
   const t = $("avisoText");
@@ -1166,6 +1198,7 @@ async function init() {
     });
   });
 
+  renderTopbar('asignaciones', usuarioRol);
   applyReadOnlyMode();
 
   $("btnSalir")?.addEventListener("click", async () => {

@@ -3,50 +3,38 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Doc Presidente · Visitantes y Salientes</title>
+  <title>Doc Presidente · Villa Fiad</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/styles.css">
-  <style>
-    @media print{
-      .no-print{display:none !important}
-      body{background:#fff}
-      .container{padding:0; max-width:none}
-      .page{border:none; border-radius:0; box-shadow:none}
-    }
-  </style>
 </head>
-<body>
-  <div id="topbar" class="no-print"></div>
+<body class="has-topbar">
+  <div id="topbar"></div>
 
   <div class="container">
-    <div class="row no-print" style="align-items:center; justify-content:space-between;">
-      <div>
-        <h2 class="h2" style="margin:0;">Documento para el Presidente</h2>
-        <div class="muted small">Incluye <b>Visitantes</b> y <b>Salientes</b> del mes elegido. Imprimí (Ctrl+P) y elegí “Guardar como PDF”.</div>
+    <div class="card pad">
+      <div class="section-title">
+        <h2 class="h1" style="margin:0;">Documento para el presidente</h2>
+        <span class="pill">Generar · Imprimir</span>
       </div>
-      <div class="row">
-        <button id="btnPrint" class="btn primary" type="button">Imprimir / PDF</button>
-      </div>
-    </div>
+      <div class="muted" style="margin-top:-6px;">Genera el documento combinando visitantes/salientes para el mes seleccionado.</div>
 
-    <div style="height:10px" class="no-print"></div>
+      <div class="hr"></div>
 
-    <div class="card pad no-print">
-      <div class="row" style="align-items:end; flex-wrap:wrap;">
-        <div>
-          <label class="lbl">Mes</label>
-          <input id="mes" class="inp" type="month" />
+      <div class="grid two no-print">
+        <div class="field">
+          <div class="label">Mes</div>
+          <input class="input" type="month" id="mes"/>
         </div>
-        <div>
-          <button id="btnGenerar" class="btn primary" type="button">Generar</button>
+        <div class="field">
+          <div class="label">Acciones</div>
+          <div class="row">
+            <button class="btn" id="btnGenerar" type="button">Generar</button>
+            <button class="btn" id="btnPrint" type="button">Imprimir / PDF</button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div style="height:10px"></div>
-
-    <div id="contenido" class="card pad page">
-      <div class="muted">Elegí un mes y tocá “Generar”.</div>
+      <div id="contenido" style="margin-top:12px;"></div>
     </div>
   </div>
 
