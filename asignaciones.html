@@ -152,6 +152,14 @@
       font-weight:700;
       font-size:13px;
     }
+
+    /* Impresión tablero mensual (activado por JS agregando body.print-mes) */
+    @media print{
+      body.print-mes{ background:#fff; padding:0; }
+      body.print-mes .topbar,
+      body.print-mes .container > *{ display:none !important; }
+      body.print-mes #printMes{ display:block !important; }
+    }
   </style>
 </head>
 <body>
@@ -316,6 +324,64 @@
     </div>
 
     <div class="status" id="status"></div>
+
+    <div class="section">
+      <h2>Asignaciones mensuales (tablero)</h2>
+      <p class="sub" style="margin: -6px 0 12px 0;">
+        Cargá los asignados por mes. Abajo se completa la hoja lista para imprimir y poner en el tablero.
+      </p>
+
+      <div class="bar" style="margin-top:0;">
+        <div style="min-width:230px;">
+          <label for="mes">Mes</label>
+          <input type="month" id="mes" />
+        </div>
+        <div style="min-width:180px;">
+          <button class="btn primary" id="btnCargarMes">Cargar mes</button>
+        </div>
+        <div style="min-width:180px;">
+          <button class="btn primary" id="btnGuardarMes">Guardar mes</button>
+        </div>
+        <div style="min-width:180px;">
+          <button class="btn" id="btnImprimirMes">Imprimir tablero</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <label for="mesPlataforma">Plataforma</label>
+          <select id="mesPlataforma"></select>
+        </div>
+        <div>
+          <label for="mesAcomodadorEntrada">Acomodador entrada</label>
+          <select id="mesAcomodadorEntrada"></select>
+        </div>
+        <div>
+          <label for="mesAcomodadorAuditorio">Acomodador auditorio</label>
+          <select id="mesAcomodadorAuditorio"></select>
+        </div>
+        <div>
+          <label for="mesMultimedia1">Multimedia 1</label>
+          <select id="mesMultimedia1"></select>
+        </div>
+        <div>
+          <label for="mesMultimedia2">Multimedia 2</label>
+          <select id="mesMultimedia2"></select>
+        </div>
+        <div>
+          <label for="mesMicrofonista1">Microfonista 1</label>
+          <select id="mesMicrofonista1"></select>
+        </div>
+        <div>
+          <label for="mesMicrofonista2">Microfonista 2</label>
+          <select id="mesMicrofonista2"></select>
+        </div>
+      </div>
+
+      <div id="printMes" style="margin-top:14px;">
+        <!-- Vista previa imprimible (se completa con JS) -->
+      </div>
+    </div>
 
   </div>
 

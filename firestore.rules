@@ -47,6 +47,12 @@ service cloud.firestore {
       allow write: if isEditor();
     }
 
+    // Asignaciones mensuales para tablero
+    match /asignaciones_mensuales/{id} {
+      allow read: if activeUser();
+      allow write: if isEditor();
+    }
+
     match /visitas/{id} {
       allow read: if activeUser();
       allow write: if isEditor();

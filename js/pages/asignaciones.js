@@ -102,6 +102,145 @@ function hasAnciano(persona){
 // ---------------- Data ----------------
 let personas = []; // {id, nombre, roles, activo, ...}
 
+// ---------------- Asignaciones mensuales (tablero) ----------------
+const COL_MES = "asignaciones_mensuales";
+
+function monthISOFromDateISO(dateISO){
+  // "2026-02-28" -> "2026-02"
+  if(!dateISO) return "";
+  return String(dateISO).slice(0,7);
+}
+
+function isoMonthToday(){
+  const d = new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  return `${y}-${m}`;
+}
+
+function personaNameById(id){
+  if(!id) return "";
+  return (personas.find(p=>p.id===id)?.nombre) || "";
+}
+
+function fillSelectByIds(selectId, arrIds){
+  const set = new Set((arrIds||[]).map(p=>p.id));
+  fillSelect(selectId, (p)=> set.has(p.id));
+}
+
+function formMesData(){
+  return {
+    plataformaId: getVal("mesPlataforma"),
+    acomodadorEntradaId: getVal("mesAcomodadorEntrada"),
+    acomodadorAuditorioId: getVal("mesAcomodadorAuditorio"),
+    multimedia1Id: getVal("mesMultimedia1"),
+    multimedia2Id: getVal("mesMultimedia2"),
+    microfonista1Id: getVal("mesMicrofonista1"),
+    microfonista2Id: getVal("mesMicrofonista2"),
+  };
+}
+
+function hydrateMesToUI(m){
+  if(!m) return;
+  [
+    ["mesPlataforma", m.plataformaId],
+    ["mesAcomodadorEntrada", m.acomodadorEntradaId],
+    ["mesAcomodadorAuditorio", m.acomodadorAuditorioId],
+    ["mesMultimedia1", m.multimedia1Id],
+    ["mesMultimedia2", m.multimedia2Id],
+    ["mesMicrofonista1", m.microfonista1Id],
+    ["mesMicrofonista2", m.microfonista2Id],
+  ].forEach(([sid, pid])=> ensureOptionById(sid, pid));
+
+  setVal("mesPlataforma", m.plataformaId||"");
+  setVal("mesAcomodadorEntrada", m.acomodadorEntradaId||"");
+  setVal("mesAcomodadorAuditorio", m.acomodadorAuditorioId||"");
+  setVal("mesMultimedia1", m.multimedia1Id||"");
+  setVal("mesMultimedia2", m.multimedia2Id||"");
+  setVal("mesMicrofonista1", m.microfonista1Id||"");
+  setVal("mesMicrofonista2", m.microfonista2Id||"");
+}
+
+function renderMesPreview(mesISO, data){
+  const box = $("printMes");
+  if(!box) return;
+  const monthLabel = mesISO ? mesISO : "—";
+  const d = data || formMesData();
+
+  box.innerHTML = `
+    <div style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px;">
+      <h3 style="margin:0 0 8px 0; color:#111827;">Asignaciones del mes: ${monthLabel}</h3>
+      <div style="font-size:13px; color:#374151; margin-bottom:12px;">Para tablero de anuncios (Villa Fiad)</div>
+      <table style="width:100%; border-collapse:collapse; font-size:14px;">
+        <tbody>
+          <tr><td style="padding:8px; border:1px solid #e5e7eb; width:40%; font-weight:700;">Plataforma</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.plataformaId) || "—"}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">Acomodador entrada</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.acomodadorEntradaId) || "—"}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">Acomodador auditorio</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.acomodadorAuditorioId) || "—"}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">Multimedia 1</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.multimedia1Id) || "—"}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">Multimedia 2</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.multimedia2Id) || "—"}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">Microfonista 1</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.microfonista1Id) || "—"}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">Microfonista 2</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.microfonista2Id) || "—"}</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:12px; color:#6b7280; margin-top:10px;">
+        Generado desde el panel. (Si falta alguien, completalo arriba y guardá.)
+      </div>
+    </div>
+  `;
+}
+
+async function cargarMes(){
+  const mesISO = (getVal("mes")||"").trim();
+  if(!mesISO) return setStatus("Elegí un mes.", true);
+  setStatus("Cargando mes…");
+  try{
+    const snap = await getDoc(doc(db, COL_MES, mesISO));
+    if(snap.exists()){
+      const data = snap.data() || {};
+      hydrateMesToUI(data);
+      renderMesPreview(mesISO, data);
+      setStatus("Mes cargado.");
+    }else{
+      renderMesPreview(mesISO, null);
+      setStatus("No hay datos para ese mes. Completá y guardá.");
+    }
+  }catch(e){
+    console.error(e);
+    setStatus("Error cargando el mes. Revisá permisos de Firestore.", true);
+  }
+}
+
+async function guardarMes(){
+  const mesISO = (getVal("mes")||"").trim();
+  if(!mesISO) return setStatus("Elegí un mes.", true);
+  setStatus("Guardando mes…");
+  const data = formMesData();
+  try{
+    await setDoc(doc(db, COL_MES, mesISO), {
+      ...data,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    renderMesPreview(mesISO, data);
+    setStatus("Mes guardado OK.");
+  }catch(e){
+    console.error(e);
+    setStatus("No pude guardar el mes. Revisá permisos de Firestore.", true);
+  }
+}
+
+function imprimirMes(){
+  const mesISO = (getVal("mes")||"").trim();
+  if(!mesISO) return setStatus("Elegí un mes.", true);
+  renderMesPreview(mesISO, formMesData());
+  document.body.classList.add("print-mes");
+  // Quita el modo print al terminar
+  const cleanup = ()=> document.body.classList.remove("print-mes");
+  window.addEventListener("afterprint", cleanup, { once:true });
+  window.print();
+  // fallback por si afterprint no dispara
+  setTimeout(cleanup, 1200);
+}
+
 async function cargarPersonas(){
   const qy = query(collection(db, "personas"), where("activo","==", true));
   const snap = await getDocs(qy);
@@ -163,16 +302,31 @@ function poblarSelects(){
   fillSelect("multimedia1", byIds(multimedia));
   fillSelect("multimedia2", byIds(multimedia));
 
+  // Multimedia mensual
+  fillSelect("mesMultimedia1", byIds(multimedia));
+  fillSelect("mesMultimedia2", byIds(multimedia));
+
   // Plataforma
   fillSelect("plataforma", byIds(plataforma));
+
+  // Plataforma mensual
+  fillSelect("mesPlataforma", byIds(plataforma));
 
   // Acomodadores
   fillSelect("acomodadorEntrada", byIds(acomodadores));
   fillSelect("acomodadorAuditorio", byIds(acomodadores));
 
+  // Acomodadores mensual
+  fillSelect("mesAcomodadorEntrada", byIds(acomodadores));
+  fillSelect("mesAcomodadorAuditorio", byIds(acomodadores));
+
   // Microfonistas
   fillSelect("microfonista1", byIds(microfonistas));
   fillSelect("microfonista2", byIds(microfonistas));
+
+  // Microfonistas mensual
+  fillSelect("mesMicrofonista1", byIds(microfonistas));
+  fillSelect("mesMicrofonista2", byIds(microfonistas));
 }
 
 //
@@ -410,6 +564,8 @@ async function cargarSemana(){
       const data = snap.data();
       const a = data.asignaciones || data;
       hydrateToUI(a);
+      // Completa visitante desde la base (sin pisar lo ya cargado)
+      await aplicarAutoVisitante(s);
       setStatus("Datos cargados.");
     }else{
       setStatus("No hay datos guardados para esta semana. Podés cargar y guardar.");
@@ -480,6 +636,20 @@ async function init(){
   $("btnLimpiar")?.addEventListener("click", limpiar);
   $("btnPdfPresidente")?.addEventListener("click", abrirPdfPresidente);
 
+  // Mensual (tablero)
+  $("btnCargarMes")?.addEventListener("click", cargarMes);
+  $("btnGuardarMes")?.addEventListener("click", guardarMes);
+  $("btnImprimirMes")?.addEventListener("click", imprimirMes);
+  $("mes")?.addEventListener("change", cargarMes);
+
+  // Actualiza vista previa al tocar selects
+  [
+    "mesPlataforma","mesAcomodadorEntrada","mesAcomodadorAuditorio",
+    "mesMultimedia1","mesMultimedia2","mesMicrofonista1","mesMicrofonista2"
+  ].forEach(id=>{
+    $(id)?.addEventListener("change", ()=> renderMesPreview(getVal("mes"), formMesData()));
+  });
+
   // Autocompletado
   $("cancionNumero")?.addEventListener("change", aplicarAutoCancion);
   $("tituloDiscurso")?.addEventListener("blur", ()=>{});
@@ -498,12 +668,17 @@ async function init(){
   // Autocompletar visitante al cambiar semana (sin pisar)
   $("semana")?.addEventListener("change", async ()=>{
     const s = semanaISO();
-    if(s) await aplicarAutoVisitante(s);
+    if(!s) return;
+    await cargarSemana();
   });
 
-  // Primer carga sugerida
+  // Primer carga automática
   const s0 = semanaISO();
-  if(s0) await aplicarAutoVisitante(s0);
+  if(s0) await cargarSemana();
+
+  // Mes por defecto
+  $("mes") && ( $("mes").value = monthISOFromDateISO(s0) || isoMonthToday() );
+  renderMesPreview(getVal("mes"), null);
 }
 
 init();

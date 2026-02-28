@@ -1,4 +1,4 @@
-const CACHE_NAME = "villa-fiad-asignaciones-v1";
+const CACHE_NAME = "villa-fiad-asignaciones-v2";
 const CORE_ASSETS = [
   "./",
   "./asignaciones.html",
