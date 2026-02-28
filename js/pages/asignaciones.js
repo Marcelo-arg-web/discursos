@@ -82,6 +82,23 @@ function fmtAR(iso) {
   return `${d}/${m}/${y}`;
 }
 
+function upcomingSaturdayISO(fromISO = isoToday()) {
+  // Devuelve el sábado más cercano en o después de la fecha dada (YYYY-MM-DD)
+  const d = new Date(fromISO + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return "";
+  const day = d.getDay(); // 0=dom ... 6=sáb
+  const delta = (6 - day + 7) % 7; // días hasta sábado
+  d.setDate(d.getDate() + delta);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${da}`;
+}
+
+function shiftWeekISO(semanaSatISO, weeks) {
+  return addDaysISO(semanaSatISO, 7 * weeks);
+}
+
 function addOpt(sel, value, label) {
   const opt = document.createElement("option");
   opt.value = value;
@@ -639,6 +656,43 @@ function semanaISO() {
   return (getVal("semana") || "").trim();
 }
 
+function setSemanaISO(iso) {
+  if (!iso) return;
+  setVal("semana", iso);
+}
+
+async function goToSemana(iso) {
+  if (!iso) return;
+  setSemanaISO(iso);
+  await cargarSemana();
+  generarAviso();
+}
+
+async function copiarSemanaAnterior() {
+  const s = semanaISO();
+  if (!s) return setStatus("Elegí una semana (fecha).", true);
+  const prev = shiftWeekISO(s, -1);
+  if (!prev) return;
+
+  setStatus("Copiando semana anterior…");
+  try {
+    const snap = await getDoc(doc(db, "asignaciones", prev));
+    if (!snap.exists()) {
+      return setStatus("La semana anterior no tiene datos guardados.", true);
+    }
+    const data = snap.data();
+    const a = data.asignaciones || data;
+    hydrateToUI(a);
+    await aplicarAutoVisitante(s);
+    setStatus("Listo: copié la semana anterior. Revisá y Guardá.");
+    generarAviso();
+  } catch (e) {
+    console.error(e);
+    setStatus("No pude copiar. Revisá consola (F12) y permisos.", true);
+  }
+}
+
+
 function formData() {
   return {
     presidenteId: getVal("presidente"),
@@ -700,6 +754,23 @@ function hydrateToUI(a) {
   setVal("tituloSiguienteSemana", a.tituloSiguienteSemana || "");
 }
 
+
+function validateRequired() {
+  // Ajustá acá qué campos querés obligatorios
+  const required = [
+    { id: "plataforma", label: "Acomodador Plataforma" },
+    { id: "acomodadorEntrada", label: "Acomodador Entrada" },
+    { id: "acomodadorAuditorio", label: "Acomodador Auditorio" },
+    { id: "multimedia1", label: "Multimedia 1" },
+    { id: "multimedia2", label: "Multimedia 2" },
+  ];
+  const missing = required.filter((r) => !getVal(r.id));
+  if (missing.length) {
+    return "Faltan campos: " + missing.map((m) => m.label).join(", ") + ".";
+  }
+  return "";
+}
+
 function validateNoDuplicates() {
   const fields = [
     { id: "multimedia1", label: "Multimedia 1" },
@@ -748,6 +819,9 @@ async function cargarSemana() {
 async function guardar() {
   const s = semanaISO();
   if (!s) return setStatus("Elegí una semana (fecha).", true);
+
+  const miss = validateRequired();
+  if (miss) return setStatus(miss, true);
 
   const dup = validateNoDuplicates();
   if (dup) return setStatus(dup, true);
@@ -906,6 +980,23 @@ async function init() {
   $("btnLimpiar")?.addEventListener("click", limpiar);
   $("btnPdfPresidente")?.addEventListener("click", abrirPdfPresidente);
 
+  $("btnImprimir")?.addEventListener("click", () => window.print());
+
+  $("btnEstaSemana")?.addEventListener("click", async () => {
+    const iso = upcomingSaturdayISO();
+    await goToSemana(iso);
+  });
+  $("btnSemanaAnterior")?.addEventListener("click", async () => {
+    const s = semanaISO() || upcomingSaturdayISO();
+    await goToSemana(shiftWeekISO(s, -1));
+  });
+  $("btnSemanaSiguiente")?.addEventListener("click", async () => {
+    const s = semanaISO() || upcomingSaturdayISO();
+    await goToSemana(shiftWeekISO(s, 1));
+  });
+  $("btnCopiarAnterior")?.addEventListener("click", copiarSemanaAnterior);
+
+
   $("btnGenerarAviso")?.addEventListener("click", generarAviso);
   $("btnCopiarAviso")?.addEventListener("click", copiarAviso);
   $("btnWhatsappAviso")?.addEventListener("click", whatsappAviso);
@@ -965,7 +1056,11 @@ async function init() {
     generarAviso();
   });
 
-  const s0 = semanaISO();
+  let s0 = semanaISO();
+  if (!s0) {
+    s0 = upcomingSaturdayISO();
+    setSemanaISO(s0);
+  }
   if (s0) await cargarSemana();
 
   if ($("mes")) $("mes").value = monthISOFromDateISO(s0) || isoMonthToday();
