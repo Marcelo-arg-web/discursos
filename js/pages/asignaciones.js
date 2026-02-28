@@ -914,6 +914,39 @@ async function poblarDatalistOradores() {
     });
 }
 
+
+
+// ---------------- Presidente (sugerencias) ----------------
+function normName(s){ return String(s||"").trim().toLowerCase(); }
+
+function pickNextFrom(list, storageKey){
+  if(!list || list.length===0) return "";
+  const prev = parseInt(localStorage.getItem(storageKey)||"0",10);
+  const idx = (isNaN(prev)?0:prev) % list.length;
+  const name = list[idx];
+  localStorage.setItem(storageKey, String((idx+1)%list.length));
+  return name;
+}
+
+function sugerirPresidente(){
+  if(!window.__personasCache) return;
+  const anc = getAncianos(window.__personasCache) || [];
+  const excl = new Set([normName("Marcelo Palavecino")]);
+  const conductor = normName(getVal("conductorAtalaya"));
+  if(conductor) excl.add(conductor);
+
+  const candidatos = anc
+    .map(p=>p.nombre)
+    .filter(n=>n && !excl.has(normName(n)));
+
+  const elegido = pickNextFrom(candidatos, "vf_last_presidente_idx");
+  if(elegido) setVal("presidente", elegido);
+}
+
+function autoPresidenteIfNeeded(){
+  if(getVal("presidente").trim()) return;
+  sugerirPresidente();
+}
 // ---------------- Guardar / cargar ----------------
 function semanaISO() {
   return (getVal("semana") || "").trim();
@@ -1068,13 +1101,14 @@ async function cargarSemana() {
       const a = data.asignaciones || data;
       hydrateToUI(a);
       await aplicarAutoVisitante(s);
-      // refresca aviso + mensajes
+      try{ autoPresidenteIfNeeded(); }catch(_e){}
+      // refresca aviso
       try{ await generarAviso(); }catch(_e){}
       setStatus("Datos cargados.");
     } else {
       setStatus("No hay datos guardados para esta semana. Podés cargar y guardar.");
       await aplicarAutoVisitante(s);
-      renderIndividualMessages([]);
+      try{ autoPresidenteIfNeeded(); }catch(_e){}
       setAvisoText("");
     }
   } catch (e) {
@@ -1219,59 +1253,7 @@ function buildIndividualMessages(semanaSatISO, a){
   return out;
 }
 
-function renderIndividualMessages(list){
-  const host = $("mensajesHost");
-  if(!host) return;
-  if(!list || list.length===0){
-    host.innerHTML = `<div class="small">No hay personas asignadas todavía para generar mensajes.</div>`;
-    return;
-  }
-
-  const cards = list.map((m,i)=>{
-    const waBtn = m.wa
-      ? `<button class="btn small" type="button" data-wa="${m.wa}" data-idx="${i}">WhatsApp</button>`
-      : `<span class="small">(sin teléfono)</span>`;
-
-    return `
-      <div class="card mini">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
-          <div>
-            <div style="font-weight:800;">${escapeHtml(m.nombre || "")}</div>
-            <div class="small">${escapeHtml(m.rol || "")}</div>
-          </div>
-          <div class="row no-print" style="gap:8px; align-items:center;">
-            <button class="btn small" type="button" data-copy="${i}">Copiar</button>
-            ${waBtn}
-          </div>
-        </div>
-        <textarea class="input" rows="3" readonly style="margin-top:10px; resize:vertical;">${escapeHtml(m.texto || "")}</textarea>
-      </div>
-    `;
-  }).join("");
-
-  host.innerHTML = `<div class="grid">${cards}</div>`;
-
-  host.querySelectorAll("[data-copy]").forEach(btn=>{
-    btn.addEventListener("click", async ()=>{
-      const idx = Number(btn.getAttribute("data-copy"));
-      const t = list[idx]?.texto || "";
-      try{
-        await navigator.clipboard.writeText(t);
-        setStatus("Mensaje copiado ✅");
-      }catch(e){
-        console.error(e);
-        setStatus("No se pudo copiar. Probá seleccionar y copiar manualmente.", true);
-      }
-    });
-  });
-
-  host.querySelectorAll("[data-wa]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const url = btn.getAttribute("data-wa");
-      if(url) window.open(url, "_blank");
-    });
-  });
-}
+function renderIndividualMessages(){ return; }
 
 
 function setAvisoText(text) {
@@ -1288,8 +1270,7 @@ async function generarAviso() {
   const a = formData();
   const msg = buildAvisoSemanal(s, a);
   setAvisoText(msg);
-  renderIndividualMessages(buildIndividualMessages(s, a));
-  setStatus("Aviso generado. Podés copiarlo o abrir WhatsApp Web.");
+    setStatus("Aviso generado. Podés copiarlo o abrir WhatsApp Web.");
 }
 
 async function copiarAviso() {

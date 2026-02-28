@@ -51,7 +51,10 @@
           <div class="grid three">
             <div class="field">
               <div class="label">Presidente</div>
-              <select id="presidente"></select>
+              <div class="row">
+                <select id="presidente" style="flex:1"></select>
+                <button class="btn small" type="button" id="btnSugerirPresidente">Sugerir</button>
+              </div>
             </div>
             <div class="field">
               <div class="label">Canción (número)</div>
@@ -66,7 +69,7 @@
           <div class="grid two">
             <div class="field">
               <div class="label">Orador público (visitante)</div>
-              <select id="oradorPublico"></select>
+              <input class="input" id="oradorPublico" list="listaOradoresVisitantes" placeholder="Escribí o elegí un orador visitante" />
               <div class="help">Si el orador es visitante, elegilo desde la lista.</div>
               <datalist id="listaOradoresVisitantes"></datalist>
             </div>
@@ -194,94 +197,6 @@
           </div>
 
           <div class="hr"></div>
-
-          <div class="section-title">
-            <h3>Mensajes individuales</h3>
-            <span class="pill">1 por persona</span>
-          </div>
-          <div id="mensajesHost" class="grid" style="margin-top:10px;"></div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card pad">
-          <div class="section-title">
-            <h3>Asignaciones mensuales</h3>
-            <span class="pill">Imprimir tablero</span>
-          </div>
-          <div class="muted" style="margin-top:-6px;">Generación por fechas reales (jueves/sábado) con impresión prolija.</div>
-
-                    <div class="grid two" style="margin-top:10px;">
-            <div class="field">
-              <div class="label">Mes</div>
-              <input class="input" type="month" id="mes" />
-            </div>
-
-            <div class="field">
-              <div class="label">Semana</div>
-              <select class="input" id="mesSemana"></select>
-              <div class="hint">Se guarda por semana (aplica tanto a jueves como a sábado). Las semanas ya guardadas se cargan automáticamente.</div>
-            </div>
-
-            <div class="field no-print" style="grid-column:1/-1;">
-              <div class="label">Acciones</div>
-              <div class="row wrap">
-                <button class="btn" type="button" id="btnCargarMes">Cargar mes</button>
-                <button class="btn primary" type="button" id="btnGuardarMes">Guardar semana</button>
-                <button class="btn" type="button" id="btnSugerirSemana">Sugerir semana (equitativo)</button>
-                <button class="btn" type="button" id="btnSugerirMes">Sugerir mes completo</button>
-                <button class="btn" type="button" id="btnImprimirMes">Imprimir</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="card inset" style="margin-top:12px;">
-            <div class="section-title">
-              <h4 style="margin:0;">Asignaciones de la semana seleccionada</h4>
-              <span class="pill muted">Jueves 20:00 · Sábado 19:30</span>
-            </div>
-
-            <div class="grid two" style="margin-top:10px;">
-              <div class="field">
-                <div class="label">Plataforma</div>
-                <select class="input" id="mesPlataforma"></select>
-              </div>
-
-              <div class="field">
-                <div class="label">Multimedia 1</div>
-                <select class="input" id="mesMultimedia1"></select>
-              </div>
-
-              <div class="field">
-                <div class="label">Acomodador Entrada</div>
-                <select class="input" id="mesAcomodadorEntrada"></select>
-              </div>
-
-              <div class="field">
-                <div class="label">Multimedia 2</div>
-                <select class="input" id="mesMultimedia2"></select>
-              </div>
-
-              <div class="field">
-                <div class="label">Acomodador Auditorio</div>
-                <select class="input" id="mesAcomodadorAuditorio"></select>
-              </div>
-
-              <div class="field">
-                <div class="label">Microfonista 1</div>
-                <select class="input" id="mesMicrofonista1"></select>
-              </div>
-
-              <div class="field">
-                <div class="label">Microfonista 2</div>
-                <select class="input" id="mesMicrofonista2"></select>
-              </div>
-
-              <div class="field" style="grid-column:1/-1;">
-                <div class="hint">Tip: usá “Sugerir semana” para repartir equitativamente y luego ajustás manualmente lo que haga falta.</div>
-              </div>
-            </div>
-          </div>
 
           <div class="section-title" style="margin-top:14px;">
             <h4 style="margin:0;">Vista tablero del mes</h4>
