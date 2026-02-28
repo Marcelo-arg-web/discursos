@@ -267,6 +267,9 @@ function getSelectedPersona(id){
 function ensureOptionById(selectId, personaId){
   const sel = $(selectId);
   if(!sel || !personaId) return;
+  // Si el elemento no es un <select> (o no tiene .options), no hacemos nada.
+  // Esto evita errores cuando el HTML cambia o el id apunta a un input.
+  if(!sel.options) return;
   const exists = Array.from(sel.options).some(o=>o.value===personaId);
   if(exists) return;
   const p = personas.find(x=>x.id===personaId);
