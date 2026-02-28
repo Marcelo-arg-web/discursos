@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Salientes · Arreglos Discursos</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <div class="container">
+    <div id="toastHost"></div>
+
+    <div class="card pad">
+      <h2 class="h1" style="margin-bottom:6px;">Salientes</h2>
+      <div class="muted">Arreglos cuando nosotros salimos a dar discursos en otras congregaciones. Guardado en Firestore (<code>salientes</code>). Todos los usuarios activos pueden ver.</div>
+
+      <hr class="sep"/>
+
+      <form id="form" class="grid" style="grid-template-columns: repeat(6, 1fr); gap:12px;">
+        <div style="grid-column: span 2;">
+          <label class="lbl">Fecha (YYYY-MM-DD)</label>
+          <input id="fecha" class="inp" placeholder="2026-03-01" required />
+        </div>
+
+        <div style="grid-column: span 2;">
+          <label class="lbl">Discursante</label>
+          <input id="orador" class="inp" placeholder="Marcelo Palavecino" required />
+          <div class="small muted">Los 5 actuales: Marcelo Palavecino, Sergio Saldaña, Leonardo Araya, Luis Navarro, Marcelo Rodríguez (pero se puede agregar/quitar).</div>
+        </div>
+
+        <div style="grid-column: span 1;">
+          <label class="lbl">Bosquejo</label>
+          <input id="bosquejo" class="inp" inputmode="numeric" placeholder="146" />
+        </div>
+
+        <div style="grid-column: span 1;">
+          <label class="lbl">Congregación destino</label>
+          <input id="destino" class="inp" placeholder="Este, Tucumán" required />
+        </div>
+
+        <div style="grid-column: span 6;">
+          <label class="lbl">Notas (opcional)</label>
+          <input id="notas" class="inp" placeholder="Confirmación, horario, contacto…" />
+        </div>
+
+        <input id="editId" type="hidden" />
+
+        <div style="grid-column: span 6;" class="row">
+          <button class="btn primary" type="submit" id="btnGuardar">Guardar</button>
+          <button class="btn" type="button" id="btnNuevo">Nuevo</button>
+          <button class="btn danger" type="button" id="btnBorrar" disabled>Borrar</button>
+        </div>
+      </form>
+
+      <hr class="sep"/>
+
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <div>
+          <b>Listado</b>
+          <div class="small muted">Click en una fila para editar.</div>
+        </div>
+        <div class="row">
+          <input id="filtro" class="inp" style="max-width:260px;" placeholder="Filtrar por orador o destino…" />
+          <button class="btn" type="button" id="btnRefrescar">Refrescar</button>
+        </div>
+      </div>
+
+      <div style="height:10px"></div>
+
+      <div class="card pad" style="padding:0; overflow:auto;">
+        <table class="table" id="tabla">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Orador</th>
+              <th>Bosquejo</th>
+              <th>Destino</th>
+              <th>Notas</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="5" class="muted">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/pages/salientes.js"></script>
+</body>
+</html>

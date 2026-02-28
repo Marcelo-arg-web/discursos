@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Doc Presidente · Visitantes y Salientes</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    @media print{
+      .no-print{display:none !important}
+      body{background:#fff}
+      .container{padding:0; max-width:none}
+      .page{border:none; border-radius:0; box-shadow:none}
+    }
+  </style>
+</head>
+<body>
+  <div id="topbar" class="no-print"></div>
+
+  <div class="container">
+    <div class="row no-print" style="align-items:center; justify-content:space-between;">
+      <div>
+        <h2 class="h2" style="margin:0;">Documento para el Presidente</h2>
+        <div class="muted small">Incluye <b>Visitantes</b> y <b>Salientes</b> del mes elegido. Imprimí (Ctrl+P) y elegí “Guardar como PDF”.</div>
+      </div>
+      <div class="row">
+        <button id="btnPrint" class="btn primary" type="button">Imprimir / PDF</button>
+      </div>
+    </div>
+
+    <div style="height:10px" class="no-print"></div>
+
+    <div class="card pad no-print">
+      <div class="row" style="align-items:end; flex-wrap:wrap;">
+        <div>
+          <label class="lbl">Mes</label>
+          <input id="mes" class="inp" type="month" />
+        </div>
+        <div>
+          <button id="btnGenerar" class="btn primary" type="button">Generar</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div id="contenido" class="card pad page">
+      <div class="muted">Elegí un mes y tocá “Generar”.</div>
+    </div>
+  </div>
+
+  <script type="module" src="js/pages/doc-presi.js"></script>
+</body>
+</html>

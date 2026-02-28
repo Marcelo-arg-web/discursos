@@ -58,7 +58,11 @@ function renderTopbar(active) {
         <a href="panel.html" class="${active === "panel" ? "active" : ""}">Panel</a>
         <a href="asignaciones.html" class="${active === "asignaciones" ? "active" : ""}">Asignaciones</a>
         <a href="personas.html" class="${active === "personas" ? "active" : ""}">Personas</a>
-        <a href="discursantes.html" class="${active === "discursantes" ? "active" : ""}">Discursantes</a>
+        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
+        <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
+        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
+        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
+        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Doc Presidente</a>
         <a href="imprimir.html" class="${active === "imprimir" ? "active" : ""}">Imprimir</a>
         <a href="importar.html" class="${active === "importar" ? "active" : ""}">Importar</a>
         <button id="btnSalir" class="btn danger" type="button">Salir</button>

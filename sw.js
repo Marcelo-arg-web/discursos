@@ -3,6 +3,10 @@ const CORE_ASSETS = [
   "./",
   "./asignaciones.html",
   "./visitantes.html",
+  "./panel.html",
+  "./doc-presi.html",
+  "./estadisticas.html",
+  "./salientes.html",
   "./personas.html",
   "./index.html",
   "./manifest.webmanifest",
@@ -57,6 +61,10 @@ self.addEventListener("fetch", (event) => {
           // fallback básico: si falla, devolvemos la página principal si existe en cache
           return caches.match("./asignaciones.html",
   "./visitantes.html",
+  "./panel.html",
+  "./doc-presi.html",
+  "./estadisticas.html",
+  "./salientes.html",
   "./personas.html",
   "./index.html");
         });

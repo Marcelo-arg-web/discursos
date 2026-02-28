@@ -1,34 +1,115 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Visitantes</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#1a4fa3">
-  <link rel="icon" href="icons/icon-192.png">
-  <style>
-    body{font-family:Arial,sans-serif;background:#f0f6ff;margin:0;padding:24px;display:flex;justify-content:center;}
-    .container{width:min(980px,100%);background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.08);padding:22px;}
-    h1{margin:0 0 8px 0;color:#143d8f;font-size:22px;}
-    .sub{margin:0 0 18px 0;color:#4b5563;font-size:14px;}
-    .note{padding:12px;border:1px solid #e6eefb;background:#f7fbff;border-radius:12px;color:#111827;font-size:14px;line-height:1.4;}
-    a{color:#1a4fa3}
-  </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Visitantes · Arreglos Discursos</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <div id="topbar"></div>
+
   <div class="container">
-    <h1>Visitantes</h1>
-    <p class="sub">Pantalla pendiente (por ahora la carga automática viene desde la hoja “Visitante” del Excel).</p>
-    <div class="note">Volver a <a href="index.html">Inicio</a>.</div>
+    <div id="toastHost"></div>
+
+    <div class="row">
+      <div class="col">
+        <div class="card pad">
+          <h2 class="h1" style="margin-bottom:6px;">Visitantes</h2>
+          <div class="muted">Conferenciantes de otras congregaciones que vienen a Villa Fiad. Guardado en Firestore (<code>visitas</code>). Se puede editar cuando se confirmen arreglos.</div>
+
+          <hr class="sep"/>
+
+          <form id="form" class="grid" style="grid-template-columns: repeat(6, 1fr); gap:12px;">
+            <div style="grid-column: span 2;">
+              <label class="lbl">Fecha (YYYY-MM-DD)</label>
+              <input id="fecha" class="inp" placeholder="2026-03-07" required />
+              <div class="small muted">Se guarda con ID = fecha (para autocompletar en Asignaciones).</div>
+            </div>
+
+            <div style="grid-column: span 2;">
+              <label class="lbl">Nombre del visitante</label>
+              <input id="nombre" class="inp" placeholder="Nombre Apellido" required />
+            </div>
+
+            <div style="grid-column: span 2;">
+              <label class="lbl">Congregación (de dónde nos visita)</label>
+              <input id="congregacion" class="inp" placeholder="Congregación" required />
+            </div>
+
+            <div style="grid-column: span 1;">
+              <label class="lbl">Bosquejo</label>
+              <input id="bosquejo" class="inp" inputmode="numeric" placeholder="6" />
+            </div>
+
+            <div style="grid-column: span 2;">
+              <label class="lbl">Título (opcional)</label>
+              <input id="titulo" class="inp" placeholder="Se completa si usás bosquejos" />
+            </div>
+
+            <div style="grid-column: span 1;">
+              <label class="lbl">Canción (opcional)</label>
+              <input id="cancion" class="inp" inputmode="numeric" placeholder="12" />
+            </div>
+
+            <div style="grid-column: span 3;">
+              <label class="lbl">Hospitalidad (opcional)</label>
+              <input id="hospitalidad" class="inp" placeholder="Familia…" />
+            </div>
+
+            <div style="grid-column: span 3;">
+              <label class="lbl">Observaciones (opcional)</label>
+              <input id="observaciones" class="inp" placeholder="Notas…" />
+            </div>
+
+            <input id="editId" type="hidden" />
+
+            <div style="grid-column: span 6;" class="row">
+              <button class="btn primary" type="submit" id="btnGuardar">Guardar</button>
+              <button class="btn" type="button" id="btnNuevo">Nuevo</button>
+              <button class="btn danger" type="button" id="btnBorrar" disabled>Borrar</button>
+            </div>
+          </form>
+
+          <hr class="sep"/>
+
+          <div class="row" style="justify-content:space-between; align-items:center;">
+            <div>
+              <b>Listado</b>
+              <div class="small muted">Click en una fila para editar.</div>
+            </div>
+            <div class="row">
+              <input id="filtro" class="inp" style="max-width:260px;" placeholder="Filtrar por nombre o congregación…" />
+              <button class="btn" type="button" id="btnRefrescar">Refrescar</button>
+            </div>
+          </div>
+
+          <div style="height:10px"></div>
+
+          <div class="card pad" style="padding:0; overflow:auto;">
+            <table class="table" id="tabla">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Nombre</th>
+                  <th>Congregación</th>
+                  <th>Bosquejo</th>
+                  <th>Título</th>
+                  <th>Canción</th>
+                </tr>
+              </thead>
+              <tbody id="tbody">
+                <tr><td colspan="6" class="muted">Cargando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
   </div>
 
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js").catch(() => {});
-      });
-    }
-  </script>
+  <script type="module" src="js/pages/visitantes.js"></script>
 </body>
 </html>
