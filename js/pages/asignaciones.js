@@ -19,6 +19,8 @@ import { canciones } from "../data/canciones.js";
 import { bosquejos } from "../data/bosquejos.js";
 import { visitantes as visitantesLocal } from "../data/visitantes.js";
 
+import { getAncianosOSiervos, getAncianos, getAcomodadores, getPlataforma, getMultimedia, getMicrofonistas, getLectoresAtalaya } from "../roles/getRoleCandidates.js";
+
 // ---------------- UI helpers ----------------
 const $ = (id) => document.getElementById(id);
 const getVal = (id) => ($ (id)?.value ?? "");
@@ -76,6 +78,10 @@ function normalizeRole(r){
   return n;
 }
 
+
+function displayName(persona){
+  return persona?.nombre || "";
+}
 function rolesSet(persona){
   const arr = Array.isArray(persona?.roles) ? persona.roles : [];
   return new Set(arr.map(normalizeRole));
@@ -91,54 +97,7 @@ function hasAnciano(persona){
   return rs.has('anciano');
 }
 
-// ---------------- Lists (según lo que me pasaste) ----------------
-const LISTA_ACOMODADORES = [
-  "Marcelo Rodríguez","Omar Santucho","Epifanio Pedraza","Hugo García","Eduardo Rivadeneira",
-  "Marcelo Palavecino","Leonardo Araya","Luis Navarro","Sergio Saldaña","Sergio Lazarte",
-  "Roberto Lazarte","Rodolfo Santucho"
-].map(normalize);
-
-const LISTA_PLATAFORMA = [
-  "Brian Torres","Braian Torres",
-  "Brian Rivadeneira","Braian Rivadeneira",
-  "Martin Zerda Jr","Martin Zerda (hijo)","Martin Zerda hijo",
-  "Omar Santucho",
-  // Facundo Reinoso lo querés en plataforma también
-  "Facundo Reinoso"
-].map(normalize);
-
-const LISTA_MULTIMEDIA = [
-  "Marcelo Rodríguez","Eduardo Rivadeneira","Hugo García","Marcelo Palavecino","Sergio Saldaña",
-  "Brian Rivadeneira","Braian Rivadeneira","Isaías Schell","Isaias Schel","Martin Zerda","Roberto Lazarte",
-  "Facundo Reinoso","Brian Torres","Braian Torres"
-].map(normalize);
-
-const LISTA_MICROFONISTAS = [
-  "David Salica","Emanuel Salica","Facundo Reinoso","Maxi Navarro","Eduar Salinas","Misael Salinas",
-  "Isaías Schell","Isaias Schel","Roberto Lazarte","Eduardo Rivadeneira","Hugo García",
-  "Brian Rivadeneira","Braian Rivadeneira","Martin Zerda (padre)","Martin Zerda padre","Martin Zerda (hijo)","Martin Zerda hijo"
-].map(normalize);
-
-// IDs especiales (para distinguir Martin padre/hijo)
-const ID_MARTIN_PADRE = "OIz2KC7o6VwzvjZCqliA";
-const ID_MARTIN_HIJO  = "UQqyIWnjmCkHJlnjnKTH";
-const ID_ISAIAS       = "3mdo5EMtQxj5t5Yqgp84";
-
-function displayName(persona){
-  if(persona?.id === ID_MARTIN_PADRE) return "Martin Zerda (padre)";
-  if(persona?.id === ID_MARTIN_HIJO) return "Martin Zerda Jr";
-  if(persona?.id === ID_ISAIAS) return "Isaías Schel";
-  return persona?.nombre || "";
-}
-
-function inListByNameOrId(persona, listNorm){
-  const nm = normalize(persona?.nombre);
-  if(listNorm.includes(nm)) return true;
-  // soporte Brian/Braian por normalización adicional
-  const nm2 = nm.replace(/^brian /,'braian ');
-  const nm3 = nm.replace(/^braian /,'brian ');
-  return listNorm.includes(nm2) || listNorm.includes(nm3);
-}
+// ---------------- Lists (en js/roles/*) ----------------
 
 // ---------------- Data ----------------
 let personas = []; // {id, nombre, roles, activo, ...}
@@ -177,32 +136,46 @@ function ensureOptionById(selectId, personaId){
 }
 
 function poblarSelects(){
-  // Presidente / Oraciones / Lector: anciano o siervo
-  const base = (p)=> hasAncianoOrSiervo(p);
-  fillSelect("presidente", base);
-  fillSelect("oracionInicial", base);
-  fillSelect("oracionFinal", base);
-  fillSelect("lectorAtalaya", base);
+  // Calcula candidatos una sola vez
+  const ancSiervos = getAncianosOSiervos(personas);
+  const ancianos = getAncianos(personas);
+  const acomodadores = getAcomodadores(personas);
+  const plataforma = getPlataforma(personas);
+  const multimedia = getMultimedia(personas);
+  const microfonistas = getMicrofonistas(personas);
+  const lectoresAtalaya = getLectoresAtalaya(personas);
+
+  const byIds = (arr)=> {
+    const set = new Set((arr||[]).map(p=>p.id));
+    return (p)=> set.has(p.id);
+  };
+
+  // Presidente / Oraciones / Lector Atalaya
+  fillSelect("presidente", byIds(ancSiervos));
+  fillSelect("oracionInicial", byIds(ancSiervos));
+  fillSelect("oracionFinal", byIds(ancSiervos));
+  fillSelect("lectorAtalaya", byIds(lectoresAtalaya));
 
   // Conductor Atalaya: solo ancianos
-  fillSelect("conductorAtalaya", (p)=> hasAnciano(p));
+  fillSelect("conductorAtalaya", byIds(ancianos));
 
-  // Multimedia: lista + anciano/siervo
-  fillSelect("multimedia1", (p)=> hasAncianoOrSiervo(p) || inListByNameOrId(p, LISTA_MULTIMEDIA));
-  fillSelect("multimedia2", (p)=> hasAncianoOrSiervo(p) || inListByNameOrId(p, LISTA_MULTIMEDIA));
+  // Multimedia
+  fillSelect("multimedia1", byIds(multimedia));
+  fillSelect("multimedia2", byIds(multimedia));
 
-  // Plataforma: SOLO lista plataforma (como pediste)
-  fillSelect("plataforma", (p)=> inListByNameOrId(p, LISTA_PLATAFORMA) || p.id === ID_MARTIN_HIJO);
+  // Plataforma
+  fillSelect("plataforma", byIds(plataforma));
 
-  // Acomodadores: lista + anciano/siervo
-  fillSelect("acomodadorEntrada", (p)=> hasAncianoOrSiervo(p) || inListByNameOrId(p, LISTA_ACOMODADORES));
-  fillSelect("acomodadorAuditorio", (p)=> hasAncianoOrSiervo(p) || inListByNameOrId(p, LISTA_ACOMODADORES));
+  // Acomodadores
+  fillSelect("acomodadorEntrada", byIds(acomodadores));
+  fillSelect("acomodadorAuditorio", byIds(acomodadores));
 
-  // Microfonistas: lista + anciano/siervo
-  fillSelect("microfonista1", (p)=> hasAncianoOrSiervo(p) || inListByNameOrId(p, LISTA_MICROFONISTAS));
-  fillSelect("microfonista2", (p)=> hasAncianoOrSiervo(p) || inListByNameOrId(p, LISTA_MICROFONISTAS));
+  // Microfonistas
+  fillSelect("microfonista1", byIds(microfonistas));
+  fillSelect("microfonista2", byIds(microfonistas));
 }
 
+//
 // ---------------- Autocompletado canción y discurso por número ----------------
 const cancionesMap = new Map(Object.entries(canciones).map(([k,v])=>[Number(k), String(v)]));
 const bosquejosMap = new Map(Object.entries(bosquejos).map(([k,v])=>[Number(k), String(v)]));
