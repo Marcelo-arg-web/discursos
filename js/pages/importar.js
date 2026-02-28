@@ -1,709 +1,466 @@
-// js/pages/importar.js
-// Importa tu Asignaciones.xlsx (estructura Marcelo) a Firestore.
-// - Lee hojas: "Programa", "Acomodadores", "Multimedia"
-// - Crea/actualiza docs en /asignaciones/{YYYY-MM-DD} (fecha del sábado de esa semana)
-// - NO borra nada. Si existe, solo completa campos vacíos (no pisa lo ya cargado).
-
 import { auth, db } from "../firebase-config.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import {
+  collection,
+  getDocs,
   doc,
   getDoc,
   setDoc,
-  serverTimestamp,
-  collection,
-  getDocs
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { renderTopbar } from "../shared/topbar.js";
 
 const $ = (id) => document.getElementById(id);
 
-function toast(msg, isError = false) {
+function toast(msg, isError=false){
   const host = $("toastHost");
-  if (!host) return alert(msg);
+  if(!host) return alert(msg);
   host.innerHTML = `<div class="toast ${isError ? "err" : ""}">${msg}</div>`;
-  setTimeout(() => { host.innerHTML = ""; }, 6000);
+  setTimeout(()=>{ host.innerHTML=""; }, 6500);
 }
 
-async function getUsuario(uid) {
-  const snap = await getDoc(doc(db, "usuarios", uid));
+async function getUsuario(uid){
+  const snap = await getDoc(doc(db,"usuarios",uid));
   return snap.exists() ? snap.data() : null;
 }
 
-function renderTopbar(active) {
-  const el = document.getElementById("topbar");
-  if (!el) return;
-  el.innerHTML = `
-    <div class="topbar">
-      <div class="brand">Villa Fiad</div>
-      <div class="links">
-        <a href="panel.html" class="${active === 'panel' ? 'active' : ''}">Panel</a>
-        <a href="asignaciones.html" class="${active === 'asignaciones' ? 'active' : ''}">Asignaciones</a>
-        <a href="personas.html" class="${active === 'personas' ? 'active' : ''}">Personas</a>
-        <a href="discursantes.html" class="${active === 'discursantes' ? 'active' : ''}">Discursantes</a>
-        <a href="imprimir.html" class="${active === 'imprimir' ? 'active' : ''}">Imprimir</a>
-        <a href="importar.html" class="${active === 'importar' ? 'active' : ''}">Importar</a>
-        <button id="btnSalir" class="btn danger" type="button">Salir</button>
-      </div>
-    </div>
-  `;
-  document.getElementById("btnSalir")?.addEventListener("click", async () => {
-    await signOut(auth);
-    window.location.href = "index.html";
-  });
-}
-
-function ensureTopbarStyles() {
-  if (document.getElementById("topbarStyle")) return;
-  const s = document.createElement("style");
-  s.id = "topbarStyle";
-  s.textContent = `
-    .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;
-      background:#1a4fa3;color:#fff;padding:10px 14px;border-radius:14px;margin:14px auto;max-width:1100px;}
-    .topbar .brand{font-weight:800}
-    .topbar .links{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-    .topbar a{color:#fff;text-decoration:none;font-weight:700;font-size:13px;opacity:.92}
-    .topbar a.active{text-decoration:underline;opacity:1}
-    .topbar .btn.danger{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239}
-  `;
-  document.head.appendChild(s);
-}
-
-async function requireActiveAdmin(activePage) {
-  ensureTopbarStyles();
-  renderTopbar(activePage);
-
-  return new Promise((resolve) => {
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) { window.location.href = "index.html"; return; }
+async function requireActiveUser(activeKey){
+  return new Promise((resolve)=>{
+    onAuthStateChanged(auth, async (user)=>{
+      if(!user){ window.location.href="index.html"; return; }
       const u = await getUsuario(user.uid);
-      if (!u?.activo) {
-        await signOut(auth);
-        window.location.href = "index.html";
+      if(!u || u.activo !== true){
+        toast("Tu usuario no está activo. Pedile a un administrador que te habilite.", true);
+        await auth.signOut?.();
+        window.location.href="index.html";
         return;
       }
-      if (!["admin", "superadmin", "editor"].includes((u.rol || "").toLowerCase())) {
-        toast("No tenés permisos para importar (necesitás rol admin/superadmin/editor).", true);
-        window.location.href = "panel.html";
+      // roles: superadmin / admin pueden importar
+      const rol = (u.rol || "").toLowerCase();
+      if(rol !== "superadmin" && rol !== "admin"){
+        toast("No tenés permisos para importar.", true);
+        window.location.href="panel.html";
         return;
       }
-      resolve({ user, usuario: u });
+      renderTopbar({ auth, active: activeKey });
+      resolve({ user, usuario:u });
     });
   });
 }
 
-// --------- Helpers de parsing ---------
-function normName(s) {
-  return (s || "")
+// ---------- Excel parsing helpers ----------
+
+function norm(s){
+  return (s||"")
     .toString()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/\s+/g," ")
     .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // sin acentos
-    .replace(/\s+/g, " ");
+    .toLowerCase();
 }
 
-function toISODate(d) {
-  // d: Date
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+function isDateCell(v){
+  return v instanceof Date || (typeof v === "number" && v > 20000); // excel serial
 }
 
-function isDate(x) {
-  return x instanceof Date && !isNaN(x.getTime());
+function excelSerialToDate(n){
+  // Excel date serial (1900 system). Good enough for your file.
+  const utc_days = Math.floor(n - 25569);
+  const utc_value = utc_days * 86400;
+  return new Date(utc_value * 1000);
 }
 
-function parseDayFromLabel(label) {
-  // "Jueves/5" "Sábado/28" "Sabado/14"
-  const m = (label || "").toString().match(/\/\s*(\d{1,2})\s*$/);
-  if (!m) return null;
-  const day = parseInt(m[1], 10);
-  return Number.isFinite(day) ? day : null;
+function toDate(v){
+  if(v instanceof Date) return v;
+  if(typeof v === "number") return excelSerialToDate(v);
+  return null;
 }
 
-function addDays(date, n) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + n);
-  return d;
+function ymd(d){
+  const yy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  return `${yy}-${mm}-${dd}`;
 }
 
-function setIfPresent(target, key, value) {
-  if (value === undefined || value === null) return;
-  const s = (typeof value === "string") ? value.trim() : value;
-  if (s === "") return;
-  target[key] = s;
+function addDays(d, n){
+  const x = new Date(d);
+  x.setDate(x.getDate()+n);
+  return x;
 }
 
-// --------- Carga de personas (para mapear nombres -> IDs) ---------
-async function loadPersonasIndex() {
-  const snap = await getDocs(collection(db, "personas"));
-  const personas = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }))
-    .filter(p => p.activo !== false);
+function parseProgramaSheet(ws){
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  const weeks = []; // {date, fields}
+  let current = null;
 
-  const byId = new Map(); // id->nombre
-
-  const exact = new Map(); // norm(nombre)->id
-  const tokensIndex = [];  // {id, tokens[]}
-
-  for (const p of personas) {
-    if (p.id && p.nombre) byId.set(p.id, String(p.nombre));
-    const n = normName(p.nombre);
-    if (!n) continue;
-    if (!exact.has(n)) exact.set(n, p.id);
-    const tokens = n.split(" ").filter(Boolean);
-    tokensIndex.push({ id: p.id, tokens });
-  }
-
-  function resolveIdByName(name) {
-    const n = normName(name);
-    if (!n) return "";
-    if (exact.has(n)) return exact.get(n);
-
-    // Fuzzy simple: mismo apellido (último token) y misma inicial del nombre
-    const t = n.split(" ").filter(Boolean);
-    if (t.length >= 2) {
-      const last = t[t.length - 1];
-      const firstInitial = t[0][0];
-      const candidates = tokensIndex.filter(p => {
-        const pt = p.tokens;
-        if (pt.length < 2) return false;
-        return pt[pt.length - 1] === last && pt[0][0] === firstInitial;
-      });
-      if (candidates.length === 1) return candidates[0].id;
+  const pushCurrent = ()=>{
+    if(current && current.date){
+      weeks.push(current);
     }
-    return "";
-  }
+  };
 
-  function nameById(id){ return byId.get(id) || ""; }
-
-  return { resolveIdByName, nameById, personasCount: personas.length };
-}
-
-// --------- Parse del Excel de Marcelo ---------
-function parsePrograma(sheetRows) {
-  // Devuelve: Map<isoSabado, partialAsignaciones>
-  const out = new Map();
-  let currentDate = null;
-
-  for (const row of sheetRows) {
+  for(const row of rows){
     const a = row?.[0];
-    if (isDate(a)) {
-      currentDate = a;
-      const iso = toISODate(currentDate);
-      if (!out.has(iso)) out.set(iso, {});
-      continue;
-    }
-    if (!currentDate) continue;
-
-    const label = (row?.[0] || "").toString().trim().toLowerCase();
     const b = row?.[1];
     const c = row?.[2];
     const d = row?.[3];
 
-    const rec = out.get(toISODate(currentDate));
+    if(a === null && b === null && c === null && d === null) continue;
 
-    if (label.startsWith("presidente")) {
-      setIfPresent(rec, "presidenteNombre", b);
-      // "Oración:" en col C, nombre en col D
-      if ((c || "").toString().toLowerCase().includes("oración")) {
-        setIfPresent(rec, "oracionNombre", d);
-      }
-    } else if (label.startsWith("discursante")) {
-      setIfPresent(rec, "oradorPublico", b);
-      if ((c || "").toString().toLowerCase().includes("congreg")) {
-        setIfPresent(rec, "congregacionVisitante", d);
-      }
-    } else if (label.startsWith("titulo")) {
-      setIfPresent(rec, "tituloDiscurso", b);
-    } else if (label.startsWith("atalaya")) {
-      setIfPresent(rec, "conductorAtalayaNombre", b);
-      if ((c || "").toString().toLowerCase().includes("lector")) {
-        setIfPresent(rec, "lectorAtalayaNombre", d);
-      }
+    if(isDateCell(a)){
+      pushCurrent();
+      current = { date: toDate(a), fields: {} };
+      continue;
+    }
+
+    if(!current || !current.date) continue;
+
+    const la = norm(a);
+    const lc = norm(c);
+
+    if(la.startsWith("presidente")){
+      if(b) current.fields.presidenteNombre = b;
+      if(lc.startsWith("oracion") && d) current.fields.oracionNombre = d;
+    } else if(la.startsWith("oración") || la.startsWith("oracion")){
+      if(b) current.fields.oracionNombre = b;
+    } else if(la.startsWith("discursante")){
+      if(b) current.fields.oradorNombre = b;
+      if(lc.startsWith("congregacion") && d) current.fields.congregacion = d;
+    } else if(la.startsWith("congregación") || la.startsWith("congregacion")){
+      if(b) current.fields.congregacion = b;
+    } else if(la.startsWith("titulo")){
+      if(b) current.fields.tituloDiscurso = b;
+    } else if(la.startsWith("atalaya")){
+      if(b) current.fields.conductorAtalayaNombre = b;
+      if(lc.startsWith("lector") && d) current.fields.lectorAtalayaNombre = d;
     }
   }
-  return out;
+
+  pushCurrent();
+  return weeks;
 }
 
-function parseAcomodadores(sheetRows) {
-  // Map<isoSabado, {acomodadorEntradaNombre, acomodadorAuditorioNombre}>
-  const out = new Map();
-  let monthAnchor = null; // Date con año/mes
+function parseMonthMarker(v){
+  const d = toDate(v);
+  if(!d) return null;
+  return { year: d.getFullYear(), month: d.getMonth()+1 };
+}
 
-  for (const row of sheetRows) {
-    const a = row?.[0];
-    if (isDate(a)) { monthAnchor = a; continue; }
-    if (!monthAnchor) continue;
+function parseDiaTexto(txt){
+  // "Jueves/15", "Sábado/7", "Sabado/14"
+  const m = (txt||"").toString().match(/\/\s*(\d{1,2})\s*$/);
+  return m ? parseInt(m[1],10) : null;
+}
 
-    if (typeof a === "string" && /jueves/i.test(a)) {
-      const day = parseDayFromLabel(a);
-      if (!day) continue;
-      const jueves = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth(), day);
+function parseAcomodadoresSheet(ws){
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  let ctx = null; // {year, month}
+  const out = new Map(); // ymd -> { entradaNombre, auditorioNombre }
+
+  for(const row of rows){
+    const a=row?.[0], b=row?.[1], c=row?.[2];
+    if(isDateCell(a)){
+      ctx = parseMonthMarker(a);
+      continue;
+    }
+    const t = (a||"").toString();
+    if(!ctx) continue;
+    if(/^jue/i.test(norm(t))){
+      const day = parseDiaTexto(t);
+      if(!day) continue;
+      const jueves = new Date(ctx.year, ctx.month-1, day);
       const sabado = addDays(jueves, 2);
-      const iso = toISODate(sabado);
-
-      const rec = out.get(iso) || {};
-      setIfPresent(rec, "acomodadorEntradaNombre", row?.[1]);
-      setIfPresent(rec, "acomodadorAuditorioNombre", row?.[2]);
-      out.set(iso, rec);
+      out.set(ymd(sabado), { entradaNombre: b || null, auditorioNombre: c || null });
     }
   }
   return out;
 }
 
-function parseMultimedia(sheetRows) {
-  // Map<isoSabado, {multimedia1Nombre, microfonista1Nombre, plataformaNombre}>
-  // Regla: si existe fila de "Sábado", esa manda. Si no, usa "Jueves" (jueves+2).
+function parseMultimediaSheet(ws){
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  let ctx = null;
+  const jueves = new Map(); // ymd(sabado) -> { sonidoNombre, microNombre, plataformaNombre }
+  const sabado = new Map(); // ymd(sabado) -> { sonidoNombre, microNombre, plataformaNombre }
+
+  for(const row of rows){
+    const a=row?.[0], b=row?.[1], c=row?.[2], d=row?.[3];
+    if(isDateCell(a)){
+      ctx = parseMonthMarker(a);
+      continue;
+    }
+    if(!ctx) continue;
+    const t=(a||"").toString();
+    const nt=norm(t);
+    const day=parseDiaTexto(t);
+    if(!day) continue;
+    if(nt.startsWith("jueves")){
+      const juevesDate = new Date(ctx.year, ctx.month-1, day);
+      const sabDate = addDays(juevesDate, 2);
+      jueves.set(ymd(sabDate), { sonidoNombre: b||null, microNombre: c||null, plataformaNombre: d||null });
+    } else if(nt.startsWith("sabado") || nt.startsWith("sábado")){
+      const sabDate = new Date(ctx.year, ctx.month-1, day);
+      sabado.set(ymd(sabDate), { sonidoNombre: b||null, microNombre: c||null, plataformaNombre: d||null });
+    }
+  }
+
+  // merge pref: sonido/micro de sábado si existe, sino jueves. plataforma de jueves si existe, sino sábado
   const out = new Map();
-  let monthAnchor = null;
-
-  for (const row of sheetRows) {
-    const a = row?.[0];
-    if (isDate(a)) { monthAnchor = a; continue; }
-    if (!monthAnchor) continue;
-
-    if (typeof a !== "string") continue;
-
-    const isThu = /jueves/i.test(a);
-    const isSat = /s[aá]bado/i.test(a) || /sabado/i.test(a);
-
-    if (!isThu && !isSat) continue;
-
-    const day = parseDayFromLabel(a);
-    if (!day) continue;
-
-    const date = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth(), day);
-    const sabado = isSat ? date : addDays(date, 2);
-    const iso = toISODate(sabado);
-
-    const rec = out.get(iso) || {};
-
-    // columnas: Semana | Sonido | Micrófonos | Plataforma
-    // En tu app: multimedia1Id/multimedia2Id, microfonista1Id/microfonista2Id, plataformaId
-    // Usamos: Sonido -> multimedia1, Micrófonos -> microfonista1, Plataforma -> plataforma
-    // (microfonista2 y multimedia2 quedan para completar manualmente si hace falta)
-    const patch = {};
-    setIfPresent(patch, "multimedia1Nombre", row?.[1]);
-    setIfPresent(patch, "microfonista1Nombre", row?.[2]);
-    setIfPresent(patch, "plataformaNombre", row?.[3]);
-
-    if (isSat) {
-      // sábado manda: pisa lo que hubiera de jueves en este mapa (solo en nombres, más abajo resolvemos IDs)
-      Object.assign(rec, patch);
-    } else {
-      // jueves: solo completa si no existe (por si hay sábados con valores)
-      for (const k of Object.keys(patch)) {
-        if (!rec[k]) rec[k] = patch[k];
-      }
-    }
-
-    out.set(iso, rec);
+  const keys = new Set([...jueves.keys(), ...sabado.keys()]);
+  for(const k of keys){
+    const j = jueves.get(k) || {};
+    const s = sabado.get(k) || {};
+    out.set(k, {
+      sonidoNombre: s.sonidoNombre || j.sonidoNombre || null,
+      microNombre: s.microNombre || j.microNombre || null,
+      plataformaNombre: j.plataformaNombre || s.plataformaNombre || null
+    });
   }
-
   return out;
 }
 
-// --------- Merge final y escritura ---------
+// ---------- Firestore helpers ----------
 
-
-function parseAsignacionesEditable(rows){
-  // Hoja "Asignaciones" exportada desde la base.
-  // Columnas esperadas (por nombres):
-  // semana, presidente, oracionInicial, oracionFinal, discursoOrador, discursoCongregacion, discursoTitulo,
-  // atalayaConductor, atalayaLector, plataforma, entrada, auditorio, microfonista1, microfonista2, multimedia1, multimedia2
-  const programa = new Map();
-  const acomodadores = new Map();
-  const multimedia = new Map();
-
-  for(const r of rows){
-    const semanaRaw = r.semana ?? r.Semana ?? r.fecha ?? r.Fecha;
-    const iso = normalizeAnyDateToISO(semanaRaw);
-    if(!iso) continue;
-
-    programa.set(iso, {
-      presidenteNombre: r.presidente ?? "",
-      oracionNombre: (r.oracionInicial ?? r.oracion ?? "") || (r.oracionFinal ?? "") || "",
-      conductorAtalayaNombre: r.atalayaConductor ?? "",
-      lectorAtalayaNombre: r.atalayaLector ?? "",
-      oradorPublico: r.discursoOrador ?? "",
-      congregacionVisitante: r.discursoCongregacion ?? "",
-      tituloDiscurso: r.discursoTitulo ?? ""
-    });
-
-    acomodadores.set(iso, {
-      acomodadorEntradaNombre: r.entrada ?? "",
-      acomodadorAuditorioNombre: r.auditorio ?? ""
-    });
-
-    multimedia.set(iso, {
-      multimedia1Nombre: r.multimedia1 ?? "",
-      plataformaNombre: r.plataforma ?? "",
-      microfonista1Nombre: r.microfonista1 ?? "",
-      // si vienen segundos:
-      multimedia2Nombre: r.multimedia2 ?? "",
-      microfonista2Nombre: r.microfonista2 ?? ""
-    });
-  }
-
-  return { programa, acomodadores, multimedia };
+async function loadPersonasMap(){
+  const snap = await getDocs(collection(db,"personas"));
+  const map = new Map(); // norm(nombre) -> {id, nombre}
+  snap.forEach(d=>{
+    const data = d.data() || {};
+    const nombre = data.nombre || data.name || "";
+    if(!nombre) return;
+    map.set(norm(nombre), { id: d.id, nombre });
+  });
+  return map;
 }
 
-function normalizeAnyDateToISO(v){
-(v){
-  // Acepta: Date, string 'YYYY-MM-DD', string 'DD/MM', etc (en export solo usamos YYYY-MM-DD).
-  if(!v) return null;
-  if(v instanceof Date && !isNaN(v)) return toISO(v);
-  if(typeof v === "number"){
-    // Excel date serial
-    try{
-      const d = XLSX.SSF.parse_date_code(v);
-      if(d && d.y && d.m && d.d){
-        return `${String(d.y).padStart(4,"0")}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`;
+function resolvePersonaId(nombre, personasMap){
+  if(!nombre) return null;
+  const n = norm(nombre);
+  if(personasMap.has(n)) return personasMap.get(n).id;
+
+  // fuzzy: match by last name + first initial
+  const parts = n.split(" ").filter(Boolean);
+  if(parts.length >= 2){
+    const last = parts[parts.length-1];
+    const firstInit = parts[0][0];
+    for(const [k,v] of personasMap.entries()){
+      const kp = k.split(" ").filter(Boolean);
+      if(kp.length>=2){
+        const klast = kp[kp.length-1];
+        const kfirstInit = kp[0][0];
+        if(klast === last && kfirstInit === firstInit) return v.id;
       }
-    }catch(_){}
-  }
-  if(typeof v === "string"){
-    const s = v.trim();
-    if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-    // intenta DD/MM/YYYY
-    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if(m){
-      const dd = m[1].padStart(2,"0"), mm = m[2].padStart(2,"0"), yy = m[3];
-      return `${yy}-${mm}-${dd}`;
     }
   }
   return null;
 }
 
-function buildMergedRecords({ programa, acomodadores, multimedia }, resolver) {
-  // arma Map<iso, asignacionesFinal>
-  const allDates = new Set([
-    ...programa.keys(),
-    ...acomodadores.keys(),
-    ...multimedia.keys()
-  ]);
-
-  const out = new Map();
-  const missing = new Map(); // nombre->count
-
-  function idOrMissing(name) {
-    const id = resolver.resolveIdByName(name);
-    if (!id && name && name.toString().trim()) {
-      const k = name.toString().trim();
-      missing.set(k, (missing.get(k) || 0) + 1);
-    }
-    return id || "";
-  }
-
-  for (const iso of Array.from(allDates).sort()) {
-    const p = programa.get(iso) || {};
-    const a = acomodadores.get(iso) || {};
-    const m = multimedia.get(iso) || {};
-
-    const rec = {
-      // IDs de personas
-      presidenteId: idOrMissing(p.presidenteNombre),
-      oracionInicialId: idOrMissing(p.oracionNombre || p.presidenteNombre),
-      oracionFinalId: idOrMissing(p.oracionNombre || p.presidenteNombre),
-
-      conductorAtalayaId: idOrMissing(p.conductorAtalayaNombre),
-      lectorAtalayaId: idOrMissing(p.lectorAtalayaNombre),
-
-      multimedia1Id: idOrMissing(m.multimedia1Nombre),
-      multimedia2Id: "",
-
-      plataformaId: idOrMissing(m.plataformaNombre),
-
-      microfonista1Id: idOrMissing(m.microfonista1Nombre),
-      microfonista2Id: "",
-
-      acomodadorEntradaId: idOrMissing(a.acomodadorEntradaNombre),
-      acomodadorAuditorioId: idOrMissing(a.acomodadorAuditorioNombre),
-
-      // Textos
-      cancionNumero: "",
-      oradorPublico: (p.oradorPublico || "").toString().trim(),
-      congregacionVisitante: (p.congregacionVisitante || "").toString().trim(),
-      tituloDiscurso: (p.tituloDiscurso || "").toString().trim(),
-      tituloSiguienteSemana: ""
-    };
-
-    out.set(iso, rec);
-  }
-
-  return { records: out, missing };
-}
-
-function renderPreviewTable(recordsMap) {
-  const head = $("tbl")?.querySelector("thead");
-  const body = $("tbl")?.querySelector("tbody");
-  if (!head || !body) return;
-
-  const cols = [
-    "fechaSab",
-    "presidenteId",
-    "oracionInicialId",
-    "conductorAtalayaId",
-    "lectorAtalayaId",
-    "multimedia1Id",
-    "microfonista1Id",
-    "plataformaId",
-    "acomodadorEntradaId",
-    "acomodadorAuditorioId",
-    "oradorPublico",
-    "congregacionVisitante",
-    "tituloDiscurso"
-  ];
-
-  head.innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr>`;
-
-  const rows = Array.from(recordsMap.entries()).slice(0, 20).map(([iso, r]) => {
-    const row = { fechaSab: iso, ...r };
-    return `<tr>${cols.map(c => `<td>${(row[c] ?? "").toString()}</td>`).join("")}</tr>`;
-  }).join("");
-
-  body.innerHTML = rows || `<tr><td colspan="${cols.length}">Sin datos para mostrar.</td></tr>`;
-}
-
-async function safeUpsertAsignacion(iso, incoming) {
-  // NO pisa lo ya cargado: solo completa campos vacíos.
-  const ref = doc(db, "asignaciones", iso);
+async function mergeAsignacion(dateKey, patch){
+  const ref = doc(db,"asignaciones", dateKey);
   const snap = await getDoc(ref);
+  const existing = snap.exists() ? (snap.data().asignaciones || {}) : {};
+  const next = { ...existing };
 
-  const existing = snap.exists() ? (snap.data()?.asignaciones || {}) : {};
-  const merged = { ...existing };
-
-  for (const [k, v] of Object.entries(incoming || {})) {
-    const ex = existing?.[k];
-    const exEmpty = ex === undefined || ex === null || ex === "";
-    if (exEmpty && v !== undefined && v !== null && v !== "") {
-      merged[k] = v;
+  // solo completar vacíos
+  for(const [k,v] of Object.entries(patch)){
+    if(v === null || v === undefined || v === "") continue;
+    if(next[k] === null || next[k] === undefined || next[k] === ""){
+      next[k] = v;
     }
   }
 
-  await setDoc(ref, { asignaciones: merged, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(ref, {
+    asignaciones: next,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+
+  return { updated: Object.keys(patch).filter(k=>patch[k] && (!existing[k])) };
 }
 
-function readSheetRows(workbook, sheetName) {
-  const ws = workbook.Sheets[sheetName];
-  if (!ws) return null;
-  // header:1 => array de arrays, cellDates true => Date
-  return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+// ---------- UI ----------
+
+let workbook = null;
+let personasMap = null;
+let previewRows = []; // {dateKey, resumen, patch, missing[]}
+
+function fillPreviewTable(){
+  const tbl = $("tbl");
+  const tbody = tbl?.querySelector("tbody");
+  if(!tbody) return;
+  tbody.innerHTML = "";
+
+  previewRows.slice(0, 40).forEach(r=>{
+    const miss = (r.missing||[]).join(", ");
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.dateKey}</td>
+      <td>${r.resumen || ""}</td>
+      <td>${miss ? `<span class="badge warn">Faltan: ${miss}</span>` : `<span class="badge ok">OK</span>`}</td>
+    `;
+    tbody.appendChild(tr);
+  });
 }
 
-let ctx = null; // { resolveIdByName, personasCount }
-let lastRecords = null; // Map
-let lastMissing = null; // Map
+async function buildPreview(){
+  if(!workbook) throw new Error("No hay Excel cargado.");
+  if(!personasMap) personasMap = await loadPersonasMap();
 
-async function handleFile(file) {
-  if (typeof XLSX === "undefined") {
-    toast("No se cargó la librería XLSX (SheetJS). Revisá tu conexión o si un bloqueador impide el CDN.", true);
-    return;
-  }
+  const wsProg = workbook.Sheets["Programa"];
+  const wsAco = workbook.Sheets["Acomodadores"];
+  const wsMul = workbook.Sheets["Multimedia"];
 
-  if (!file) return;
+  if(!wsProg) throw new Error("No encontré la hoja 'Programa' en el Excel.");
+  if(!wsAco) throw new Error("No encontré la hoja 'Acomodadores' en el Excel.");
+  if(!wsMul) throw new Error("No encontré la hoja 'Multimedia' en el Excel.");
 
-  const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: "array", cellDates: true });
+  const progWeeks = parseProgramaSheet(wsProg);
+  const acoMap = parseAcomodadoresSheet(wsAco);
+  const mulMap = parseMultimediaSheet(wsMul);
 
-  // Si existe la hoja "Asignaciones", es el Excel editable exportado desde la base.
-const rowsAsign = readSheetRows(wb, "Asignaciones");
-if (rowsAsign) {
-  if (!ctx) ctx = await loadPersonasIndex();
-  const maps = parseAsignacionesEditable(rowsAsign);
-  const { records, missing } = buildMergedRecords(maps, ctx);
-  lastRecords = records;
-  lastMissing = missing;
-  renderPreview(records, missing);
-  toast(`Listo: ${records.size} semana(s) detectada(s) desde la hoja "Asignaciones".`);
-  return;
-}
+  previewRows = progWeeks.map(w=>{
+    const dateKey = ymd(w.date);
+    const missing = [];
+    const patch = {};
 
+    // Programa
+    const pid = resolvePersonaId(w.fields.presidenteNombre, personasMap);
+    if(w.fields.presidenteNombre && !pid) missing.push(`Presidente: ${w.fields.presidenteNombre}`);
+    if(pid) patch.presidenteId = pid;
 
-  // Hojas esperadas (tu Asignaciones.xlsx original)
-  const rowsPrograma = readSheetRows(wb, "Programa");
-  const rowsAcomod = readSheetRows(wb, "Acomodadores");
-  const rowsMulti = readSheetRows(wb, "Multimedia");
+    const oid = resolvePersonaId(w.fields.oracionNombre, personasMap);
+    if(w.fields.oracionNombre && !oid) missing.push(`Oración: ${w.fields.oracionNombre}`);
+    if(oid){
+      patch.oracionInicialId = oid;
+      patch.oracionFinalId = oid;
+    }
 
-  if (!rowsPrograma && !rowsAcomod && !rowsMulti) {
-    toast("No encontré hojas 'Programa', 'Acomodadores' o 'Multimedia' en el Excel.", true);
-    return;
-  }
+    const caid = resolvePersonaId(w.fields.conductorAtalayaNombre, personasMap);
+    if(w.fields.conductorAtalayaNombre && !caid) missing.push(`Atalaya: ${w.fields.conductorAtalayaNombre}`);
+    if(caid) patch.conductorAtalayaId = caid;
 
-  // llenar dropdown de hojas (solo informativo)
-  const sel = $("sheet");
-  if (sel) {
-    sel.disabled = false;
-    sel.innerHTML = wb.SheetNames.map(n => `<option>${n}</option>`).join("");
-  }
+    const laid = resolvePersonaId(w.fields.lectorAtalayaNombre, personasMap);
+    if(w.fields.lectorAtalayaNombre && !laid) missing.push(`Lector: ${w.fields.lectorAtalayaNombre}`);
+    if(laid) patch.lectorAtalayaId = laid;
 
-  const programa = rowsPrograma ? parsePrograma(rowsPrograma) : new Map();
-  const acomodadores = rowsAcomod ? parseAcomodadores(rowsAcomod) : new Map();
-  const multimedia = rowsMulti ? parseMultimedia(rowsMulti) : new Map();
+    if(w.fields.oradorNombre) patch.oradorPublico = w.fields.oradorNombre;
+    if(w.fields.congregacion) patch.congregacionVisitante = w.fields.congregacion;
+    if(w.fields.tituloDiscurso) patch.tituloDiscurso = w.fields.tituloDiscurso;
 
-  const { records, missing } = buildMergedRecords({ programa, acomodadores, multimedia }, ctx);
+    // Acomodadores (entrada / auditorio)
+    const aco = acoMap.get(dateKey);
+    if(aco){
+      const eid = resolvePersonaId(aco.entradaNombre, personasMap);
+      if(aco.entradaNombre && !eid) missing.push(`Entrada: ${aco.entradaNombre}`);
+      if(eid) patch.acomodadorEntradaId = eid;
 
-  lastRecords = records;
-  lastMissing = missing;
+      const auid = resolvePersonaId(aco.auditorioNombre, personasMap);
+      if(aco.auditorioNombre && !auid) missing.push(`Auditorio: ${aco.auditorioNombre}`);
+      if(auid) patch.acomodadorAuditorioId = auid;
+    }
 
-  renderPreviewTable(records);
+    // Multimedia + Plataforma + Micro
+    const mul = mulMap.get(dateKey);
+    if(mul){
+      const mid = resolvePersonaId(mul.sonidoNombre, personasMap);
+      if(mul.sonidoNombre && !mid) missing.push(`Sonido: ${mul.sonidoNombre}`);
+      if(mid) patch.multimedia1Id = mid;
 
-  const total = records.size;
-  toast(`Listo: detecté ${total} semana(s) para importar. Personas activas: ${ctx.personasCount}.`);
-  if (missing.size) {
-    const top = Array.from(missing.entries()).slice(0, 8).map(([n, c]) => `${n} (${c})`).join(" · ");
-    toast(`Ojo: faltan ${missing.size} nombre(s) en Personas. Ej: ${top}`, true);
-  }
-}
+      const mic = resolvePersonaId(mul.microNombre, personasMap);
+      if(mul.microNombre && !mic) missing.push(`Micrófonos: ${mul.microNombre}`);
+      if(mic) patch.microfonista1Id = mic;
 
+      const pl = resolvePersonaId(mul.plataformaNombre, personasMap);
+      if(mul.plataformaNombre && !pl) missing.push(`Plataforma: ${mul.plataformaNombre}`);
+      if(pl) patch.plataformaId = pl;
+    }
 
+    const resumen = [
+      w.fields.presidenteNombre ? `Pres.: ${w.fields.presidenteNombre}` : "",
+      w.fields.oradorNombre ? `Orador: ${w.fields.oradorNombre}` : "",
+      w.fields.tituloDiscurso ? `“${w.fields.tituloDiscurso}”` : ""
+    ].filter(Boolean).join(" · ");
 
-async function doExport() {
-  if (typeof XLSX === "undefined") {
-    toast("No se cargó la librería XLSX (SheetJS).", true);
-    return;
-  }
-  if (!ctx) ctx = await loadPersonasIndex();
-
-  const desde = $("desde")?.value || null;
-  const hasta = $("hasta")?.value || null;
-
-  toast("Leyendo asignaciones desde la base…");
-
-  const snap = await getDocs(collection(db, "asignaciones"));
-  const rows = [];
-
-  const nm = (id) => id ? (ctx.nameById(id) || "") : "";
-
-  snap.forEach(d => {
-    const iso = d.id; // esperamos YYYY-MM-DD
-    if (desde && iso < desde) return;
-    if (hasta && iso > hasta) return;
-
-    const data = d.data();
-    const a = data.asignaciones || data;
-
-    rows.push({
-      semana: iso,
-      presidente: nm(a.presidenteId),
-      oracionInicial: nm(a.oracionInicialId),
-      oracionFinal: nm(a.oracionFinalId),
-      discursoOrador: (a.oradorPublico || "").toString(),
-      discursoCongregacion: (a.congregacionVisitante || "").toString(),
-      discursoTitulo: (a.tituloDiscurso || "").toString(),
-      atalayaConductor: nm(a.conductorAtalayaId),
-      atalayaLector: nm(a.lectorAtalayaId),
-      plataforma: nm(a.plataformaId),
-      entrada: nm(a.acomodadorEntradaId),
-      auditorio: nm(a.acomodadorAuditorioId),
-      microfonista1: nm(a.microfonista1Id),
-      microfonista2: nm(a.microfonista2Id),
-      multimedia1: nm(a.multimedia1Id),
-      multimedia2: nm(a.multimedia2Id)
-    });
+    return { dateKey, resumen, patch, missing };
   });
 
-  rows.sort((x, y) => (x.semana || "").localeCompare(y.semana || ""));
-
-  if (!rows.length) {
-    toast("No se encontraron asignaciones en ese rango.", true);
-    return;
-  }
-
-  const ws = XLSX.utils.json_to_sheet(rows, { header: [
-    "semana","presidente","oracionInicial","oracionFinal",
-    "discursoOrador","discursoCongregacion","discursoTitulo",
-    "atalayaConductor","atalayaLector",
-    "plataforma","entrada","auditorio",
-    "microfonista1","microfonista2","multimedia1","multimedia2"
-  ]});
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Asignaciones");
-
-  const fname = `Asignaciones_editable_${(desde || "todo")}_a_${(hasta || "todo")}.xlsx`.replaceAll(":", "-");
-  XLSX.writeFile(wb, fname);
-
-  toast(`Descargado: ${rows.length} semana(s) en ${fname}`);
+  // order by date
+  previewRows.sort((a,b)=>a.dateKey.localeCompare(b.dateKey));
+  fillPreviewTable();
+  toast(`Vista previa lista: ${previewRows.length} semanas detectadas.`);
 }
 
-async function doPreview() {
-  const f = $("file")?.files?.[0];
-  if (!f) return toast("Elegí el archivo .xlsx primero.", true);
-  await handleFile(f);
-}
+async function importToFirestore(){
+  if(previewRows.length === 0) await buildPreview();
 
-async function doImport() {
-  if (!lastRecords || !lastRecords.size) {
-    await doPreview();
-    if (!lastRecords || !lastRecords.size) return;
-  }
-
-  $("btnImport").disabled = true;
-  $("btnPreview").disabled = true;
-
-  const dates = Array.from(lastRecords.keys());
-  let ok = 0, fail = 0;
-
-  try {
-    for (const iso of dates) {
-      const rec = lastRecords.get(iso);
-      try {
-        await safeUpsertAsignacion(iso, rec);
-        ok++;
-      } catch (e) {
-        console.error("Fallo importando", iso, e);
-        fail++;
-      }
+  let ok=0, fail=0;
+  for(const r of previewRows){
+    try{
+      await mergeAsignacion(r.dateKey, r.patch);
+      ok++;
+    }catch(e){
+      console.error("Error importando", r.dateKey, e);
+      fail++;
     }
-  } finally {
-    $("btnImport").disabled = false;
-    $("btnPreview").disabled = false;
   }
-
-  toast(`Importación terminada. OK: ${ok} · Fallos: ${fail}.`);
-  if (lastMissing?.size) {
-    toast(`Recordatorio: faltan ${lastMissing.size} nombre(s) en Personas. Cargalos y volvé a importar (no pisa lo ya cargado).`, true);
-  }
+  if(fail===0) toast(`Importación terminada: ${ok} semanas actualizadas.`);
+  else toast(`Importación con errores: OK ${ok}, fallaron ${fail}. Mirá la consola.`, true);
 }
 
-(async function () {
-  try {
-    await requireActiveAdmin("importar");
+// ---------- main ----------
+(async function(){
+  await requireActiveUser("importar");
 
-    // Verificar XLSX
-    if (typeof XLSX === "undefined") {
-      toast("No se cargó la librería XLSX (SheetJS). Si usás bloqueador (uBlock, Brave Shields), permití cdn.sheetjs.com.", true);
-      return;
-    }
+  const fileInput = $("file");
+  const sheetSel = $("sheet");
 
-    ctx = await loadPersonasIndex();
-
-    $("btnPreview")?.addEventListener("click", async () => {
-      try { await doPreview(); } catch (e) { console.error(e); toast("Error en vista previa: " + (e?.message || e), true); }
+  function setSheets(){
+    if(!sheetSel) return;
+    sheetSel.innerHTML = "";
+    (workbook?.SheetNames || []).forEach(n=>{
+      const opt=document.createElement("option");
+      opt.value=n; opt.textContent=n;
+      sheetSel.appendChild(opt);
     });
-    $("btnImport")?.addEventListener("click", async () => {
-      try { await doImport(); } catch (e) { console.error(e); toast("Error al importar: " + (e?.message || e), true); }
-    });
-
-$("btnExport")?.addEventListener("click", async () => {
-  try { await doExport(); } catch (e) { console.error(e); toast("Error al exportar: " + (e?.message || e), true); }
-});
-
-
-    $("file")?.addEventListener("change", async (e) => {
-      try {
-        const f = e.target?.files?.[0];
-        if (f) await handleFile(f);
-      } catch (e2) {
-        console.error(e2);
-        toast("Error al leer el archivo: " + (e2?.message || e2), true);
-      }
-    });
-
-    toast("Subí tu Asignaciones.xlsx y tocá 'Vista previa'. Luego 'Importar a Firestore'.");
-  } catch (e) {
-    console.error(e);
-    toast("Error al iniciar Importar: " + (e?.message || e), true);
+    // sugerido
+    const pref = workbook?.SheetNames?.includes("Programa") ? "Programa" : (workbook?.SheetNames?.[0] || "");
+    if(pref) sheetSel.value=pref;
   }
+
+  fileInput?.addEventListener("change", async ()=>{
+    try{
+      const f = fileInput.files?.[0];
+      if(!f) return;
+      if(typeof XLSX === "undefined"){
+        toast("No se cargó la librería XLSX (SheetJS). Probá desactivar bloqueador/Brave Shields para este sitio.", true);
+        return;
+      }
+      const buf = await f.arrayBuffer();
+      workbook = XLSX.read(buf, { type:"array", cellDates:true });
+      setSheets();
+      previewRows = [];
+      fillPreviewTable();
+      toast(`Excel cargado: ${f.name}`);
+    }catch(e){
+      console.error(e);
+      toast(`Error leyendo Excel: ${e.message || e}`, true);
+    }
+  });
+
+  $("btnPreview")?.addEventListener("click", async ()=>{
+    try{
+      await buildPreview();
+    }catch(e){
+      console.error(e);
+      toast(e.message || String(e), true);
+    }
+  });
+
+  $("btnImport")?.addEventListener("click", async ()=>{
+    try{
+      await importToFirestore();
+    }catch(e){
+      console.error(e);
+      toast(e.message || String(e), true);
+    }
+  });
 })();

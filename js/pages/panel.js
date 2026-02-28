@@ -1,6 +1,7 @@
 import { auth, db } from "../firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { renderTopbar } from "../shared/topbar.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -16,28 +17,6 @@ async function getUsuario(uid){
   return snap.exists() ? snap.data() : null;
 }
 
-function renderTopbar(active){
-  const el = document.getElementById("topbar");
-  if(!el) return;
-  el.innerHTML = `
-    <div class="topbar">
-      <div class="brand">Villa Fiad</div>
-      <div class="links">
-        <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
-        <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
-        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
-        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
-        <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
-        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
-        <button id="btnSalir" class="btn danger" type="button">Salir</button>
-      </div>
-    </div>
-  `;
-  document.getElementById("btnSalir")?.addEventListener("click", async ()=>{
-    await signOut(auth);
-    window.location.href = "index.html";
-  });
-}
 
 function ensureTopbarStyles(){
   if(document.getElementById("topbarStyle")) return;
