@@ -146,6 +146,60 @@ function hasAnciano(persona) {
 
 // ---------------- Data ----------------
 let personas = []; // {id, nombre, roles, activo, ...}
+let usuarioRol = "";
+let isAdmin = true;
+const candidates = {
+  multimedia: [],
+  plataforma: [],
+  acomodadores: [],
+};
+
+async function getUsuario(uid){
+  try{
+    const snap = await getDoc(doc(db,"usuarios",uid));
+    return snap.exists() ? snap.data() : null;
+  }catch(e){
+    console.error(e);
+    return null;
+  }
+}
+
+function isAdminRole(rol){
+  const r = String(rol||"").toLowerCase();
+  return r === "admin" || r === "superadmin";
+}
+
+function applyReadOnlyMode(){
+  if(isAdmin) return;
+  setStatus("Modo solo lectura: podés ver e imprimir, pero no modificar asignaciones.");
+
+  // Botones que NO deberían usarse en modo usuario
+  [
+    "btnGuardar","btnLimpiar","btnCopiarAnterior",
+    "btnGuardarMes"
+  ].forEach(id=>{
+    const b = $(id);
+    if(b) b.disabled = true;
+  });
+
+  // Deshabilita campos editables
+  const disableIds = [
+    "presidente","cancionNumero","oracionInicial","oradorPublico","congregacionVisitante",
+    "tituloDiscurso","tituloSiguienteSemana","conductorAtalaya","lectorAtalaya",
+    "multimedia1","multimedia2","plataforma","acomodadorEntrada","acomodadorAuditorio",
+    "microfonista1","microfonista2","oracionFinal",
+    // mensuales
+    "mes","mesSemana","mesPlataforma","mesAcomodadorEntrada","mesAcomodadorAuditorio",
+    "mesMultimedia1","mesMultimedia2","mesMicrofonista1","mesMicrofonista2"
+  ];
+  disableIds.forEach(id=>{ const el = $(id); if(el) el.disabled = true; });
+
+  // Botones sugerir
+  [
+    "btnSugerirConductor","btnSugMultimedia1","btnSugMultimedia2","btnSugPlataforma",
+    "btnSugAcomEntrada","btnSugAcomAuditorio"
+  ].forEach(id=>{ const b = $(id); if(b) b.disabled = true; });
+}
 
 // ---------------- Asignaciones mensuales (tablero) ----------------
 const COL_MES = "asignaciones_mensuales";
@@ -471,6 +525,11 @@ function poblarSelects() {
   const microfonistas = getMicrofonistas(personas);
   const lectoresAtalaya = getLectoresAtalaya(personas);
 
+  // cache de candidatos (para sugerencias/rotación)
+  candidates.multimedia = (multimedia || []).map(p=>p.id);
+  candidates.plataforma = (plataforma || []).map(p=>p.id);
+  candidates.acomodadores = (acomodadores || []).map(p=>p.id);
+
   const byIds = (arr) => {
     const set = new Set((arr || []).map((p) => p.id));
     return (p) => set.has(p.id);
@@ -503,6 +562,31 @@ function poblarSelects() {
 
   fillSelect("mesMicrofonista1", byIds(microfonistas));
   fillSelect("mesMicrofonista2", byIds(microfonistas));
+}
+
+// ---------------- Rotación / sugerencias ----------------
+function nextFromRotation(key, ids){
+  const list = Array.isArray(ids) ? ids.filter(Boolean) : [];
+  if(list.length === 0) return "";
+  const k = `rot_${key}`;
+  const idx0 = parseInt(localStorage.getItem(k) || "0", 10);
+  const idx = Number.isFinite(idx0) ? idx0 : 0;
+  const chosen = list[idx % list.length];
+  localStorage.setItem(k, String((idx + 1) % list.length));
+  return chosen;
+}
+
+function suggestSelect(selectId, key, ids){
+  if(!isAdmin) return;
+  const sel = $(selectId);
+  if(!sel) return;
+  const current = sel.value;
+  let chosen = nextFromRotation(key, ids);
+  // evita sugerir el mismo si hay más de 1
+  if(chosen && chosen === current && (ids||[]).length > 1){
+    chosen = nextFromRotation(key, ids);
+  }
+  if(chosen) sel.value = chosen;
 }
 
 // ---------------- Autocompletado canción y discurso por número ----------------
@@ -805,10 +889,14 @@ async function cargarSemana() {
       const a = data.asignaciones || data;
       hydrateToUI(a);
       await aplicarAutoVisitante(s);
+      // refresca aviso + mensajes
+      try{ await generarAviso(); }catch(_e){}
       setStatus("Datos cargados.");
     } else {
       setStatus("No hay datos guardados para esta semana. Podés cargar y guardar.");
       await aplicarAutoVisitante(s);
+      renderIndividualMessages([]);
+      setAvisoText("");
     }
   } catch (e) {
     console.error(e);
@@ -905,6 +993,109 @@ function buildAvisoSemanal(semanaSatISO, a) {
   return lines.join("\n");
 }
 
+// ---------------- Mensajes individuales ----------------
+function phoneToWa(phone){
+  const raw = String(phone||"").trim();
+  const digits = raw.replace(/\D/g, "");
+  if(!digits) return "";
+  return digits; // wa.me espera solo dígitos, idealmente con código país
+}
+
+function buildIndividualMessages(semanaSatISO, a){
+  const sab = semanaSatISO;
+  const jue = addDaysISO(semanaSatISO, -2);
+
+  const roles = [
+    { key: "plataformaId", label: "Plataforma" },
+    { key: "acomodadorEntradaId", label: "Acomodador (Entrada)" },
+    { key: "acomodadorAuditorioId", label: "Acomodador (Auditorio)" },
+    { key: "multimedia1Id", label: "Multimedia" },
+    { key: "multimedia2Id", label: "Multimedia" },
+  ];
+
+  const perPerson = new Map(); // id -> {nombre, telefono, roles:Set}
+  for(const r of roles){
+    const id = a?.[r.key];
+    if(!id) continue;
+    const p = personas.find(x=>x.id===id);
+    const nombre = p?.nombre || personaNameById(id) || "—";
+    const tel = p?.telefono || "";
+    if(!perPerson.has(id)) perPerson.set(id, { id, nombre, telefono: tel, roles: new Set() });
+    perPerson.get(id).roles.add(r.label);
+  }
+
+  const out = [];
+  for(const item of perPerson.values()){
+    const rolesTxt = Array.from(item.roles).join(" y ");
+    const text = [
+      `Hola ${item.nombre}! 👋`,
+      `Esta semana tenés asignado: *${rolesTxt}*.`,
+      `Jueves ${fmtAR(jue)} (20:00) y Sábado ${fmtAR(sab)} (19:30).`,
+      "Gracias por tu ayuda 🙏"
+    ].join("\n");
+    out.push({ ...item, text, wa: phoneToWa(item.telefono) });
+  }
+  // orden alfabético
+  out.sort((a,b)=>String(a.nombre||"").localeCompare(String(b.nombre||""),"es",{sensitivity:"base"}));
+  return out;
+}
+
+function renderIndividualMessages(list){
+  const host = $("mensajesHost");
+  if(!host) return;
+  if(!list || list.length===0){
+    host.innerHTML = `<div class="small">No hay personas asignadas todavía para generar mensajes.</div>`;
+    return;
+  }
+
+  const cards = list.map((m,i)=>{
+    const waBtn = m.wa ? `<button class="btn" data-wa="${m.wa}" data-idx="${i}">WhatsApp</button>` : `<span class="small">(sin teléfono)</span>`;
+    return `
+      <div class="card" style="border:1px solid #e5e7eb;border-radius:14px;padding:12px;margin:10px 0;background:#fff;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:800;">${m.nombre}</div>
+            <div class="small">${m.telefono ? `Tel: ${m.telefono}` : ""}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn" data-copy="1" data-idx="${i}">Copiar</button>
+            ${waBtn}
+          </div>
+        </div>
+        <textarea style="width:100%;min-height:90px;margin-top:10px;" readonly>${m.text}</textarea>
+      </div>
+    `;
+  }).join("");
+
+  host.innerHTML = cards;
+
+  host.querySelectorAll("button[data-copy]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const idx = parseInt(btn.getAttribute("data-idx"),10);
+      const msg = list[idx]?.text || "";
+      if(!msg) return;
+      try{
+        await navigator.clipboard.writeText(msg);
+        setStatus("Mensaje copiado ✅");
+      }catch(e){
+        console.error(e);
+        setStatus("No pude copiar automáticamente. Copialo manualmente.", true);
+      }
+    });
+  });
+
+  host.querySelectorAll("button[data-wa]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const idx = parseInt(btn.getAttribute("data-idx"),10);
+      const wa = btn.getAttribute("data-wa") || "";
+      const msg = list[idx]?.text || "";
+      if(!wa || !msg) return;
+      const url = `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`;
+      window.open(url, "_blank");
+    });
+  });
+}
+
 function setAvisoText(text) {
   const t = $("avisoText");
   if (t) t.value = text || "";
@@ -919,6 +1110,7 @@ async function generarAviso() {
   const a = formData();
   const msg = buildAvisoSemanal(s, a);
   setAvisoText(msg);
+  renderIndividualMessages(buildIndividualMessages(s, a));
   setStatus("Aviso generado. Podés copiarlo o abrir WhatsApp Web.");
 }
 
@@ -967,9 +1159,14 @@ async function init() {
         window.location.href = "index.html";
         return;
       }
+      const u = await getUsuario(user.uid);
+      usuarioRol = u?.rol || "";
+      isAdmin = isAdminRole(usuarioRol);
       resolve(user);
     });
   });
+
+  applyReadOnlyMode();
 
   $("btnSalir")?.addEventListener("click", async () => {
     await signOut(auth);
@@ -1000,6 +1197,13 @@ async function init() {
   $("btnGenerarAviso")?.addEventListener("click", generarAviso);
   $("btnCopiarAviso")?.addEventListener("click", copiarAviso);
   $("btnWhatsappAviso")?.addEventListener("click", whatsappAviso);
+
+  // Sugerencias / rotación
+  $("btnSugMultimedia1")?.addEventListener("click", ()=>suggestSelect("multimedia1","multimedia", candidates.multimedia));
+  $("btnSugMultimedia2")?.addEventListener("click", ()=>suggestSelect("multimedia2","multimedia", candidates.multimedia));
+  $("btnSugPlataforma")?.addEventListener("click", ()=>suggestSelect("plataforma","plataforma", candidates.plataforma));
+  $("btnSugAcomEntrada")?.addEventListener("click", ()=>suggestSelect("acomodadorEntrada","acomodadores", candidates.acomodadores));
+  $("btnSugAcomAuditorio")?.addEventListener("click", ()=>suggestSelect("acomodadorAuditorio","acomodadores", candidates.acomodadores));
 
   $("btnCargarMes")?.addEventListener("click", cargarMes);
   $("btnGuardarMes")?.addEventListener("click", guardarMes);

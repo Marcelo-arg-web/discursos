@@ -16,23 +16,29 @@ async function getUsuario(uid){
   return snap.exists() ? snap.data() : null;
 }
 
-function renderTopbar(active){
+function isAdminRole(rol){
+  const r = String(rol||"").toLowerCase();
+  return r === "admin" || r === "superadmin";
+}
+
+function renderTopbar(active, rol){
   const el = document.getElementById("topbar");
   if(!el) return;
+  const admin = isAdminRole(rol);
   el.innerHTML = `
     <div class="topbar">
       <div class="brand">Villa Fiad</div>
       <div class="links">
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
-        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
-        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
-        <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
-        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
-        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
-        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Doc Presidente</a>
+        ${admin ? `<a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>` : ``}
+        ${admin ? `<a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>` : ``}
+        ${admin ? `<a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>` : ``}
+        ${admin ? `<a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>` : ``}
+        ${admin ? `<a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>` : ``}
+        ${admin ? `<a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Doc Presidente</a>` : ``}
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
-        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
+        ${admin ? `<a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>` : ``}
         <button id="btnSalir" class="btn danger" type="button">Salir</button>
       </div>
     </div>
@@ -61,7 +67,6 @@ function ensureTopbarStyles(){
 
 async function requireActiveUser(activePage){
   ensureTopbarStyles();
-  renderTopbar(activePage);
 
   return new Promise((resolve)=>{
     onAuthStateChanged(auth, async (user)=>{
@@ -72,6 +77,7 @@ async function requireActiveUser(activePage){
         window.location.href="index.html";
         return;
       }
+      renderTopbar(activePage, u?.rol);
       resolve({ user, usuario:u });
     });
   });

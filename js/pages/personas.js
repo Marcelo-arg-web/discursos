@@ -16,23 +16,29 @@ async function getUsuario(uid){
   return snap.exists() ? snap.data() : null;
 }
 
-function renderTopbar(active){
+function isAdminRole(rol){
+  const r = String(rol||"").toLowerCase();
+  return r === "admin" || r === "superadmin";
+}
+
+function renderTopbar(active, rol){
   const el = document.getElementById("topbar");
   if(!el) return;
+  const admin = isAdminRole(rol);
   el.innerHTML = `
     <div class="topbar">
       <div class="brand">Villa Fiad</div>
       <div class="links">
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
-        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
-        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
-        <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
-        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
-        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
-        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Doc Presidente</a>
+        ${admin ? `<a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>` : ``}
+        ${admin ? `<a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>` : ``}
+        ${admin ? `<a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>` : ``}
+        ${admin ? `<a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>` : ``}
+        ${admin ? `<a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>` : ``}
+        ${admin ? `<a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Doc Presidente</a>` : ``}
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
-        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
+        ${admin ? `<a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>` : ``}
         <button id="btnSalir" class="btn danger" type="button">Salir</button>
       </div>
     </div>
@@ -61,8 +67,6 @@ function ensureTopbarStyles(){
 
 async function requireActiveUser(activePage){
   ensureTopbarStyles();
-  renderTopbar(activePage);
-
   return new Promise((resolve)=>{
     onAuthStateChanged(auth, async (user)=>{
       if(!user){ window.location.href="index.html"; return; }
@@ -72,10 +76,13 @@ async function requireActiveUser(activePage){
         window.location.href="index.html";
         return;
       }
+      renderTopbar(activePage, u?.rol);
       resolve({ user, usuario:u });
     });
   });
-}import {
+}
+
+import {
   collection,
   getDocs,
   addDoc,
@@ -88,6 +95,7 @@ async function requireActiveUser(activePage){
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 let cache = []; // {id, nombre, telefono, roles[], activo}
+let IS_ADMIN = false;
 
 function parseRoles(raw){
   return (raw || "")
@@ -120,14 +128,17 @@ function render(){
       <td>${p.nombre || ""}${p.activo===false ? ' <span class="pill" style="background:#fff1f2;border-color:#fecdd3;color:#9f1239">inactivo</span>' : ""}</td>
       <td>${p.telefono || ""}</td>
       <td class="small">${(p.roles||[]).join(", ")}</td>
-      <td class="no-print">
-        <button class="btn" data-act="edit" data-id="${p.id}">Editar</button>
-        <button class="btn" data-act="toggle" data-id="${p.id}">${p.activo===false ? "Activar" : "Desactivar"}</button>
-      </td>
+      ${IS_ADMIN ? `
+        <td class="no-print">
+          <button class="btn" data-act="edit" data-id="${p.id}">Editar</button>
+          <button class="btn" data-act="toggle" data-id="${p.id}">${p.activo===false ? "Activar" : "Desactivar"}</button>
+        </td>
+      ` : ``}
     `;
     tbody.appendChild(tr);
   }
 
+  if(!IS_ADMIN) return;
   tbody.querySelectorAll("button[data-act]").forEach(btn=>{
     btn.addEventListener("click", async ()=>{
       const id = btn.getAttribute("data-id");
@@ -201,7 +212,9 @@ async function guardar(){
 }
 
 (async function(){
-  await requireActiveUser("personas");
+  const { usuario } = await requireActiveUser("personas");
+  const admin = isAdminRole(usuario?.rol);
+  IS_ADMIN = admin;
 
   // hidden id for editing
   if(!document.getElementById("p_id")){
@@ -210,8 +223,20 @@ async function guardar(){
     document.body.appendChild(hid);
   }
 
-  document.getElementById("btnGuardar")?.addEventListener("click", guardar);
-  document.getElementById("btnLimpiar")?.addEventListener("click", ()=>{ limpiar(); toast("Formulario limpio."); });
+  if(admin){
+    document.getElementById("btnGuardar")?.addEventListener("click", guardar);
+    document.getElementById("btnLimpiar")?.addEventListener("click", ()=>{ limpiar(); toast("Formulario limpio."); });
+  }else{
+    toast("Modo solo lectura: no podés editar Personas.");
+    const b1 = document.getElementById("btnGuardar");
+    const b2 = document.getElementById("btnLimpiar");
+    if(b1) b1.disabled = true;
+    if(b2) b2.disabled = true;
+    ["p_nombre","p_tel","p_roles"].forEach(id=>{ const el = document.getElementById(id); if(el) el.disabled = true; });
+    // Oculta la columna de acciones
+    const ths = document.querySelectorAll("#tbl thead th");
+    if(ths && ths.length) ths[ths.length-1].style.display = "none";
+  }
 
   document.getElementById("q")?.addEventListener("input", render);
   document.getElementById("filtroRol")?.addEventListener("change", render);

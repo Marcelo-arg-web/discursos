@@ -299,14 +299,17 @@
         <div>
           <label for="multimedia1">Multimedia 1</label>
           <select id="multimedia1"></select>
+          <div class="row"><button class="btn" id="btnSugMultimedia1" type="button">Sugerir</button></div>
         </div>
         <div>
           <label for="multimedia2">Multimedia 2</label>
           <select id="multimedia2"></select>
+          <div class="row"><button class="btn" id="btnSugMultimedia2" type="button">Sugerir</button></div>
         </div>
         <div>
           <label for="plataforma">Plataforma</label>
           <select id="plataforma"></select>
+          <div class="row"><button class="btn" id="btnSugPlataforma" type="button">Sugerir</button></div>
         </div>
       </div>
     </div>
@@ -317,10 +320,12 @@
 <div>
           <label for="acomodadorEntrada">Acomodador entrada</label>
           <select id="acomodadorEntrada"></select>
+          <div class="row"><button class="btn" id="btnSugAcomEntrada" type="button">Sugerir</button></div>
         </div>
         <div>
           <label for="acomodadorAuditorio">Acomodador auditorio</label>
           <select id="acomodadorAuditorio"></select>
+          <div class="row"><button class="btn" id="btnSugAcomAuditorio" type="button">Sugerir</button></div>
         </div>
       </div>
     </div>
@@ -367,6 +372,14 @@
       </p>
       <textarea id="avisoText" placeholder="Acá aparecerá el aviso…" style="width:100%; min-height:120px;"></textarea>
       <div class="small">Tip: en “Semana”, elegí el sábado de esa semana para que el jueves y sábado queden bien.</div>
+    </div>
+
+    <div class="section">
+      <h2>Mensajes individuales (por persona)</h2>
+      <p class="sub" style="margin:-6px 0 12px 0;">
+        Genera mensajes listos para copiar/WhatsApp para cada hermano asignado (acomodadores, plataforma y multimedia).
+      </p>
+      <div id="mensajesHost" class="no-print"></div>
     </div>
 
     <div class="section">
