@@ -141,10 +141,13 @@ async function loadPersonasIndex() {
   const personas = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }))
     .filter(p => p.activo !== false);
 
+  const byId = new Map(); // id->nombre
+
   const exact = new Map(); // norm(nombre)->id
   const tokensIndex = [];  // {id, tokens[]}
 
   for (const p of personas) {
+    if (p.id && p.nombre) byId.set(p.id, String(p.nombre));
     const n = normName(p.nombre);
     if (!n) continue;
     if (!exact.has(n)) exact.set(n, p.id);
@@ -172,7 +175,9 @@ async function loadPersonasIndex() {
     return "";
   }
 
-  return { resolveIdByName, personasCount: personas.length };
+  function nameById(id){ return byId.get(id) || ""; }
+
+  return { resolveIdByName, nameById, personasCount: personas.length };
 }
 
 // --------- Parse del Excel de Marcelo ---------
@@ -300,6 +305,77 @@ function parseMultimedia(sheetRows) {
 }
 
 // --------- Merge final y escritura ---------
+
+
+function parseAsignacionesEditable(rows){
+  // Hoja "Asignaciones" exportada desde la base.
+  // Columnas esperadas (por nombres):
+  // semana, presidente, oracionInicial, oracionFinal, discursoOrador, discursoCongregacion, discursoTitulo,
+  // atalayaConductor, atalayaLector, plataforma, entrada, auditorio, microfonista1, microfonista2, multimedia1, multimedia2
+  const programa = new Map();
+  const acomodadores = new Map();
+  const multimedia = new Map();
+
+  for(const r of rows){
+    const semanaRaw = r.semana ?? r.Semana ?? r.fecha ?? r.Fecha;
+    const iso = normalizeAnyDateToISO(semanaRaw);
+    if(!iso) continue;
+
+    programa.set(iso, {
+      presidenteNombre: r.presidente ?? "",
+      oracionNombre: (r.oracionInicial ?? r.oracion ?? "") || (r.oracionFinal ?? "") || "",
+      conductorAtalayaNombre: r.atalayaConductor ?? "",
+      lectorAtalayaNombre: r.atalayaLector ?? "",
+      oradorPublico: r.discursoOrador ?? "",
+      congregacionVisitante: r.discursoCongregacion ?? "",
+      tituloDiscurso: r.discursoTitulo ?? ""
+    });
+
+    acomodadores.set(iso, {
+      acomodadorEntradaNombre: r.entrada ?? "",
+      acomodadorAuditorioNombre: r.auditorio ?? ""
+    });
+
+    multimedia.set(iso, {
+      multimedia1Nombre: r.multimedia1 ?? "",
+      plataformaNombre: r.plataforma ?? "",
+      microfonista1Nombre: r.microfonista1 ?? "",
+      // si vienen segundos:
+      multimedia2Nombre: r.multimedia2 ?? "",
+      microfonista2Nombre: r.microfonista2 ?? ""
+    });
+  }
+
+  return { programa, acomodadores, multimedia };
+}
+
+function normalizeAnyDateToISO(v){
+(v){
+  // Acepta: Date, string 'YYYY-MM-DD', string 'DD/MM', etc (en export solo usamos YYYY-MM-DD).
+  if(!v) return null;
+  if(v instanceof Date && !isNaN(v)) return toISO(v);
+  if(typeof v === "number"){
+    // Excel date serial
+    try{
+      const d = XLSX.SSF.parse_date_code(v);
+      if(d && d.y && d.m && d.d){
+        return `${String(d.y).padStart(4,"0")}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`;
+      }
+    }catch(_){}
+  }
+  if(typeof v === "string"){
+    const s = v.trim();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    // intenta DD/MM/YYYY
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(m){
+      const dd = m[1].padStart(2,"0"), mm = m[2].padStart(2,"0"), yy = m[3];
+      return `${yy}-${mm}-${dd}`;
+    }
+  }
+  return null;
+}
+
 function buildMergedRecords({ programa, acomodadores, multimedia }, resolver) {
   // arma Map<iso, asignacionesFinal>
   const allDates = new Set([
@@ -431,7 +507,21 @@ async function handleFile(file) {
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array", cellDates: true });
 
-  // Hojas esperadas
+  // Si existe la hoja "Asignaciones", es el Excel editable exportado desde la base.
+const rowsAsign = readSheetRows(wb, "Asignaciones");
+if (rowsAsign) {
+  if (!ctx) ctx = await loadPersonasIndex();
+  const maps = parseAsignacionesEditable(rowsAsign);
+  const { records, missing } = buildMergedRecords(maps, ctx);
+  lastRecords = records;
+  lastMissing = missing;
+  renderPreview(records, missing);
+  toast(`Listo: ${records.size} semana(s) detectada(s) desde la hoja "Asignaciones".`);
+  return;
+}
+
+
+  // Hojas esperadas (tu Asignaciones.xlsx original)
   const rowsPrograma = readSheetRows(wb, "Programa");
   const rowsAcomod = readSheetRows(wb, "Acomodadores");
   const rowsMulti = readSheetRows(wb, "Multimedia");
@@ -465,6 +555,76 @@ async function handleFile(file) {
     const top = Array.from(missing.entries()).slice(0, 8).map(([n, c]) => `${n} (${c})`).join(" · ");
     toast(`Ojo: faltan ${missing.size} nombre(s) en Personas. Ej: ${top}`, true);
   }
+}
+
+
+
+async function doExport() {
+  if (typeof XLSX === "undefined") {
+    toast("No se cargó la librería XLSX (SheetJS).", true);
+    return;
+  }
+  if (!ctx) ctx = await loadPersonasIndex();
+
+  const desde = $("desde")?.value || null;
+  const hasta = $("hasta")?.value || null;
+
+  toast("Leyendo asignaciones desde la base…");
+
+  const snap = await getDocs(collection(db, "asignaciones"));
+  const rows = [];
+
+  const nm = (id) => id ? (ctx.nameById(id) || "") : "";
+
+  snap.forEach(d => {
+    const iso = d.id; // esperamos YYYY-MM-DD
+    if (desde && iso < desde) return;
+    if (hasta && iso > hasta) return;
+
+    const data = d.data();
+    const a = data.asignaciones || data;
+
+    rows.push({
+      semana: iso,
+      presidente: nm(a.presidenteId),
+      oracionInicial: nm(a.oracionInicialId),
+      oracionFinal: nm(a.oracionFinalId),
+      discursoOrador: (a.oradorPublico || "").toString(),
+      discursoCongregacion: (a.congregacionVisitante || "").toString(),
+      discursoTitulo: (a.tituloDiscurso || "").toString(),
+      atalayaConductor: nm(a.conductorAtalayaId),
+      atalayaLector: nm(a.lectorAtalayaId),
+      plataforma: nm(a.plataformaId),
+      entrada: nm(a.acomodadorEntradaId),
+      auditorio: nm(a.acomodadorAuditorioId),
+      microfonista1: nm(a.microfonista1Id),
+      microfonista2: nm(a.microfonista2Id),
+      multimedia1: nm(a.multimedia1Id),
+      multimedia2: nm(a.multimedia2Id)
+    });
+  });
+
+  rows.sort((x, y) => (x.semana || "").localeCompare(y.semana || ""));
+
+  if (!rows.length) {
+    toast("No se encontraron asignaciones en ese rango.", true);
+    return;
+  }
+
+  const ws = XLSX.utils.json_to_sheet(rows, { header: [
+    "semana","presidente","oracionInicial","oracionFinal",
+    "discursoOrador","discursoCongregacion","discursoTitulo",
+    "atalayaConductor","atalayaLector",
+    "plataforma","entrada","auditorio",
+    "microfonista1","microfonista2","multimedia1","multimedia2"
+  ]});
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Asignaciones");
+
+  const fname = `Asignaciones_editable_${(desde || "todo")}_a_${(hasta || "todo")}.xlsx`.replaceAll(":", "-");
+  XLSX.writeFile(wb, fname);
+
+  toast(`Descargado: ${rows.length} semana(s) en ${fname}`);
 }
 
 async function doPreview() {
@@ -525,6 +685,11 @@ async function doImport() {
     $("btnImport")?.addEventListener("click", async () => {
       try { await doImport(); } catch (e) { console.error(e); toast("Error al importar: " + (e?.message || e), true); }
     });
+
+$("btnExport")?.addEventListener("click", async () => {
+  try { await doExport(); } catch (e) { console.error(e); toast("Error al exportar: " + (e?.message || e), true); }
+});
+
 
     $("file")?.addEventListener("change", async (e) => {
       try {
