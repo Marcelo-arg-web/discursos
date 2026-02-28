@@ -931,22 +931,80 @@ function pickNextFrom(list, storageKey){
 function sugerirPresidente(){
   if(!window.__personasCache) return;
   const anc = getAncianos(window.__personasCache) || [];
-  const excl = new Set([normName("Marcelo Palavecino")]);
-  const conductor = normName(getVal("conductorAtalaya"));
-  if(conductor) excl.add(conductor);
 
-  const candidatos = anc
-    .map(p=>p.nombre)
-    .filter(n=>n && !excl.has(normName(n)));
+  const exclNames = new Set([normName("Marcelo Palavecino")]);
+  const conductorId = getVal("conductorAtalaya");
+  const oracionInicialId = getVal("oracionInicial");
 
-  const elegido = pickNextFrom(candidatos, "vf_last_presidente_idx");
-  if(elegido) setVal("presidente", elegido);
+  const candidatos = anc.filter(p=>{
+    if(!p) return false;
+    const n = normName(p.nombre || "");
+    if(!n) return false;
+    if(exclNames.has(n)) return false;
+    if(conductorId && p.id === conductorId) return false;
+    if(oracionInicialId && p.id === oracionInicialId) return false; // presidente distinto de oración inicial
+    return true;
+  });
+
+  const elegidoId = pickNextFrom(candidatos.map(p=>p.id), "vf_last_presidente_idx");
+  if(elegidoId) setVal("presidente", elegidoId);
+
+  // Ajusta oración inicial si quedó igual al presidente
+  autoOracionInicialIfNeeded();
+  autoOracionFinal();
 }
+
 
 function autoPresidenteIfNeeded(){
   if(getVal("presidente").trim()) return;
   sugerirPresidente();
 }
+
+function sugerirOracionInicial(){
+  if(!window.__personasCache) return;
+  const pool = (getAncianosOSiervos(window.__personasCache) || []);
+  const presidenteId = getVal("presidente");
+  const candidatos = pool
+    .filter(p=>p && p.id && p.nombre)
+    .filter(p=>!presidenteId || p.id !== presidenteId);
+
+  const elegidoId = pickNextFrom(candidatos.map(p=>p.id), "vf_last_oracion_inicial_idx");
+  if(elegidoId) setVal("oracionInicial", elegidoId);
+}
+
+function autoOracionInicialIfNeeded(){
+  const pres = getVal("presidente");
+  const oi = getVal("oracionInicial");
+  // Si está vacía, sugerimos
+  if(!oi){
+    return sugerirOracionInicial();
+  }
+  // Si quedó igual al presidente, forzamos que sea distinta
+  if(pres && oi && pres === oi){
+    setVal("oracionInicial", "");
+    return sugerirOracionInicial();
+  }
+}
+
+function autoOracionFinal(){
+  const visitante = (getVal("oradorPublico") || "").trim();
+  const cur = getVal("oracionFinal");
+  const pres = getVal("presidente");
+
+  // Si hay visitante: por defecto la hace el orador (si está vacío o si estaba presidente)
+  if(visitante){
+    if(!cur || (pres && cur === pres)){
+      setVal("oracionFinal", "__VISITANTE__");
+    }
+    return;
+  }
+
+  // Si NO hay visitante: si estaba marcado "visitante", vuelve a presidente
+  if(cur === "__VISITANTE__" || !cur){
+    if(pres) setVal("oracionFinal", pres);
+  }
+}
+
 // ---------------- Guardar / cargar ----------------
 function semanaISO() {
   return (getVal("semana") || "").trim();
@@ -1064,6 +1122,11 @@ function validateRequired() {
   if (missing.length) {
     return "Faltan campos: " + missing.map((m) => m.label).join(", ") + ".";
   }
+    const pres = getVal("presidente");
+  const oi = getVal("oracionInicial");
+  if (pres && oi && pres === oi) {
+    return "La oración inicial debe ser distinta del presidente.";
+  }
   return "";
 }
 
@@ -1120,6 +1183,8 @@ async function cargarSemana() {
 async function guardar() {
   const s = semanaISO();
   if (!s) return setStatus("Elegí una semana (fecha).", true);
+
+  autoOracionFinal();
 
   const miss = validateRequired();
   if (miss) return setStatus(miss, true);
@@ -1407,6 +1472,14 @@ async function init() {
   try {
     await cargarPersonas();
     poblarSelects();
+  // Mantener reglas de oraciones
+  const presEl = $("presidente");
+  if (presEl) presEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); autoOracionFinal(); });
+  const oiEl = $("oracionInicial");
+  if (oiEl) oiEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); });
+  const oradorEl = $("oradorPublico");
+  if (oradorEl) oradorEl.addEventListener("input", () => { autoOracionFinal(); });
+
     await poblarDatalistOradores();
     setStatus("Listo. Elegí una semana y cargá.");
   } catch (e) {
