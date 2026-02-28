@@ -291,3 +291,17 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
 .small{font-size:12px; color:var(--muted); font-weight:600}
 
 .has-topbar{padding-top:72px;}
+
+
+/* --- Enhancements: monthly board workflow --- */
+.hint{
+  font-size: 12px;
+  color: var(--muted, #667085);
+  margin-top: 6px;
+  line-height: 1.25;
+}
+.row.wrap{ flex-wrap: wrap; gap: 8px; }
+.card.inset{
+  background: rgba(0,0,0,.02);
+  border: 1px solid rgba(15,23,42,.10);
+}

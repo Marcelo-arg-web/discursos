@@ -449,6 +449,152 @@ function renderMesPreview(mesISO, docData) {
   `;
 }
 
+// --------------------
+// Sugerencias equitativas (mensual, por semana)
+// --------------------
+function monthUsageCounts(m) {
+  const counts = {}; // counts[personaId] = { total: n, roles: { roleKey:n } }
+  const semanas = (m && m.semanas) ? m.semanas : {};
+  Object.values(semanas).forEach((w) => {
+    if (!w) return;
+    const entries = [
+      ["plataforma", w.plataformaId],
+      ["acomodadorEntrada", w.acomodadorEntradaId],
+      ["acomodadorAuditorio", w.acomodadorAuditorioId],
+      ["multimedia", w.multimedia1Id],
+      ["multimedia", w.multimedia2Id],
+      ["microfonista", w.microfonista1Id],
+      ["microfonista", w.microfonista2Id],
+    ];
+    entries.forEach(([roleKey, pid]) => {
+      if (!pid) return;
+      if (!counts[pid]) counts[pid] = { total: 0, roles: {} };
+      counts[pid].total += 1;
+      counts[pid].roles[roleKey] = (counts[pid].roles[roleKey] || 0) + 1;
+    });
+  });
+  return counts;
+}
+
+function pickFairCandidate(candidateIds, counts, roleKey, usedThisWeek) {
+  const list = (candidateIds || []).filter(Boolean).filter((id) => !usedThisWeek.has(id));
+  if (list.length === 0) return "";
+  // Orden: menos total en el mes, luego menos veces en ese rol, luego rotación local (último uso)
+  const lastUsedKey = (id) => `lastUsed_${roleKey}_${id}`;
+  const getLastUsed = (id) => parseInt(localStorage.getItem(lastUsedKey(id)) || "0", 10);
+
+  list.sort((a, b) => {
+    const ca = counts[a] || { total: 0, roles: {} };
+    const cb = counts[b] || { total: 0, roles: {} };
+    const ta = ca.total || 0, tb = cb.total || 0;
+    if (ta !== tb) return ta - tb;
+    const ra = (ca.roles && ca.roles[roleKey]) ? ca.roles[roleKey] : 0;
+    const rb = (cb.roles && cb.roles[roleKey]) ? cb.roles[roleKey] : 0;
+    if (ra !== rb) return ra - rb;
+    return getLastUsed(a) - getLastUsed(b);
+  });
+
+  return list[0] || "";
+}
+
+function markLastUsed(roleKey, personaId) {
+  if (!personaId) return;
+  localStorage.setItem(`lastUsed_${roleKey}_${personaId}`, String(Date.now()));
+}
+
+function applyMesWeekSuggestion(targetWeekKey) {
+  // Usa lo ya cargado del mes (lastMesDoc) para mantener equidad, y rellena la semana seleccionada.
+  if (!lastMesDoc) lastMesDoc = { semanas: {} };
+  if (!lastMesDoc.semanas) lastMesDoc.semanas = {};
+
+  const counts = monthUsageCounts(lastMesDoc);
+  const used = new Set();
+
+  // Respeta lo ya elegido manualmente: si ya hay valores, se toman como "usados"
+  const current = formMesData();
+  Object.values(current).forEach((pid) => pid && used.add(pid));
+
+  const platforma = getVal("mesPlataforma") || pickFairCandidate(candidates.plataforma, counts, "plataforma", used);
+  used.add(platforma);
+
+  const acomEnt = getVal("mesAcomodadorEntrada") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorEntrada", used);
+  used.add(acomEnt);
+
+  const acomAud = getVal("mesAcomodadorAuditorio") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio", used);
+  used.add(acomAud);
+
+  const mm1 = getVal("mesMultimedia1") || pickFairCandidate(candidates.multimedia, counts, "multimedia", used);
+  used.add(mm1);
+
+  const mm2 = getVal("mesMultimedia2") || pickFairCandidate(candidates.multimedia, counts, "multimedia", used);
+  used.add(mm2);
+
+  const mic1 = getVal("mesMicrofonista1") || pickFairCandidate(candidates.microfonistas, counts, "microfonista", used);
+  used.add(mic1);
+
+  const mic2 = getVal("mesMicrofonista2") || pickFairCandidate(candidates.microfonistas, counts, "microfonista", used);
+  used.add(mic2);
+
+  // Asigna al UI
+  [
+    ["mesPlataforma", platforma],
+    ["mesAcomodadorEntrada", acomEnt],
+    ["mesAcomodadorAuditorio", acomAud],
+    ["mesMultimedia1", mm1],
+    ["mesMultimedia2", mm2],
+    ["mesMicrofonista1", mic1],
+    ["mesMicrofonista2", mic2],
+  ].forEach(([sid, pid]) => {
+    ensureOptionById(sid, pid);
+    setVal(sid, pid || "");
+  });
+
+  // Guarda en memoria (no en Firestore aún)
+  const wk = targetWeekKey || currentMesSemana();
+  lastMesDoc.semanas[wk] = formMesData();
+
+  // Marca uso para el criterio de desempate local
+  markLastUsed("plataforma", platforma);
+  markLastUsed("acomodadorEntrada", acomEnt);
+  markLastUsed("acomodadorAuditorio", acomAud);
+  markLastUsed("multimedia", mm1);
+  markLastUsed("multimedia", mm2);
+  markLastUsed("microfonista", mic1);
+  markLastUsed("microfonista", mic2);
+}
+
+function sugerirSemanaEquitativa() {
+  const mesISO = (getVal("mes") || "").trim();
+  if (!mesISO) return setStatus("Elegí un mes primero.", true);
+  applyMesWeekSuggestion(currentMesSemana());
+  renderMesPreview(mesISO, lastMesDoc);
+  setStatus("Sugerencia aplicada a la semana seleccionada. Ajustá si hace falta y guardá.");
+}
+
+function sugerirMesCompleto() {
+  const mesISO = (getVal("mes") || "").trim();
+  if (!mesISO) return setStatus("Elegí un mes primero.", true);
+  // genera sugerencias para todas las semanas del mes
+  const sel = $("mesSemana");
+  if (!sel) return;
+  const weeks = Array.from(sel.options).map((o) => String(o.value)).filter(Boolean);
+  if (!lastMesDoc) lastMesDoc = { semanas: {} };
+  if (!lastMesDoc.semanas) lastMesDoc.semanas = {};
+
+  const prevWeek = currentMesSemana();
+  weeks.forEach((wk) => {
+    // cambia selección para que hydrate/sets funcionen coherentemente
+    setVal("mesSemana", wk);
+    hydrateMesToUI(lastMesDoc); // carga si ya existía
+    applyMesWeekSuggestion(wk); // sugiere completando faltantes sin pisar lo ya elegido
+  });
+  setVal("mesSemana", prevWeek);
+  hydrateMesToUI(lastMesDoc);
+
+  renderMesPreview(mesISO, lastMesDoc);
+  setStatus("Sugerencias generadas para todo el mes. Revisá semana por semana y guardá cada una.");
+}
+
 async function cargarMes() {
   const mesISO = (getVal("mes") || "").trim();
   if (!mesISO) return setStatus("Elegí un mes.", true);
@@ -1241,6 +1387,8 @@ async function init() {
   $("btnCargarMes")?.addEventListener("click", cargarMes);
   $("btnGuardarMes")?.addEventListener("click", guardarMes);
   $("btnImprimirMes")?.addEventListener("click", imprimirMes);
+  $("btnSugerirSemana")?.addEventListener("click", sugerirSemanaEquitativa);
+  $("btnSugerirMes")?.addEventListener("click", sugerirMesCompleto);
 
   $("mes")?.addEventListener("change", () => {
     const mesISO = (getVal("mes") || "").trim();
