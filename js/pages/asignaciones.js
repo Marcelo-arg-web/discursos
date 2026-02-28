@@ -104,6 +104,58 @@ let personas = []; // {id, nombre, roles, activo, ...}
 
 // ---------------- Asignaciones mensuales (tablero) ----------------
 const COL_MES = "asignaciones_mensuales";
+let lastMesDoc = null; // cache del último doc mensual cargado
+
+function monthParts(mesISO){
+  const [yS,mS] = String(mesISO||"").split("-");
+  const y = parseInt(yS,10);
+  const m = parseInt(mS,10);
+  if(!Number.isFinite(y) || !Number.isFinite(m)) return null;
+  return { y, m };
+}
+
+function saturdaysInMonth(mesISO){
+  const p = monthParts(mesISO);
+  if(!p) return [];
+  const {y,m} = p;
+  const d = new Date(y, m-1, 1);
+  const out = [];
+  while(d.getMonth() === (m-1)){
+    if(d.getDay() === 6){
+      const mm = String(m).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      out.push(`${y}-${mm}-${dd}`);
+    }
+    d.setDate(d.getDate()+1);
+  }
+  return out;
+}
+
+function renderMesSemanaOptions(mesISO){
+  const sel = $("mesSemana");
+  if(!sel) return;
+  const sats = saturdaysInMonth(mesISO);
+  sel.innerHTML = "";
+  if(!mesISO){
+    addOpt(sel, "", "— Elegí un mes —");
+    return;
+  }
+  if(sats.length === 0){
+    addOpt(sel, "1", "Semana 1");
+    return;
+  }
+  sats.forEach((iso, idx)=>{
+    const dd = iso.slice(8,10);
+    addOpt(sel, String(idx+1), `Semana ${idx+1} (sáb ${dd})`);
+  });
+  if(!getVal("mesSemana")) setVal("mesSemana", "1");
+}
+
+function currentMesSemana(){
+  const v = String(getVal("mesSemana")||"").trim();
+  const n = parseInt(v,10);
+  return Number.isFinite(n) && n>0 ? String(n) : "1";
+}
 
 function monthISOFromDateISO(dateISO){
   // "2026-02-28" -> "2026-02"
@@ -140,50 +192,107 @@ function formMesData(){
   };
 }
 
-function hydrateMesToUI(m){
-  if(!m) return;
-  [
-    ["mesPlataforma", m.plataformaId],
-    ["mesAcomodadorEntrada", m.acomodadorEntradaId],
-    ["mesAcomodadorAuditorio", m.acomodadorAuditorioId],
-    ["mesMultimedia1", m.multimedia1Id],
-    ["mesMultimedia2", m.multimedia2Id],
-    ["mesMicrofonista1", m.microfonista1Id],
-    ["mesMicrofonista2", m.microfonista2Id],
-  ].forEach(([sid, pid])=> ensureOptionById(sid, pid));
-
-  setVal("mesPlataforma", m.plataformaId||"");
-  setVal("mesAcomodadorEntrada", m.acomodadorEntradaId||"");
-  setVal("mesAcomodadorAuditorio", m.acomodadorAuditorioId||"");
-  setVal("mesMultimedia1", m.multimedia1Id||"");
-  setVal("mesMultimedia2", m.multimedia2Id||"");
-  setVal("mesMicrofonista1", m.microfonista1Id||"");
-  setVal("mesMicrofonista2", m.microfonista2Id||"");
+function emptyMesData(){
+  return {
+    plataformaId: "",
+    acomodadorEntradaId: "",
+    acomodadorAuditorioId: "",
+    multimedia1Id: "",
+    multimedia2Id: "",
+    microfonista1Id: "",
+    microfonista2Id: "",
+  };
 }
 
-function renderMesPreview(mesISO, data){
+function hydrateMesToUI(m){
+  if(!m) return;
+  // compatibilidad: si viene formato nuevo, usamos semanas[n]
+  const w = currentMesSemana();
+  const dataWeek = (m.semanas && m.semanas[w])
+    ? m.semanas[w]
+    : (m.semanas ? emptyMesData() : m);
+
+  [
+    ["mesPlataforma", dataWeek.plataformaId],
+    ["mesAcomodadorEntrada", dataWeek.acomodadorEntradaId],
+    ["mesAcomodadorAuditorio", dataWeek.acomodadorAuditorioId],
+    ["mesMultimedia1", dataWeek.multimedia1Id],
+    ["mesMultimedia2", dataWeek.multimedia2Id],
+    ["mesMicrofonista1", dataWeek.microfonista1Id],
+    ["mesMicrofonista2", dataWeek.microfonista2Id],
+  ].forEach(([sid, pid])=> ensureOptionById(sid, pid));
+
+  setVal("mesPlataforma", dataWeek.plataformaId||"");
+  setVal("mesAcomodadorEntrada", dataWeek.acomodadorEntradaId||"");
+  setVal("mesAcomodadorAuditorio", dataWeek.acomodadorAuditorioId||"");
+  setVal("mesMultimedia1", dataWeek.multimedia1Id||"");
+  setVal("mesMultimedia2", dataWeek.multimedia2Id||"");
+  setVal("mesMicrofonista1", dataWeek.microfonista1Id||"");
+  setVal("mesMicrofonista2", dataWeek.microfonista2Id||"");
+}
+
+function renderMesPreview(mesISO, docData){
   const box = $("printMes");
   if(!box) return;
   const monthLabel = mesISO ? mesISO : "—";
-  const d = data || formMesData();
+  const sats = saturdaysInMonth(mesISO);
+  const totalWeeks = Math.max(1, sats.length || 1);
+
+  // Normalizamos: formato nuevo (docData.semanas) o viejo (campos directos)
+  const semanas = (docData && docData.semanas) ? docData.semanas : null;
+  const fallback = (docData && !docData.semanas) ? docData : null;
+
+  const rows = [];
+  for(let i=1;i<=totalWeeks;i++){
+    const key = String(i);
+    const d = (semanas && semanas[key]) ? semanas[key] : (i===1 && fallback ? fallback : emptyMesData());
+    const satISO = sats[i-1] || "";
+    const ddSat = satISO ? satISO.slice(8,10) : "";
+    const thuISO = satISO ? addDaysISO(satISO, -2) : "";
+    const ddThu = thuISO ? thuISO.slice(8,10) : "";
+    const labelThu = ddThu ? `Semana ${i} (jue ${ddThu})` : `Semana ${i} (jue)`;
+    const labelSat = ddSat ? `Semana ${i} (sáb ${ddSat})` : `Semana ${i} (sáb)`;
+
+    const rowCells = (lbl) => `
+      <tr>
+        <td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">${lbl}</td>
+        <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.plataformaId) || "—"}</td>
+        <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.acomodadorEntradaId) || "—"}</td>
+        <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.acomodadorAuditorioId) || "—"}</td>
+        <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.multimedia1Id) || "—"}</td>
+        <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.multimedia2Id) || "—"}</td>
+        <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.microfonista1Id) || "—"}</td>
+        <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.microfonista2Id) || "—"}</td>
+      </tr>
+    `;
+
+    rows.push(rowCells(labelThu));
+    rows.push(rowCells(labelSat));    `);
+  }
 
   box.innerHTML = `
     <div style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px;">
       <h3 style="margin:0 0 8px 0; color:#111827;">Asignaciones del mes: ${monthLabel}</h3>
       <div style="font-size:13px; color:#374151; margin-bottom:12px;">Para tablero de anuncios (Villa Fiad)</div>
-      <table style="width:100%; border-collapse:collapse; font-size:14px;">
+      <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding:8px; border:1px solid #e5e7eb;">Semana / día</th>
+            <th style="text-align:left; padding:8px; border:1px solid #e5e7eb;">Plataforma</th>
+            <th style="text-align:left; padding:8px; border:1px solid #e5e7eb;">Acom. entrada</th>
+            <th style="text-align:left; padding:8px; border:1px solid #e5e7eb;">Acom. auditorio</th>
+            <th style="text-align:left; padding:8px; border:1px solid #e5e7eb;">Multimedia 1</th>
+            <th style="text-align:left; padding:8px; border:1px solid #e5e7eb;">Multimedia 2</th>
+            <th style="text-align:left; padding:8px; border:1px solid #e5e7eb;">Micro 1</th>
+            <th style="text-align:left; padding:8px; border:1px solid #e5e7eb;">Micro 2</th>
+          </tr>
+        </thead>
         <tbody>
-          <tr><td style="padding:8px; border:1px solid #e5e7eb; width:40%; font-weight:700;">Plataforma</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.plataformaId) || "—"}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">Acomodador entrada</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.acomodadorEntradaId) || "—"}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">Acomodador auditorio</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.acomodadorAuditorioId) || "—"}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">Multimedia 1</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.multimedia1Id) || "—"}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">Multimedia 2</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.multimedia2Id) || "—"}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">Microfonista 1</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.microfonista1Id) || "—"}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">Microfonista 2</td><td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.microfonista2Id) || "—"}</td></tr>
+          ${rows.join("\n")}
         </tbody>
       </table>
       <div style="font-size:12px; color:#6b7280; margin-top:10px;">
-        Generado desde el panel. (Si falta alguien, completalo arriba y guardá.)
+        Generado desde el panel. (Seleccioná semana, guardá, e imprimí.)
       </div>
     </div>
   `;
@@ -197,10 +306,14 @@ async function cargarMes(){
     const snap = await getDoc(doc(db, COL_MES, mesISO));
     if(snap.exists()){
       const data = snap.data() || {};
+      lastMesDoc = data;
       hydrateMesToUI(data);
       renderMesPreview(mesISO, data);
       setStatus("Mes cargado.");
     }else{
+      // No existe: limpiamos la UI para la semana elegida y mostramos preview vacío
+      lastMesDoc = { semanas: {} };
+      hydrateMesToUI(lastMesDoc);
       renderMesPreview(mesISO, null);
       setStatus("No hay datos para ese mes. Completá y guardá.");
     }
@@ -214,12 +327,18 @@ async function guardarMes(){
   const mesISO = (getVal("mes")||"").trim();
   if(!mesISO) return setStatus("Elegí un mes.", true);
   setStatus("Guardando mes…");
-  const data = formMesData();
+  const weekKey = currentMesSemana();
+  const weekData = formMesData();
   try{
     await setDoc(doc(db, COL_MES, mesISO), {
-      ...data,
+      semanas: { [weekKey]: weekData },
       updatedAt: serverTimestamp(),
     }, { merge: true });
+
+    // Recargamos para preview completo con todas las semanas
+    const snap = await getDoc(doc(db, COL_MES, mesISO));
+    const data = snap.exists() ? (snap.data()||{}) : { semanas: { [weekKey]: weekData } };
+    lastMesDoc = data;
     renderMesPreview(mesISO, data);
     setStatus("Mes guardado OK.");
   }catch(e){
@@ -231,14 +350,21 @@ async function guardarMes(){
 function imprimirMes(){
   const mesISO = (getVal("mes")||"").trim();
   if(!mesISO) return setStatus("Elegí un mes.", true);
-  renderMesPreview(mesISO, formMesData());
-  document.body.classList.add("print-mes");
-  // Quita el modo print al terminar
-  const cleanup = ()=> document.body.classList.remove("print-mes");
-  window.addEventListener("afterprint", cleanup, { once:true });
-  window.print();
-  // fallback por si afterprint no dispara
-  setTimeout(cleanup, 1200);
+  (async ()=>{
+    try{
+      const snap = await getDoc(doc(db, COL_MES, mesISO));
+      if(snap.exists()) renderMesPreview(mesISO, snap.data()||{});
+      else renderMesPreview(mesISO, { semanas: { [currentMesSemana()]: formMesData() } });
+    }catch(e){
+      console.error(e);
+      renderMesPreview(mesISO, { semanas: { [currentMesSemana()]: formMesData() } });
+    }
+    document.body.classList.add("print-mes");
+    const cleanup = ()=> document.body.classList.remove("print-mes");
+    window.addEventListener("afterprint", cleanup, { once:true });
+    window.print();
+    setTimeout(cleanup, 1200);
+  })();
 }
 
 async function cargarPersonas(){
@@ -643,14 +769,33 @@ async function init(){
   $("btnCargarMes")?.addEventListener("click", cargarMes);
   $("btnGuardarMes")?.addEventListener("click", guardarMes);
   $("btnImprimirMes")?.addEventListener("click", imprimirMes);
-  $("mes")?.addEventListener("change", cargarMes);
+  $("mes")?.addEventListener("change", ()=>{
+    const mesISO = (getVal("mes")||"").trim();
+    renderMesSemanaOptions(mesISO);
+    cargarMes();
+  });
+
+  $("mesSemana")?.addEventListener("change", ()=>{
+    const mesISO = (getVal("mes")||"").trim();
+    // refresca UI de la semana elegida (sin ir a Firestore)
+    if(lastMesDoc) hydrateMesToUI(lastMesDoc);
+    renderMesPreview(mesISO, lastMesDoc || null);
+  });
 
   // Actualiza vista previa al tocar selects
   [
     "mesPlataforma","mesAcomodadorEntrada","mesAcomodadorAuditorio",
     "mesMultimedia1","mesMultimedia2","mesMicrofonista1","mesMicrofonista2"
   ].forEach(id=>{
-    $(id)?.addEventListener("change", ()=> renderMesPreview(getVal("mes"), formMesData()));
+    $(id)?.addEventListener("change", ()=>{
+      const mesISO = (getVal("mes")||"").trim();
+      const wk = currentMesSemana();
+      // mantenemos preview completo actualizando cache local
+      if(!lastMesDoc) lastMesDoc = { semanas: {} };
+      if(!lastMesDoc.semanas) lastMesDoc.semanas = {};
+      lastMesDoc.semanas[wk] = formMesData();
+      renderMesPreview(mesISO, lastMesDoc);
+    });
   });
 
   // Autocompletado
@@ -681,7 +826,9 @@ async function init(){
 
   // Mes por defecto
   $("mes") && ( $("mes").value = monthISOFromDateISO(s0) || isoMonthToday() );
-  renderMesPreview(getVal("mes"), null);
+  renderMesSemanaOptions(getVal("mes"));
+  // carga doc mensual (si existe) y preview
+  await cargarMes();
 }
 
 init();
