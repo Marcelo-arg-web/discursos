@@ -717,7 +717,15 @@ function poblarSelects() {
   fillSelect("presidente", byIds(ancSiervos));
   fillSelect("oracionInicial", byIds(ancSiervos));
   fillSelect("oracionFinal", byIds(ancSiervos));
-  fillSelect("lectorAtalaya", byIds(lectoresAtalaya));
+  // Opción especial: oración final por el orador visitante
+  const ofSel = $("oracionFinal");
+  if (ofSel && !Array.from(ofSel.options).some(o => o.value === "__VISITANTE__")) {
+    const opt = document.createElement("option");
+    opt.value = "__VISITANTE__";
+    opt.textContent = "Orador visitante";
+    ofSel.insertBefore(opt, ofSel.firstChild);
+  }
+fillSelect("lectorAtalaya", byIds(lectoresAtalaya));
 
   fillSelect("conductorAtalaya", byIds(ancianos));
 
