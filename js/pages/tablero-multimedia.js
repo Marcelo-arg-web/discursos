@@ -123,18 +123,42 @@ function fmt(dt){
   return `${dd}/${mm}/${yyyy}`;
 }
 
-async function loadMesDoc(mesISO){
-  const snap = await getDoc(doc(db, "asignaciones_mensuales", mesISO));
-  return snap.exists() ? (snap.data()||{}) : null;
+function parseARToISO(ar){
+  if(!ar) return "";
+  const m = String(ar).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(!m) return "";
+  const dd=m[1].padStart(2,"0");
+  const mm=m[2].padStart(2,"0");
+  const yyyy=m[3];
+  return `${yyyy}-${mm}-${dd}`;
 }
 
-function render(mesISO, data){
-  const host = $("contenido");
+async function loadSemanaAsignaciones(sabadoISO){
+  if(!sabadoISO) return null;
+  const snap = await getDoc(doc(db, "asignaciones", sabadoISO));
+  if(!snap.exists()) return null;
+  const raw = snap.data() || {};
+  return raw.asignaciones || raw;
+}
+
+async function buildMonthMap(mesISO){
   const pairs = getMonthPairs(mesISO);
-  const semanas = (data && data.semanas) ? data.semanas : {};
+  const map = {};
+  for(const p of pairs){
+    const iso = parseARToISO(p.sabado);
+    const a = await loadSemanaAsignaciones(iso);
+    map[p.semana] = a || {};
+  }
+  return { pairs, map };
+}
+
+function render(mesISO, ctx){
+  const host = $("contenido");
+  const pairs = ctx.pairs;
+  const semanaMap = ctx.map;
   const rows = pairs.map(p=>{
-    const w = semanas[p.semana] || {};
-    const mm = [w.mesMultimedia1, w.mesMultimedia2].filter(Boolean).join(" / ") || "—";
+    const w = semanaMap[p.semana] || {};
+    const mm = [w.multimedia1, w.multimedia2].filter(Boolean).join(" / ") || "—";
     return `
       <tr>
         <td>${p.semana}</td>
@@ -179,9 +203,10 @@ async function cargar(){
   if(!mesISO) return toast("Elegí un mes.", true);
   toast("Cargando…");
   try{
-    const data = await loadMesDoc(mesISO);
-    if(!data) toast("No hay datos guardados para ese mes. Podés igualmente imprimir en blanco.", false);
-    render(mesISO, data || { semanas:{} });
+    const ctx = await buildMonthMap(mesISO);
+    const any = Object.values(ctx.map).some(v=>v && Object.keys(v).length);
+    if(!any) toast("No hay asignaciones semanales guardadas para ese mes. Podés imprimir en blanco o cargarlas en Asignaciones.", false);
+    render(mesISO, ctx);
   }catch(e){
     console.error(e);
     toast("Error cargando. Revisá permisos.", true);

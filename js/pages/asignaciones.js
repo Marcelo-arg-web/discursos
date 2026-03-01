@@ -229,7 +229,7 @@ function applyReadOnlyMode(){
 
   // Botones sugerir
   [
-    "btnSugerirConductor","btnSugMultimedia1","btnSugMultimedia2","btnSugPlataforma",
+    "btnSugerirPresidente","btnSugerirConductor","btnSugMultimedia1","btnSugMultimedia2","btnSugPlataforma",
     "btnSugAcomEntrada","btnSugAcomAuditorio"
   ].forEach(id=>{ const b = $(id); if(b) b.disabled = true; });
 }
@@ -962,6 +962,29 @@ function sugerirPresidente(){
   autoOracionFinal();
 }
 
+function sugerirConductorAtalaya(){
+  if(!window.__personasCache) return;
+  const anc = getAncianos(window.__personasCache) || [];
+
+  const presidenteId = getVal("presidente");
+  const oracionInicialId = getVal("oracionInicial");
+  const lectorId = getVal("lectorAtalaya");
+
+  const candidatos = anc
+    .filter(p=>p && p.id && p.nombre)
+    .filter(p=>{
+      if(presidenteId && p.id === presidenteId) return false;
+      if(oracionInicialId && p.id === oracionInicialId) return false;
+      if(lectorId && p.id === lectorId) return false;
+      return true;
+    });
+
+  const elegidoId = pickNextFrom(candidatos.map(p=>p.id), "vf_last_conductor_atalaya_idx");
+  if(elegidoId) setVal("conductorAtalaya", elegidoId);
+}
+
+
+
 
 function autoPresidenteIfNeeded(){
   if(getVal("presidente").trim()) return;
@@ -1575,6 +1598,8 @@ async function init() {
   $("btnWhatsappAviso")?.addEventListener("click", whatsappAviso);
 
   // Sugerencias / rotación
+  $("btnSugerirPresidente")?.addEventListener("click", ()=>{ sugerirPresidente(); });
+  $("btnSugerirConductor")?.addEventListener("click", ()=>{ sugerirConductorAtalaya(); autoOracionFinal(); });
   $("btnSugMultimedia1")?.addEventListener("click", ()=>suggestSelect("multimedia1","multimedia", candidates.multimedia));
   $("btnSugMultimedia2")?.addEventListener("click", ()=>suggestSelect("multimedia2","multimedia", candidates.multimedia));
   $("btnSugPlataforma")?.addEventListener("click", ()=>suggestSelect("plataforma","plataforma", candidates.plataforma));
