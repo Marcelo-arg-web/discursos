@@ -309,3 +309,8 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
 
 .print-header{display:flex; flex-direction:column; gap:2px; align-items:flex-start}
 @media print{ .print-header{margin-bottom:6px;} }
+
+
+/* Public links */
+.linkcard{ display:block; text-decoration:none; color:inherit; border:1px solid rgba(0,0,0,.08); }
+.linkcard:hover{ transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,.10); }

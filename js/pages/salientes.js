@@ -1,4 +1,5 @@
 import { auth, db } from "../firebase-config.js";
+import { hasPublicAccess, requirePublicAccess, setPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import {
   doc, getDoc, deleteDoc,
@@ -42,6 +43,29 @@ async function getUsuario(uid){
   return snap.exists() ? snap.data() : null;
 }
 
+
+function renderPublicTopbar(active){
+  const el = document.getElementById("topbar");
+  if(!el) return;
+  el.innerHTML = `
+    <div class="topbar">
+      <div class="brand">Villa Fiad</div>
+      <div class="links">
+        <a href="public-home.html" class="${active==='public'?'active':''}">Inicio</a>
+        <a href="tablero-acomodadores.html" class="${active==='tableros'?'active':''}">Tableros</a>
+        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
+      </div>
+      <div class="right">
+        <span class="badge">Solo lectura</span>
+        <button id="btnSalirPublico" class="btn sm">Salir</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("btnSalirPublico")?.addEventListener("click", ()=>{
+    setPublicAccess(false);
+    window.location.href = "index.html";
+  });
+}
 function renderTopbar(active, rol){
   const el = document.getElementById("topbar");
   if(!el) return;
@@ -66,8 +90,15 @@ function renderTopbar(active, rol){
   document.getElementById("btnSalir")?.addEventListener("click", ()=>signOut(auth));
 }
 
+
 async function requireActiveUser(){
-  renderTopbar("salientes", u?.rol);
+  // Acceso público (solo lectura)
+  if(hasPublicAccess()){
+    renderPublicTopbar("salientes");
+    return { user: null, usuario: { rol: "usuario", activo: true, public: true } };
+  }
+  // Login normal
+  renderTopbar("salientes");
   return new Promise((resolve)=>{
     onAuthStateChanged(auth, async (user)=>{
       if(!user){ window.location.href="index.html"; return; }

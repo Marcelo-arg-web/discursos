@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vista Lectura · Villa Fiad</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar__left">
+        <img src="assets/favicon.svg" alt="" style="width:22px;height:22px;"/>
+        <strong>Villa Fiad</strong>
+      </div>
+      <div class="topbar__right">
+        <span class="badge">Solo lectura</span>
+        <button id="btnSalirPublico" class="btn sm">Salir</button>
+      </div>
+    </header>
+
+    <main class="container" style="max-width:860px;">
+      <div class="card">
+        <h2 style="margin-top:0;">Qué querés ver</h2>
+        <p class="muted">Acceso de lectura para el grupo. No permite editar.</p>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-top:12px;">
+          <a class="card linkcard" href="tablero-acomodadores.html">
+            <h3>Tablero Acomodadores</h3>
+            <p class="muted">Asignaciones mensuales para imprimir/WhatsApp.</p>
+          </a>
+          <a class="card linkcard" href="tablero-multimedia.html">
+            <h3>Tablero Multimedia</h3>
+            <p class="muted">Audio y video para el tablero.</p>
+          </a>
+          <a class="card linkcard" href="salientes.html">
+            <h3>Discursantes salientes</h3>
+            <p class="muted">Arreglos para salidas a otras congregaciones.</p>
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="js/pages/public-home.js"></script>
+</body>
+</html>

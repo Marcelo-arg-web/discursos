@@ -49,7 +49,8 @@ service cloud.firestore {
 
     // Asignaciones mensuales para tablero
     match /asignaciones_mensuales/{id} {
-      allow read: if activeUser();
+      // Lectura pública (solo ver) para el grupo
+      allow read: if activeUser() || request.auth == null;
       allow write: if isEditor();
     }
 
@@ -60,7 +61,8 @@ service cloud.firestore {
 
 
     match /salientes/{id} {
-      allow read: if activeUser();
+      // Lectura pública (solo ver) para el grupo
+      allow read: if activeUser() || request.auth == null;
       allow write: if isEditor();
     }
 
