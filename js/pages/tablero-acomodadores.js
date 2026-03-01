@@ -320,12 +320,30 @@ async function cargar(){
       const finAsign = finDocs[i].asign || {};
       const juevesAsignDoc = juevesISO ? await loadAsignacionesDoc(juevesISO) : null;
 
-      const pick = (asig, key)=> nombrePorId(asig?.[key]) || "";
-      const mapAco = (asig)=>({
-        entrada: pick(asig,"acomodadorEntradaId"),
-        auditorio1: pick(asig,"acomodadorAuditorio1Id") || pick(asig,"acomodadorAuditorioId"),
-        auditorio2: pick(asig,"acomodadorAuditorio2Id"),
-      });
+      const resolveNombre = (asig, keys)=> {
+  for(const k of keys){
+    const v = asig?.[k];
+    if(v === undefined || v === null) continue;
+    const s = String(v).trim();
+    if(!s) continue;
+    // Si es un ID conocido, lo resolvemos por personasMap
+    const byId = nombrePorId(s);
+    if(byId) return byId;
+    // Si no, asumimos que ya es un nombre
+    return s;
+  }
+  return "";
+};
+
+const mapAco = (asig)=>({
+  // Entrada (compatible con datos antiguos)
+  entrada: resolveNombre(asig, ["acomodadorEntradaId","acomodadorEntradaNombre","acomodadorEntrada"]),
+  // Auditorio 1: si no existe, usa el campo antiguo "acomodadorAuditorio"
+  auditorio1: resolveNombre(asig, ["acomodadorAuditorio1Id","acomodadorAuditorio1Nombre","acomodadorAuditorio1","acomodadorAuditorioId","acomodadorAuditorioNombre","acomodadorAuditorio"]),
+  // Auditorio 2 (opcional)
+  auditorio2: resolveNombre(asig, ["acomodadorAuditorio2Id","acomodadorAuditorio2Nombre","acomodadorAuditorio2"]),
+});
+
 
       const mapAV = (asig)=>({
         plataforma: pick(asig,"plataformaId"),
