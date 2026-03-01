@@ -4,28 +4,6 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-
 
 const $ = (id) => document.getElementById(id);
 
-
-function renderTopbarBasic(){
-  const host = document.getElementById("topbar");
-  if(!host) return;
-  host.innerHTML = `
-    <div class="topbar">
-      <div class="topbar-inner">
-        <div class="brand">Villa Fiad</div>
-        <nav class="nav">
-          <a href="panel.html">Panel</a>
-          <a href="asignaciones.html">Asignaciones</a>
-          <a href="visitantes.html">Visitantes</a>
-          <a href="salientes.html">Salientes</a>
-          <a href="tablero-acomodadores.html">Tablero mensual</a>
-        </nav>
-        <button id="btnSalir" class="btn small">Salir</button>
-      </div>
-    </div>
-  `;
-}
-
-renderTopbarBasic();
 function toast(msg, isError=false){
   const host = $("toastHost");
   if(!host) return alert(msg);

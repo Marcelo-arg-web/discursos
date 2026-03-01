@@ -31,32 +31,13 @@ import {
 
 // ---------------- UI helpers ----------------
 const $ = (id) => document.getElementById(id);
-
-function renderTopbarBasic(){
-  const host = document.getElementById("topbar");
-  if(!host) return;
-  host.innerHTML = `
-    <div class="topbar">
-      <div class="topbar-inner">
-        <div class="brand">Villa Fiad</div>
-        <nav class="nav">
-          <a href="panel.html">Panel</a>
-          <a href="asignaciones.html">Asignaciones</a>
-          <a href="visitantes.html">Visitantes</a>
-          <a href="salientes.html">Salientes</a>
-          <a href="tablero-acomodadores.html">Tablero mensual</a>
-        </nav>
-        <button id="btnSalir" class="btn small">Salir</button>
-      </div>
-    </div>
-  `;
-}
-
-renderTopbarBasic();
+const getVal = (id) => ($(id)?.value ?? "");
+const $ = (id) => document.getElementById(id);
 const getVal = (id) => ($(id)?.value ?? "");
 const setVal = (id, v) => {
   const el = $(id);
-
+  if (el) el.value = v ?? "";
+};
 
 // ---------------- Semana Jueves/Sábado: copiar asignados automáticamente ----------------
 function isoToDate(iso){
@@ -114,8 +95,7 @@ async function copiarAsignadosAlJuevesSiCorresponde(fechaFinDeSemanaISO, dataAsi
     copiadoDesdeFinDeSemana: fechaFinDeSemanaISO,
   }, { merge: true });
 }
-  if (el) el.value = v ?? "";
-};
+
 
 function escapeHtml(str){
   return String(str ?? "")
