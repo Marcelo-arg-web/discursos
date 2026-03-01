@@ -173,7 +173,8 @@ async function loadDocsInMonth(mesISO){
 
 function render(mesISO, pairs){
   const host = $("contenido");
-  const rows = pairs.map(p=>{
+
+  const rowsAco = pairs.map(p=>{
     const acoJ = {
       plataforma: p.jueves.plataforma || "—",
       entrada: p.jueves.entrada || "—",
@@ -204,33 +205,92 @@ function render(mesISO, pairs){
     `;
   }).join("");
 
+  const rowsAV = pairs.map(p=>{
+    const avJ = {
+      plataforma: p.juevesAV?.plataforma || "—",
+      multimedia1: p.juevesAV?.multimedia1 || "—",
+      multimedia2: p.juevesAV?.multimedia2 || "—",
+    };
+    const avF = {
+      plataforma: p.finAV?.plataforma || "—",
+      multimedia1: p.finAV?.multimedia1 || "—",
+      multimedia2: p.finAV?.multimedia2 || "—",
+    };
+    return `
+      <tr>
+        <td class="td-center">${p.semana}</td>
+        <td class="td-center">Jue</td>
+        <td>${escapeHtml(p.juevesLabel)}</td>
+        <td>${escapeHtml(avJ.plataforma)}</td>
+        <td>${escapeHtml(avJ.multimedia1)}</td>
+        <td>${escapeHtml(avJ.multimedia2)}</td>
+      </tr>
+      <tr>
+        <td class="td-center">${p.semana}</td>
+        <td class="td-center">Fin</td>
+        <td>${escapeHtml(p.finLabel)}</td>
+        <td>${escapeHtml(avF.plataforma)}</td>
+        <td>${escapeHtml(avF.multimedia1)}</td>
+        <td>${escapeHtml(avF.multimedia2)}</td>
+      </tr>
+    `;
+  }).join("");
+
   host.innerHTML = `
     <div class="print-header">
       <div class="h2">Congregación Villa Fiad</div>
-      <div class="muted">Acomodadores · Mes ${escapeHtml(mesISO)}</div>
+      <div class="muted">Tablero mensual · Mes ${escapeHtml(mesISO)}</div>
     </div>
 
-    <table class="table board" style="width:100%; margin-top:10px;">
-      <colgroup>
-        <col style="width:52px;" />
-        <col style="width:60px;" />
-        <col style="width:140px;" />
-        <col style="width:26%;" />
-        <col style="width:26%;" />
-        <col style="width:26%;" />
-      </colgroup>
-      <thead>
-        <tr>
-          <th class="td-center">Sem</th>
-          <th class="td-center">Reu.</th>
-          <th>Fecha</th>
-          <th>Plataforma</th>
-          <th>Entrada</th>
-          <th>Auditorio</th>
-        </tr>
-      </thead>
-      <tbody>${rows || `<tr><td colspan="6" class="muted">Sin datos.</td></tr>`}</tbody>
-    </table>
+    <div class="board-wrap" style="margin-top:10px;">
+      <div class="board-section-title">Acomodadores</div>
+      <table class="table board" style="width:100%;">
+        <colgroup>
+          <col style="width:52px;" />
+          <col style="width:60px;" />
+          <col style="width:140px;" />
+          <col style="width:26%;" />
+          <col style="width:26%;" />
+          <col style="width:26%;" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="td-center">Sem</th>
+            <th class="td-center">Reu.</th>
+            <th>Fecha</th>
+            <th>Plataforma</th>
+            <th>Entrada</th>
+            <th>Auditorio</th>
+          </tr>
+        </thead>
+        <tbody>${rowsAco || `<tr><td colspan="6" class="muted">Sin datos.</td></tr>`}</tbody>
+      </table>
+    </div>
+
+    <div class="board-wrap" style="margin-top:14px;">
+      <div class="board-section-title">Audio y video</div>
+      <table class="table board" style="width:100%;">
+        <colgroup>
+          <col style="width:52px;" />
+          <col style="width:60px;" />
+          <col style="width:140px;" />
+          <col style="width:30%;" />
+          <col style="width:30%;" />
+          <col style="width:30%;" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="td-center">Sem</th>
+            <th class="td-center">Reu.</th>
+            <th>Fecha</th>
+            <th>Plataforma</th>
+            <th>Multimedia 1</th>
+            <th>Multimedia 2</th>
+          </tr>
+        </thead>
+        <tbody>${rowsAV || `<tr><td colspan="6" class="muted">Sin datos.</td></tr>`}</tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -267,6 +327,12 @@ async function cargar(){
         auditorio: pick(asig,"acomodadorAuditorioId"),
       });
 
+      const mapAV = (asig)=>({
+        plataforma: pick(asig,"plataformaId"),
+        multimedia1: pick(asig,"multimedia1Id"),
+        multimedia2: pick(asig,"multimedia2Id"),
+      });
+
       const juevesAsig = juevesAsignDoc || finAsign;
       pairs.push({
         semana: i+1,
@@ -274,6 +340,8 @@ async function cargar(){
         finLabel: formatFecha(finISO),
         jueves: mapAco(juevesAsig),
         fin: mapAco(finAsign),
+        juevesAV: mapAV(juevesAsig),
+        finAV: mapAV(finAsign),
       });
     }
 

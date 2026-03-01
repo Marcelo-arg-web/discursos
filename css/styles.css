@@ -375,3 +375,30 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
   body.print-mes .mes-wrap{background:#fff; border:1px solid rgba(0,0,0,.15); border-radius:12px; padding:12px;}
   body.print-mes .mes-split{break-before: page; page-break-before: always;}
 }
+
+
+
+/* --- Tableros: títulos azules y tablas prolijas (impresión) --- */
+.board-section-title{
+  background:#1a4fa3;
+  color:#fff;
+  padding:10px 12px;
+  border-radius:12px 12px 0 0;
+  font-weight:800;
+  letter-spacing:.2px;
+}
+.board-wrap{
+  border:1px solid #e6e8ef;
+  border-radius:12px;
+  overflow:hidden;
+  background:#fff;
+}
+.board-wrap .table{
+  margin:0;
+}
+@media print{
+  .board-section-title{
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

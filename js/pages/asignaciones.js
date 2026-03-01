@@ -1140,6 +1140,17 @@ function setSemanaISO(iso) {
 
 async function goToSemana(iso) {
   if (!iso) return;
+
+  // Usuarios (no admin): no permitir navegar a fechas pasadas
+  if(!isAdmin){
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const hoyISO = hoy.toISOString().slice(0,10);
+    if(String(iso).slice(0,10) < hoyISO){
+      iso = upcomingSaturdayISO(); // referencia sugerida
+      setStatus("Solo se muestran asignaciones desde hoy en adelante.");
+    }
+  }
+
   setSemanaISO(iso);
   await cargarSemana();
   generarAviso();
@@ -1630,6 +1641,28 @@ async function init() {
 
   renderTopbar('asignaciones', usuarioRol);
   applyReadOnlyMode();
+  // Usuarios (no admin): solo ver desde hoy en adelante
+  if(!isAdmin){
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const hoyISO = hoy.toISOString().slice(0,10);
+    const inp = $("semana");
+    if(inp){
+      inp.min = hoyISO;
+      inp.addEventListener("change", ()=>{
+        const v = (inp.value||"").slice(0,10);
+        if(v && v < hoyISO){
+          inp.value = hoyISO;
+          setStatus("Solo se muestran asignaciones desde hoy en adelante.");
+          // recarga la semana actual
+          cargarSemana?.();
+        }
+      });
+      // Si está vacío o en el pasado, ponelo en hoy
+      if(!inp.value || (inp.value.slice(0,10) < hoyISO)){
+        inp.value = hoyISO;
+      }
+    }
+  }
 
   $("btnSalir")?.addEventListener("click", async () => {
     await signOut(auth);

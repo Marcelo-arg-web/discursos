@@ -1,4 +1,5 @@
 import { auth, db } from "../firebase-config.js";
+import { hasPublicAccess, requirePublicAccess, setPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import {
   doc, getDoc, setDoc, deleteDoc,
@@ -19,9 +20,50 @@ function toast(msg, isError=false){
   setTimeout(()=>el.remove(), 3200);
 }
 
+function isAdminRole(rol){
+  const r = String(rol||"").toLowerCase();
+  return r==="admin" || r==="superadmin";
+}
+
+function applyReadOnlyMode(){
+  if(isAdmin) return;
+  // Deshabilitar formulario y acciones de edición
+  ["btnGuardar","btnBorrar","btnNuevo"].forEach(id=>{ const b=$(id); if(b) b.disabled=true; });
+  ["fecha","nombre","congregacion","bosquejo","titulo","cancion"].forEach(id=>{ const el=$(id); if(el) el.disabled=true; });
+}
+
+
+function hoyISO(){
+  const h=new Date(); h.setHours(0,0,0,0);
+  return h.toISOString().slice(0,10);
+}
+
 async function getUsuario(uid){
   const snap = await getDoc(doc(db,"usuarios",uid));
   return snap.exists() ? snap.data() : null;
+}
+
+function renderPublicTopbar(active){
+  const el = document.getElementById("topbar");
+  if(!el) return;
+  el.innerHTML = `
+    <div class="topbar">
+      <div class="brand">Villa Fiad</div>
+      <div class="links">
+        <a href="public-home.html" class="${active==='public'?'active':''}">Inicio</a>
+        <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
+        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
+      </div>
+      <div class="right">
+        <span class="badge">Solo lectura</span>
+        <button id="btnSalirPublico" class="btn sm">Salir</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("btnSalirPublico")?.addEventListener("click", ()=>{
+    setPublicAccess(false);
+    window.location.href = "index.html";
+  });
 }
 
 function ensureTopbarStyles(){
@@ -54,12 +96,24 @@ function renderTopbar(active){
 
 async function requireActiveUser(){
   ensureTopbarStyles();
+
+  if(hasPublicAccess()){
+    renderPublicTopbar("visitantes");
+    currentRol = "public";
+    isAdmin = false;
+    applyReadOnlyMode();
+    return;
+  }
+
   renderTopbar("visitantes");
 
   return new Promise((resolve)=>{
     onAuthStateChanged(auth, async (user)=>{
       if(!user){ window.location.href="index.html"; return; }
       const u = await getUsuario(user.uid);
+      currentRol = u?.rol || "";
+      isAdmin = isAdminRole(currentRol);
+      applyReadOnlyMode();
       if(!u?.activo){
         await signOut(auth);
         window.location.href="index.html";

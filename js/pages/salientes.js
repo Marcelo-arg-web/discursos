@@ -19,6 +19,8 @@ function toast(msg, isError=false){
   setTimeout(()=>el.remove(), 3200);
 }
 
+function hoyISO(){ const h=new Date(); h.setHours(0,0,0,0); return h.toISOString().slice(0,10); }
+
 function isAdminRole(rol){
   const r = String(rol||"").toLowerCase();
   return r === "admin" || r === "superadmin";

@@ -93,4 +93,21 @@ async function requireActiveUser(activePage){
   if(who){
     who.textContent = `${usuario?.nombre || usuario?.email || "—"} · rol: ${usuario?.rol || "—"} · activo: ${usuario?.activo ? "sí" : "no"}`;
   }
+
+  // Usuarios (no admin): mostrar solo lo necesario
+  if(!isAdminRole(usuario?.rol)){
+    const allowed = new Set(["asignaciones.html","visitantes.html","salientes.html"]);
+    document.querySelectorAll('a.btn[href]').forEach(a=>{
+      const href = a.getAttribute('href') || "";
+      if(!allowed.has(href)){
+        a.style.display = "none";
+      }
+    });
+    const m = document.createElement("div");
+    m.className = "muted";
+    m.style.marginTop = "10px";
+    m.textContent = "Vista usuario: solo se muestran Asignaciones semanales, Visitantes y Salientes.";
+    document.querySelector(".card.pad")?.appendChild(m);
+  }
+
 })();
