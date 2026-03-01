@@ -218,7 +218,6 @@ async function cargarMes(){
   document.getElementById("btnPrint")?.addEventListener("click", ()=>window.print());
   document.getElementById("btnRecargar")?.addEventListener("click", cargarMes);
   document.getElementById("btnTabAcom")?.addEventListener("click", ()=>{ window.location.href = "tablero-acomodadores.html"; });
-  document.getElementById("btnTabMM")?.addEventListener("click", ()=>{ window.location.href = "tablero-multimedia.html"; });
   document.getElementById("btnPresidente")?.addEventListener("click", ()=>{
     const mesISO = String(document.getElementById("mes")?.value||"").trim();
     const sem = String(document.getElementById("semana")?.value||"1").trim();
