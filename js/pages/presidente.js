@@ -54,59 +54,47 @@ function nameById(id){
 }
 
 function render(semana, a){
-  const canNum = safe(a.cancionNumero).trim();
-  const canTit = canNum && canciones[Number(canNum)] ? canciones[Number(canNum)] : safe(a.cancionTitulo);
-  const canStr = canNum ? `${canNum} — ${canTit || ""}` : "";
+  const canNum = safe(a.cancionNumero);
+const canTit = canNum && canciones[Number(canNum)] ? canciones[Number(canNum)] : safe(a.cancionTitulo);
+const canStr = canNum ? `${canNum} — ${canTit || ""}` : "";
 
-  const presidente = safe(a.presidente || nameById(a.presidenteId));
-  const oracionIni = safe(a.oracionInicial || nameById(a.oracionInicialId));
+const presidente = safe(a.presidente || nameById(a.presidenteId));
+// Por defecto la oración inicial la hace el presidente (si no está cargada, usamos el presidente)
+const oracionIni = safe(a.oracionInicial || nameById(a.oracionInicialId) || presidente);
 
-  // Oración final: por regla "Orador/Presidente" si hay orador público.
-  let oracionFin = safe(a.oracionFinal || nameById(a.oracionFinalId));
-  const oradorTmp = safe(a.oradorPublico).trim();
-  if (oradorTmp && presidente) {
-    oracionFin = `${oradorTmp}/${presidente}`; // sin espacios
-  }
+const orador = safe(a.oradorPublico);
+const cong = safe(a.congregacionVisitante);
+const tema = safe(a.tituloDiscurso); // campo existente en tu BD
+const prox = safe(a.tituloSiguienteSemana);
 
-  const orador = safe(a.oradorPublico);
-  const cong = safe(a.congregacionVisitante);
-  const titulo = safe(a.tituloDiscurso);
-  const prox = safe(a.tituloSiguienteSemana);
+const conductor = safe(a.conductorAtalaya || nameById(a.conductorAtalayaId));
+const lector = safe(a.lectorAtalaya || nameById(a.lectorAtalayaId));
 
-  const conductor = safe(a.conductorAtalaya || nameById(a.conductorAtalayaId));
-  const lector = safe(a.lectorAtalaya || nameById(a.lectorAtalayaId));
-  const obs = safe(a.obs || a.observaciones || "");
-
-  const html = `
-    <div class="hdr">
-      <div class="img"><img src="assets/jw-header.jpg" alt=""/></div>
-      <div class="t">
-        <div class="cong">Congregación Villa Fiad</div>
-        <div class="doc">Asignación Presidencia</div>
-        <div class="fecha">Fecha: <span class="big">${fmtFechaLarga(semana)}</span></div>
-      </div>
+// Documento semanal para enviar al presidente (NO incluye oración final)
+const html = `
+  <div class="hdr">
+    <div class="img"><img src="assets/jw-header.jpg" alt=""/></div>
+    <div class="t">
+      <div class="cong">Congregación Villa Fiad</div>
+      <div class="doc">Asignación Presidente</div>
+      <div class="fecha">Fecha: <span class="big">${fmtFechaLarga(semana)}</span></div>
     </div>
+  </div>
 
-    <div class="body">
-      <table class="tbl">
-        <tr><td class="k">Presidente</td><td class="v">${presidente}</td></tr>
-        <tr><td class="k">Oración inicial</td><td class="v">${oracionIni}</td></tr>
-        <tr><td class="k">Canción</td><td class="v">${canStr}</td></tr>
-                <tr><td class="k">Conferenciante</td><td class="v">${orador}</td></tr>
-        <tr><td class="k">Congregación</td><td class="v">${cong}</td></tr>
-        <tr><td class="k">Título (discurso)</td><td class="v">${titulo}</td></tr>
-        <tr><td class="k">Discurso próxima semana</td><td class="v">${prox}</td></tr>
-        <tr><td class="k">Oración final</td><td class="v">${oracionFin}</td></tr>
-        <tr><td class="k">Obs.</td><td>${obs}</td></tr>
-      </table>
-
-      <div class="sec-title">Atalaya</div>
-      <table class="tbl">
-        <tr><td class="k">Conductor</td><td class="v">${conductor}</td></tr>
-        <tr><td class="k">Lector</td><td class="v">${lector}</td></tr>
-              </table>
-    </div>
-  `;
+  <div class="body">
+    <table class="tbl">
+      <tr><td class="k">Presidente</td><td class="v">${presidente}</td></tr>
+      <tr><td class="k">Canción</td><td class="v">${canStr}</td></tr>
+      <tr><td class="k">Oración inicial</td><td class="v">${oracionIni}</td></tr>
+      <tr><td class="k">Orador público</td><td class="v">${orador}</td></tr>
+      <tr><td class="k">Congregación (de donde viene)</td><td class="v">${cong}</td></tr>
+      <tr><td class="k">Tema del discurso</td><td class="v">${tema}</td></tr>
+      <tr><td class="k">Título del discurso de la semana siguiente</td><td class="v">${prox}</td></tr>
+      <tr><td class="k">Conductor La Atalaya</td><td class="v">${conductor}</td></tr>
+      <tr><td class="k">Lector de La Atalaya</td><td class="v">${lector}</td></tr>
+    </table>
+  </div>
+`;
 
   $("contenido").innerHTML = html;
 }
