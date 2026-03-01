@@ -1307,6 +1307,102 @@ function buildAvisoSemanal(semanaSatISO, a) {
   return lines.join("\n");
 }
 
+// ---------------- Impresión semanal (A4 en 1 hoja, 2 columnas) ----------------
+function oracionFinalTexto(a){
+  const visitante = (a?.oradorPublico || "").trim();
+  const pres = personaNameById(a?.presidenteId) || (a?.presidente || "");
+  if(visitante && pres) return `${visitante}/${pres}`; // sin espacios
+  return pres || visitante || "";
+}
+
+function buildPrintSemanaHTML(semanaSatISO, a){
+  const sab = semanaSatISO;
+  const jue = addDaysISO(semanaSatISO, -2);
+
+  const pres = personaNameById(a?.presidenteId) || "—";
+  const oi = personaNameById(a?.oracionInicialId) || "—";
+  const of = (a?.oracionFinalId === "__VISITANTE__") ? oracionFinalTexto(a) : (personaNameById(a?.oracionFinalId) || oracionFinalTexto(a) || "—");
+
+  const canNum = String(a?.cancionNumero || "").trim();
+  const canTit = canNum ? (cancionesMap.get(Number(canNum)) || "") : "";
+  const canStr = canNum ? `${canNum}${canTit ? " — " + canTit : ""}` : "—";
+
+  const orador = (a?.oradorPublico || "").trim() || "—";
+  const cong = (a?.congregacionVisitante || "").trim() || "—";
+  const titulo = (a?.tituloDiscurso || "").trim() || "—";
+  const prox = (a?.tituloSiguienteSemana || "").trim() || "—";
+
+  const conductor = personaNameById(a?.conductorAtalayaId) || "—";
+  const lector = personaNameById(a?.lectorAtalayaId) || "—";
+
+  const mm1 = personaNameById(a?.multimedia1Id) || "—";
+  const mm2 = personaNameById(a?.multimedia2Id) || "—";
+  const plat = personaNameById(a?.plataformaId) || "—";
+  const ent = personaNameById(a?.acomodadorEntradaId) || "—";
+  const aud = personaNameById(a?.acomodadorAuditorioId) || "—";
+  const mic1 = personaNameById(a?.microfonista1Id) || "—";
+  const mic2 = personaNameById(a?.microfonista2Id) || "—";
+
+  return `
+    <div class="print-grid">
+      <div class="p-card">
+        <div class="p-h">Congregación Villa Fiad</div>
+        <div class="p-sub">Semana: Jueves ${fmtAR(jue)} (20:00) · Sábado ${fmtAR(sab)} (19:30)</div>
+
+        <div class="p-row"><span class="k">Presidente</span><span class="v">${escapeHtml(pres)}</span></div>
+        <div class="p-row"><span class="k">Oración inicial</span><span class="v">${escapeHtml(oi)}</span></div>
+        <div class="p-row"><span class="k">Canción</span><span class="v">${escapeHtml(canStr)}</span></div>
+
+        <div style="height:8px;"></div>
+
+        <div class="p-row"><span class="k">Orador público</span><span class="v">${escapeHtml(orador)}</span></div>
+        <div class="p-row"><span class="k">Congregación</span><span class="v">${escapeHtml(cong)}</span></div>
+        <div class="p-row"><span class="k">Discurso</span><span class="v">${escapeHtml(titulo)}</span></div>
+        <div class="p-row"><span class="k">Próxima semana</span><span class="v">${escapeHtml(prox)}</span></div>
+
+        <div style="height:8px;"></div>
+
+        <div class="p-row"><span class="k">Oración final</span><span class="v">${escapeHtml(of)}</span></div>
+      </div>
+
+      <div class="p-card">
+        <div class="p-h">Asignaciones</div>
+        <div class="p-sub">La Atalaya + multimedia + acomodadores</div>
+
+        <div class="p-row"><span class="k">Conductor Atalaya</span><span class="v">${escapeHtml(conductor)}</span></div>
+        <div class="p-row"><span class="k">Lector Atalaya</span><span class="v">${escapeHtml(lector)}</span></div>
+
+        <div style="height:8px;"></div>
+
+        <div class="p-row"><span class="k">Multimedia</span><span class="v">${escapeHtml(mm1)} / ${escapeHtml(mm2)}</span></div>
+        <div class="p-row"><span class="k">Acomodador plataforma</span><span class="v">${escapeHtml(plat)}</span></div>
+        <div class="p-row"><span class="k">Acomodador entrada</span><span class="v">${escapeHtml(ent)}</span></div>
+        <div class="p-row"><span class="k">Acomodador auditorio</span><span class="v">${escapeHtml(aud)}</span></div>
+        <div class="p-row"><span class="k">Microfonistas</span><span class="v">${escapeHtml(mic1)} / ${escapeHtml(mic2)}</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function imprimirSemana(){
+  const s = semanaISO();
+  if(!s) return setStatus("Elegí una semana primero.", true);
+  // usa la asignación cargada actualmente
+  const a = formData();
+  // asegúrate de aplicar regla de oración final
+  autoOracionFinal();
+
+  const host = $("printSemana");
+  if(host) host.innerHTML = buildPrintSemanaHTML(s, a);
+
+  document.body.classList.add("print-semana");
+  const cleanup = () => document.body.classList.remove("print-semana");
+  window.addEventListener("afterprint", cleanup, { once:true });
+  window.print();
+  setTimeout(cleanup, 1200);
+}
+
+
 // ---------------- Mensajes individuales ----------------
 function phoneToWa(phone){
   const raw = String(phone||"").trim();
@@ -1438,7 +1534,7 @@ async function init() {
   $("btnLimpiar")?.addEventListener("click", limpiar);
   $("btnPdfPresidente")?.addEventListener("click", abrirPdfPresidente);
 
-  $("btnImprimir")?.addEventListener("click", () => window.print());
+  $("btnImprimir")?.addEventListener("click", imprimirSemana);
 
   $("btnEstaSemana")?.addEventListener("click", async () => {
     const iso = upcomingSaturdayISO();

@@ -1,6 +1,6 @@
 import { auth, db } from "../firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { doc, getDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { canciones } from "../data/canciones.js";
 
 const $ = (id) => document.getElementById(id);
@@ -38,22 +38,43 @@ function safe(v){
   return (v ?? "").toString();
 }
 
+let personasMap = new Map();
+async function loadPersonasMap(){
+  try{
+    const qy = query(collection(db,"personas"), where("activo","==", true));
+    const snap = await getDocs(qy);
+    personasMap = new Map(snap.docs.map(d=>[d.id, (d.data()?.nombre||"").toString()]));
+  }catch(e){
+    console.warn("No pude cargar personas para nombres:", e);
+    personasMap = new Map();
+  }
+}
+function nameById(id){
+  return personasMap.get(id) || "";
+}
+
 function render(semana, a){
   const canNum = safe(a.cancionNumero).trim();
   const canTit = canNum && canciones[Number(canNum)] ? canciones[Number(canNum)] : safe(a.cancionTitulo);
   const canStr = canNum ? `${canNum} — ${canTit || ""}` : "";
 
-  const presidente = safe(a.presidente);
-  const oracionIni = safe(a.oracionInicial);
-  const oracionFin = safe(a.oracionFinal);
+  const presidente = safe(a.presidente || nameById(a.presidenteId));
+  const oracionIni = safe(a.oracionInicial || nameById(a.oracionInicialId));
+
+  // Oración final: por regla "Orador/Presidente" si hay orador público.
+  let oracionFin = safe(a.oracionFinal || nameById(a.oracionFinalId));
+  const oradorTmp = safe(a.oradorPublico).trim();
+  if((a.oracionFinalId === "__VISITANTE__" || !oracionFin) && oradorTmp && presidente){
+    oracionFin = `${oradorTmp}/${presidente}`;
+  }
 
   const orador = safe(a.oradorPublico);
   const cong = safe(a.congregacionVisitante);
   const titulo = safe(a.tituloDiscurso);
   const prox = safe(a.tituloSiguienteSemana);
 
-  const conductor = safe(a.conductorAtalaya);
-  const lector = safe(a.lectorAtalaya);
+  const conductor = safe(a.conductorAtalaya || nameById(a.conductorAtalayaId));
+  const lector = safe(a.lectorAtalaya || nameById(a.lectorAtalayaId));
   const obs = safe(a.obs || a.observaciones || "");
 
   const html = `
@@ -71,8 +92,7 @@ function render(semana, a){
         <tr><td class="k">Presidente</td><td class="v">${presidente}</td></tr>
         <tr><td class="k">Oración inicial</td><td class="v">${oracionIni}</td></tr>
         <tr><td class="k">Canción</td><td class="v">${canStr}</td></tr>
-        <tr><td class="k">Texto bíblico</td><td class="muted2">(completar)</td></tr>
-        <tr><td class="k">Conferenciante</td><td class="v">${orador}</td></tr>
+                <tr><td class="k">Conferenciante</td><td class="v">${orador}</td></tr>
         <tr><td class="k">Congregación</td><td class="v">${cong}</td></tr>
         <tr><td class="k">Título (discurso)</td><td class="v">${titulo}</td></tr>
         <tr><td class="k">Discurso próxima semana</td><td class="v">${prox}</td></tr>
@@ -84,8 +104,7 @@ function render(semana, a){
       <table class="tbl">
         <tr><td class="k">Conductor</td><td class="v">${conductor}</td></tr>
         <tr><td class="k">Lector</td><td class="v">${lector}</td></tr>
-        <tr><td class="k">Título</td><td class="muted2">(completar)</td></tr>
-      </table>
+              </table>
     </div>
   `;
 
@@ -93,6 +112,8 @@ function render(semana, a){
 }
 
 async function load(){
+  await loadPersonasMap();
+
   const semana = qp("semana");
   if(!semana){
     $("contenido").innerHTML = `<div class="card pad"><b>Falta la semana.</b><div class="muted">Abrí esta hoja desde Asignaciones (PDF Presidente).</div></div>`;

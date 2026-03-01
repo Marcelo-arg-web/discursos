@@ -314,3 +314,56 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
 /* Public links */
 .linkcard{ display:block; text-decoration:none; color:inherit; border:1px solid rgba(0,0,0,.08); }
 .linkcard:hover{ transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,.10); }
+
+
+/* ---------- Print layouts (Asignaciones) ---------- */
+.print-only{display:none;}
+
+@media print{
+  @page{ size:A4; margin:10mm; }
+
+  body.print-semana .container{padding:0 !important;}
+  body.print-semana .card{display:none !important;}
+  body.print-semana #printSemana.print-only{display:block !important;}
+
+  body.print-semana .print-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:10mm;
+    align-items:start;
+  }
+  body.print-semana .p-card{
+    border:1px solid rgba(0,0,0,.15);
+    border-radius:10px;
+    padding:10px;
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+  body.print-semana .p-h{
+    font-size:14px;
+    font-weight:800;
+    margin:0 0 6px 0;
+  }
+  body.print-semana .p-sub{
+    font-size:11px;
+    color:#333;
+    margin:0 0 10px 0;
+  }
+  body.print-semana .p-row{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    border-bottom:1px dashed rgba(0,0,0,.18);
+    padding:4px 0;
+    font-size:11px;
+  }
+  body.print-semana .p-row:last-child{border-bottom:none;}
+  body.print-semana .k{font-weight:800; color:#111;}
+  body.print-semana .v{font-weight:600; color:#111; text-align:right;}
+
+  /* Print mensual desde Asignaciones */
+  body.print-mes .card{display:none !important;}
+  body.print-mes #printMes{display:block !important;}
+  body.print-mes .mes-wrap{background:#fff; border:1px solid rgba(0,0,0,.15); border-radius:12px; padding:12px;}
+  body.print-mes .mes-split{break-before: page; page-break-before: always;}
+}
