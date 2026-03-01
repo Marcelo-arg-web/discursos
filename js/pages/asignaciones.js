@@ -1015,24 +1015,37 @@ function updateOracionFinalVisitorOptionLabel(){
 }
 
 function autoOracionFinal(){
-  updateOracionFinalVisitorOptionLabel();
-  const visitante = (getVal("oradorPublico") || "").trim();
-  const cur = getVal("oracionFinal");
-  const pres = getVal("presidente");
+  // Regla: Oración final = Orador público/Presidente (sin espacios).
+  // Si no hay orador público, queda Presidente.
+  const o = (getVal("oradorPublico") || "").trim();
+  const p = (getVal("presidente") || "").trim();
 
-  // Si hay visitante: por defecto la hace el orador (si está vacío o si estaba presidente)
-  if(visitante){
-    if(!cur || (pres && cur === pres)){
-      setVal("oracionFinal", "__VISITANTE__");
-    }
+  let v = "";
+  if(o && p) v = `${o}/${p}`;
+  else if(p) v = p;
+  else if(o) v = o;
+
+  // Asegura que el <select> tenga esta opción y la seleccione
+  const sel = document.getElementById("oracionFinal");
+  if(!sel) return;
+
+  // Si existe la opción exacta, seleccionarla
+  let opt = Array.from(sel.options).find(x => (x.value || "").trim() === v);
+  if(v && !opt){
+    opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v;
+    sel.appendChild(opt);
+  }
+
+  // Si v está vacío, limpiamos selección
+  if(!v){
+    sel.value = "";
     return;
   }
-
-  // Si NO hay visitante: si estaba marcado "visitante", vuelve a presidente
-  if(cur === "__VISITANTE__" || !cur){
-    if(pres) setVal("oracionFinal", pres);
-  }
+  sel.value = v;
 }
+
 
 // ---------------- Guardar / cargar ----------------
 function semanaISO() {
@@ -1194,6 +1207,7 @@ async function cargarSemana() {
       hydrateToUI(a);
       await aplicarAutoVisitante(s);
       try{ autoPresidenteIfNeeded(); }catch(_e){}
+      try{ autoOracionFinal(); }catch(_e){}
       // refresca aviso
       try{ await generarAviso(); }catch(_e){}
       setStatus("Datos cargados.");
@@ -1201,6 +1215,7 @@ async function cargarSemana() {
       setStatus("No hay datos guardados para esta semana. Podés cargar y guardar.");
       await aplicarAutoVisitante(s);
       try{ autoPresidenteIfNeeded(); }catch(_e){}
+      try{ autoOracionFinal(); }catch(_e){}
       setAvisoText("");
     }
   } catch (e) {
@@ -1532,6 +1547,8 @@ async function init() {
   $("btnCargar")?.addEventListener("click", cargarSemana);
   $("btnGuardar")?.addEventListener("click", guardar);
   $("btnLimpiar")?.addEventListener("click", limpiar);
+  $("oradorPublico")?.addEventListener("change", ()=>{ try{ autoOracionFinal(); }catch(_e){} });
+  $("presidente")?.addEventListener("change", ()=>{ try{ autoOracionFinal(); }catch(_e){} });
   $("btnPdfPresidente")?.addEventListener("click", abrirPdfPresidente);
 
   $("btnImprimir")?.addEventListener("click", imprimirSemana);
