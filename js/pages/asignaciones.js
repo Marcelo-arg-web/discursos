@@ -994,7 +994,28 @@ function autoOracionInicialIfNeeded(){
   }
 }
 
+
+function updateOracionFinalVisitorOptionLabel(){
+  const ofSel = $("oracionFinal");
+  if(!ofSel) return;
+  const opt = Array.from(ofSel.options).find(o => o.value === "__VISITANTE__");
+  if(!opt) return;
+
+  const visitante = (getVal("oradorPublico") || "").trim();
+  const presId = getVal("presidente");
+  const presName = personaNameById(presId);
+
+  if(visitante && presName){
+    opt.textContent = `Visitante ${visitante}/${presName}`;
+  }else if(visitante){
+    opt.textContent = `Visitante ${visitante}`;
+  }else{
+    opt.textContent = "Orador visitante";
+  }
+}
+
 function autoOracionFinal(){
+  updateOracionFinalVisitorOptionLabel();
   const visitante = (getVal("oradorPublico") || "").trim();
   const cur = getVal("oracionFinal");
   const pres = getVal("presidente");
@@ -1264,11 +1285,18 @@ function buildAvisoSemanal(semanaSatISO, a) {
   const plat = personaNameById(a?.plataformaId) || "—";
   const ent = personaNameById(a?.acomodadorEntradaId) || "—";
   const aud = personaNameById(a?.acomodadorAuditorioId) || "—";
+  const pres = personaNameById(a?.presidenteId) || "—";
+  const visitante = (a?.oradorPublico || "").trim();
 
   const lines = [];
   lines.push(`*Asignaciones de esta semana*`);
   lines.push(`Jueves ${fmtAR(jue)} (20:00) y Sábado ${fmtAR(sab)} (19:30)`);
   lines.push("");
+  if(visitante){
+    lines.push(`*Orador visitante*`);
+    lines.push(`• ${visitante}/${pres}`);
+    lines.push("");
+  }
   lines.push(`*Acomodadores*`);
   lines.push(`• Plataforma: ${plat}`);
   lines.push(`• Entrada: ${ent}`);
