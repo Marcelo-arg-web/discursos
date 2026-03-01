@@ -174,18 +174,32 @@ async function loadDocsInMonth(mesISO){
 function render(mesISO, pairs){
   const host = $("contenido");
   const rows = pairs.map(p=>{
-    const acoJ = [p.jueves.plataforma, p.jueves.entrada, p.jueves.auditorio].filter(Boolean).join(" / ") || "—";
-    const acoF = [p.fin.plataforma, p.fin.entrada, p.fin.auditorio].filter(Boolean).join(" / ") || "—";
+    const acoJ = {
+      plataforma: p.jueves.plataforma || "—",
+      entrada: p.jueves.entrada || "—",
+      auditorio: p.jueves.auditorio || "—",
+    };
+    const acoF = {
+      plataforma: p.fin.plataforma || "—",
+      entrada: p.fin.entrada || "—",
+      auditorio: p.fin.auditorio || "—",
+    };
     return `
       <tr>
-        <td>${p.semana}</td>
+        <td class="td-center">${p.semana}</td>
+        <td class="td-center">Jue</td>
         <td>${escapeHtml(p.juevesLabel)}</td>
-        <td>${escapeHtml(acoJ)}</td>
+        <td>${escapeHtml(acoJ.plataforma)}</td>
+        <td>${escapeHtml(acoJ.entrada)}</td>
+        <td>${escapeHtml(acoJ.auditorio)}</td>
       </tr>
       <tr>
-        <td>${p.semana}</td>
+        <td class="td-center">${p.semana}</td>
+        <td class="td-center">Fin</td>
         <td>${escapeHtml(p.finLabel)}</td>
-        <td>${escapeHtml(acoF)}</td>
+        <td>${escapeHtml(acoF.plataforma)}</td>
+        <td>${escapeHtml(acoF.entrada)}</td>
+        <td>${escapeHtml(acoF.auditorio)}</td>
       </tr>
     `;
   }).join("");
@@ -196,15 +210,26 @@ function render(mesISO, pairs){
       <div class="muted">Acomodadores · Mes ${escapeHtml(mesISO)}</div>
     </div>
 
-    <table class="table" style="width:100%; margin-top:10px;">
+    <table class="table board" style="width:100%; margin-top:10px;">
+      <colgroup>
+        <col style="width:52px;" />
+        <col style="width:60px;" />
+        <col style="width:140px;" />
+        <col style="width:26%;" />
+        <col style="width:26%;" />
+        <col style="width:26%;" />
+      </colgroup>
       <thead>
         <tr>
-          <th style="width:70px;">Sem</th>
-          <th style="width:140px;">Fecha</th>
-          <th>Acomodadores (Plataforma / Entrada / Auditorio)</th>
+          <th class="td-center">Sem</th>
+          <th class="td-center">Reu.</th>
+          <th>Fecha</th>
+          <th>Plataforma</th>
+          <th>Entrada</th>
+          <th>Auditorio</th>
         </tr>
       </thead>
-      <tbody>${rows || `<tr><td colspan="3" class="muted">Sin datos.</td></tr>`}</tbody>
+      <tbody>${rows || `<tr><td colspan="6" class="muted">Sin datos.</td></tr>`}</tbody>
     </table>
   `;
 }

@@ -118,6 +118,14 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
 .table th{background:#f8fafc; color:#0f172a; font-weight:600}
 .table tr:last-child td{border-bottom:none}
 
+/* Tableros (impresión) */
+.table.board{table-layout:fixed}
+.td-center{text-align:center !important; white-space:nowrap}
+
+@media print{
+  .table.board th, .table.board td{font-size:11.5px; padding:7px 8px}
+}
+
 .topbar{
   position:sticky;
   top:0;

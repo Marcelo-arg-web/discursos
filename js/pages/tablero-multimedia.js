@@ -174,18 +174,32 @@ async function loadDocsInMonth(mesISO){
 function render(mesISO, pairs){
   const host = $("contenido");
   const rows = pairs.map(p=>{
-    const mmJ = [p.jueves.multimedia1, p.jueves.multimedia2].filter(Boolean).join(" / ") || "—";
-    const mmF = [p.fin.multimedia1, p.fin.multimedia2].filter(Boolean).join(" / ") || "—";
+    const j = {
+      plataforma: p.jueves.plataforma || "—",
+      mm1: p.jueves.multimedia1 || "—",
+      mm2: p.jueves.multimedia2 || "—",
+    };
+    const f = {
+      plataforma: p.fin.plataforma || "—",
+      mm1: p.fin.multimedia1 || "—",
+      mm2: p.fin.multimedia2 || "—",
+    };
     return `
       <tr>
-        <td>${p.semana}</td>
+        <td class="td-center">${p.semana}</td>
+        <td class="td-center">Jue</td>
         <td>${escapeHtml(p.juevesLabel)}</td>
-        <td>${escapeHtml(mmJ)}</td>
+        <td>${escapeHtml(j.plataforma)}</td>
+        <td>${escapeHtml(j.mm1)}</td>
+        <td>${escapeHtml(j.mm2)}</td>
       </tr>
       <tr>
-        <td>${p.semana}</td>
+        <td class="td-center">${p.semana}</td>
+        <td class="td-center">Fin</td>
         <td>${escapeHtml(p.finLabel)}</td>
-        <td>${escapeHtml(mmF)}</td>
+        <td>${escapeHtml(f.plataforma)}</td>
+        <td>${escapeHtml(f.mm1)}</td>
+        <td>${escapeHtml(f.mm2)}</td>
       </tr>
     `;
   }).join("");
@@ -196,15 +210,26 @@ function render(mesISO, pairs){
       <div class="muted">Multimedia · Mes ${escapeHtml(mesISO)}</div>
     </div>
 
-    <table class="table" style="width:100%; margin-top:10px;">
+    <table class="table board" style="width:100%; margin-top:10px;">
+      <colgroup>
+        <col style="width:52px;" />
+        <col style="width:60px;" />
+        <col style="width:140px;" />
+        <col style="width:26%;" />
+        <col style="width:26%;" />
+        <col style="width:26%;" />
+      </colgroup>
       <thead>
         <tr>
-          <th style="width:70px;">Sem</th>
-          <th style="width:140px;">Fecha</th>
-          <th>Audio y video</th>
+          <th class="td-center">Sem</th>
+          <th class="td-center">Reu.</th>
+          <th>Fecha</th>
+          <th>Plataforma</th>
+          <th>Multimedia 1</th>
+          <th>Multimedia 2</th>
         </tr>
       </thead>
-      <tbody>${rows || `<tr><td colspan="3" class="muted">Sin datos.</td></tr>`}</tbody>
+      <tbody>${rows || `<tr><td colspan="6" class="muted">Sin datos.</td></tr>`}</tbody>
     </table>
   `;
 }
@@ -238,6 +263,7 @@ async function cargar(){
 
       const pick = (asig, key)=> nombrePorId(asig?.[key]) || "";
       const mapMultimedia = (asig)=>({
+        plataforma: pick(asig,"plataformaId"),
         multimedia1: pick(asig,"multimedia1Id"),
         multimedia2: pick(asig,"multimedia2Id"),
       });
