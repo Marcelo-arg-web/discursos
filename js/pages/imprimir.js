@@ -147,9 +147,9 @@ function renderItems(items){
         <td>${a.lectorAtalaya||""}</td>
         <td>${a.multimedia1||""}</td>
         <td>${a.multimedia2||""}</td>
-        <td>${a.acomodadorPlataforma||""}</td>
         <td>${a.acomodadorEntrada||""}</td>
-        <td>${a.acomodadorAuditorio||""}</td>
+        <td>${a.acomodadorAuditorio1||""}</td>
+        <td>${a.acomodadorAuditorio2||""}</td>
         <td>${a.microfonista1||""}</td>
         <td>${a.microfonista2||""}</td>
         <td>${buildOracionFinal(a.oradorPublico, a.presidente, a.oracionFinal)||""}</td>
@@ -174,9 +174,9 @@ function renderItems(items){
           <th>Lector</th>
           <th>MM1</th>
           <th>MM2</th>
-          <th>Acom. plat</th>
           <th>Acom. ent</th>
-          <th>Acom. aud</th>
+          <th>Acom. aud 1</th>
+          <th>Acom. aud 2</th>
           <th>Mic1</th>
           <th>Mic2</th>
           <th>Oración final</th>
@@ -218,6 +218,7 @@ async function cargarMes(){
   document.getElementById("btnPrint")?.addEventListener("click", ()=>window.print());
   document.getElementById("btnRecargar")?.addEventListener("click", cargarMes);
   document.getElementById("btnTabAcom")?.addEventListener("click", ()=>{ window.location.href = "tablero-acomodadores.html"; });
+  document.getElementById("btnTabMM")?.addEventListener("click", ()=>{ window.location.href = "tablero-multimedia.html"; });
   document.getElementById("btnPresidente")?.addEventListener("click", ()=>{
     const mesISO = String(document.getElementById("mes")?.value||"").trim();
     const sem = String(document.getElementById("semana")?.value||"1").trim();

@@ -112,24 +112,6 @@ function escapeHtml(str){
     .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
 }
 
-function mesTituloES(mesISO){
-  // mesISO: YYYY-MM
-  if(!mesISO) return "";
-  const [y,m] = mesISO.split("-").map(Number);
-  const d = new Date(y, (m||1)-1, 1);
-  return d.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
-}
-function ahoraES(){
-  const d = new Date();
-  return d.toLocaleString("es-AR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
-}
-
-function buildShareText(mesISO){
-  const mes = mesTituloES(mesISO);
-  const url = window.location.href;
-  return `Tablero mensual – Villa Fiad (${mes})\n${url}`;
-}
-
 let personasMap = new Map();
 async function loadPersonasMap(){
   try{
@@ -192,71 +174,18 @@ async function loadDocsInMonth(mesISO){
 function render(mesISO, pairs){
   const host = $("contenido");
 
-  const whatsappMode = document.body.classList.contains('whatsapp');
-
-  if(whatsappMode){
-    const blocks = pairs.map(p=>{
-      const acoJ = p.jueves;
-      const acoF = p.fin;
-      const avJ = p.juevesAV;
-      const avF = p.finAV;
-      const faltanAco = [acoJ.plataforma, acoJ.entrada, acoJ.auditorio, acoF.plataforma, acoF.entrada, acoF.auditorio].some(v=>!v || v==='—');
-      const faltanAV = [avJ?.plataforma, avJ?.multimedia1, avJ?.multimedia2, avF?.plataforma, avF?.multimedia1, avF?.multimedia2].some(v=>!v || v==='—');
-      const warn = (faltanAco || faltanAV) ? `<span class="wa-warn">Falta asignar</span>` : ``;
-      return `
-        <div class="wa-week">
-          <div class="wa-week-h">Semana ${p.semana} ${warn}</div>
-          <div class="wa-grid">
-            <div class="wa-card">
-              <div class="wa-card-h">Acomodadores</div>
-              <div class="wa-row"><b>Jue</b> ${escapeHtml(p.juevesLabel)} · <b>Plat</b> ${escapeHtml(acoJ.plataforma||'—')} · <b>Ent</b> ${escapeHtml(acoJ.entrada||'—')} · <b>Aud</b> ${escapeHtml(acoJ.auditorio||'—')}</div>
-              <div class="wa-row"><b>Fin</b> ${escapeHtml(p.finLabel)} · <b>Plat</b> ${escapeHtml(acoF.plataforma||'—')} · <b>Ent</b> ${escapeHtml(acoF.entrada||'—')} · <b>Aud</b> ${escapeHtml(acoF.auditorio||'—')}</div>
-            </div>
-            <div class="wa-card">
-              <div class="wa-card-h">Audio y video</div>
-              <div class="wa-row"><b>Jue</b> ${escapeHtml(p.juevesLabel)} · <b>Plat</b> ${escapeHtml(avJ?.plataforma||'—')} · <b>M1</b> ${escapeHtml(avJ?.multimedia1||'—')} · <b>M2</b> ${escapeHtml(avJ?.multimedia2||'—')}</div>
-              <div class="wa-row"><b>Fin</b> ${escapeHtml(p.finLabel)} · <b>Plat</b> ${escapeHtml(avF?.plataforma||'—')} · <b>M1</b> ${escapeHtml(avF?.multimedia1||'—')} · <b>M2</b> ${escapeHtml(avF?.multimedia2||'—')}</div>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    host.innerHTML = `
-      <div class="print-header">
-        <div class="hdr">
-          <img class="jw-logo" src="assets/favicon.svg" alt="JW" />
-          <div>
-            <div class="cong-title">Congregación Villa Fiad</div>
-            <div class="main-title">ACOMODADORES Y AUDIO Y VIDEO</div>
-            <div class="month-big">${escapeHtml(mesTituloES(mesISO))}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="wa-note muted">Vista vertical para WhatsApp (podés hacer captura o imprimir).</div>
-      ${blocks || `<div class="muted">Sin datos.</div>`}
-      <div class="print-footer muted">Generado el ${escapeHtml(ahoraES())}</div>
-    `;
-    return;
-  }
-
   const rowsAco = pairs.map(p=>{
     const acoJ = {
-      plataforma: p.jueves.plataforma || "—",
       entrada: p.jueves.entrada || "—",
-      auditorio: p.jueves.auditorio || "—",
+      auditorio1: p.jueves.auditorio1 || "—",
+      auditorio2: p.jueves.auditorio2 || "—",
     };
     const acoF = {
-      plataforma: p.fin.plataforma || "—",
       entrada: p.fin.entrada || "—",
-      auditorio: p.fin.auditorio || "—",
+      auditorio1: p.fin.auditorio1 || "—",
+      auditorio2: p.fin.auditorio2 || "—",
     };
-
-    const faltan = [acoJ.plataforma, acoJ.entrada, acoJ.auditorio, acoF.plataforma, acoF.entrada, acoF.auditorio].some(v=>v==='—');
-    const warn = faltan ? ` <span class="wk-warn">Falta asignar</span>` : ``;
     return `
-      <tr class="week-row ${faltan ? 'incomplete' : ''}"><td colspan="6">Semana ${p.semana}${warn}</td></tr>
       <tr>
         <td class="td-center">${p.semana}</td>
         <td class="td-center">Jue</td>
@@ -287,11 +216,7 @@ function render(mesISO, pairs){
       multimedia1: p.finAV?.multimedia1 || "—",
       multimedia2: p.finAV?.multimedia2 || "—",
     };
-
-    const faltan = [avJ.plataforma, avJ.multimedia1, avJ.multimedia2, avF.plataforma, avF.multimedia1, avF.multimedia2].some(v=>v==='—');
-    const warn = faltan ? ` <span class="wk-warn">Falta asignar</span>` : ``;
     return `
-      <tr class="week-row ${faltan ? 'incomplete' : ''}"><td colspan="6">Semana ${p.semana}${warn}</td></tr>
       <tr>
         <td class="td-center">${p.semana}</td>
         <td class="td-center">Jue</td>
@@ -313,14 +238,8 @@ function render(mesISO, pairs){
 
   host.innerHTML = `
     <div class="print-header">
-      <div class="hdr">
-        <img class="jw-logo" src="assets/favicon.svg" alt="JW" />
-        <div>
-          <div class="cong-title">Congregación Villa Fiad</div>
-          <div class="main-title">ACOMODADORES Y AUDIO Y VIDEO</div>
-          <div class="month-big">${escapeHtml(mesTituloES(mesISO))}</div>
-        </div>
-      </div>
+      <div class="h2">Congregación Villa Fiad</div>
+      <div class="muted">Tablero mensual · Mes ${escapeHtml(mesISO)}</div>
     </div>
 
     <div class="board-wrap" style="margin-top:10px;">
@@ -339,9 +258,9 @@ function render(mesISO, pairs){
             <th class="td-center">Sem</th>
             <th class="td-center">Reu.</th>
             <th>Fecha</th>
-            <th>Plataforma</th>
             <th>Entrada</th>
-            <th>Auditorio</th>
+            <th>Auditorio 1</th>
+            <th>Auditorio 2</th>
           </tr>
         </thead>
         <tbody>${rowsAco || `<tr><td colspan="6" class="muted">Sin datos.</td></tr>`}</tbody>
@@ -372,10 +291,7 @@ function render(mesISO, pairs){
         <tbody>${rowsAV || `<tr><td colspan="6" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
     </div>
-  
-
-    <div class="print-footer muted">Generado el ${escapeHtml(ahoraES())}</div>
-`;
+  `;
 }
 
 async function cargar(){
@@ -406,9 +322,9 @@ async function cargar(){
 
       const pick = (asig, key)=> nombrePorId(asig?.[key]) || "";
       const mapAco = (asig)=>({
-        plataforma: pick(asig,"plataformaId"),
         entrada: pick(asig,"acomodadorEntradaId"),
-        auditorio: pick(asig,"acomodadorAuditorioId"),
+        auditorio1: pick(asig,"acomodadorAuditorio1Id") || pick(asig,"acomodadorAuditorioId"),
+        auditorio2: pick(asig,"acomodadorAuditorio2Id"),
       });
 
       const mapAV = (asig)=>({
@@ -443,25 +359,4 @@ async function cargar(){
   await requireActiveUser("tablero");
   $("btnPrint")?.addEventListener("click", ()=>window.print());
   $("btnCargar")?.addEventListener("click", cargar);
-
-  // Tinta baja
-  $("chkInk")?.addEventListener("change", (e)=>{
-    document.body.classList.toggle('ink-save', !!e.target.checked);
-  });
-
-  // Vista WhatsApp
-  $("btnWhatsapp")?.addEventListener("click", ()=>{
-    document.body.classList.toggle('whatsapp');
-    const mesISO = String($("mes")?.value||"").trim();
-    if(mesISO) cargar();
-  });
-
-  // Enviar al grupo (WhatsApp)
-  $("btnEnviar")?.addEventListener("click", ()=>{
-    const mesISO = String($("mes")?.value||"").trim();
-    if(!mesISO) return toast("Elegí un mes.", true);
-    const txt = buildShareText(mesISO);
-    const url = `https://wa.me/?text=${encodeURIComponent(txt)}`;
-    window.open(url, "_blank");
-  });
 })();

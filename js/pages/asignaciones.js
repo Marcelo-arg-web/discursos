@@ -61,7 +61,8 @@ function getJuevesAnteriorISO(fechaISO){
 // Copiamos solo estos campos (dentro de asignaciones) para jueves y sábado
 const CAMPOS_COPIAR_A_JUEVES = [
   "acomodadorEntradaId",
-  "acomodadorAuditorioId",
+  "acomodadorAuditorio1Id",
+  "acomodadorAuditorio2Id",
   "plataformaId",
   "multimedia1Id",
   "multimedia2Id",
@@ -276,7 +277,8 @@ function applyReadOnlyMode(){
   const disableIds = [
     "presidente","cancionNumero","oracionInicial","oradorPublico","congregacionVisitante",
     "tituloDiscurso","tituloSiguienteSemana","conductorAtalaya","lectorAtalaya",
-    "multimedia1","multimedia2","plataforma","acomodadorEntrada","acomodadorAuditorio",
+    "multimedia1","multimedia2","plataforma","acomodadorEntrada","acomodadorAuditorio1",
+    "acomodadorAuditorio2",
     "microfonista1","microfonista2","oracionFinal",
     // mensuales
     "mes","mesSemana","mesPlataforma","mesAcomodadorEntrada","mesAcomodadorAuditorio",
@@ -287,7 +289,6 @@ function applyReadOnlyMode(){
   // Botones sugerir
   [
     "btnSugerirPresidente","btnSugerirConductor","btnSugMultimedia1","btnSugMultimedia2","btnSugPlataforma",
-    "btnSugAcomEntrada","btnSugAcomAuditorio"
   ].forEach(id=>{ const b = $(id); if(b) b.disabled = true; });
 }
 
@@ -517,7 +518,8 @@ function monthUsageCounts(m) {
     const entries = [
       ["plataforma", w.plataformaId],
       ["acomodadorEntrada", w.acomodadorEntradaId],
-      ["acomodadorAuditorio", w.acomodadorAuditorioId],
+      ["acomodadorAuditorio1",
+    "acomodadorAuditorio2", w.acomodadorAuditorioId],
       ["multimedia", w.multimedia1Id],
       ["multimedia", w.multimedia2Id],
       ["microfonista", w.microfonista1Id],
@@ -577,7 +579,8 @@ function applyMesWeekSuggestion(targetWeekKey) {
   const acomEnt = getVal("mesAcomodadorEntrada") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorEntrada", used);
   used.add(acomEnt);
 
-  const acomAud = getVal("mesAcomodadorAuditorio") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio", used);
+  const acomAud = getVal("mesAcomodadorAuditorio") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio1",
+    "acomodadorAuditorio2", used);
   used.add(acomAud);
 
   const mm1 = getVal("mesMultimedia1") || pickFairCandidate(candidates.multimedia, counts, "multimedia", used);
@@ -613,7 +616,8 @@ function applyMesWeekSuggestion(targetWeekKey) {
   // Marca uso para el criterio de desempate local
   markLastUsed("plataforma", platforma);
   markLastUsed("acomodadorEntrada", acomEnt);
-  markLastUsed("acomodadorAuditorio", acomAud);
+  markLastUsed("acomodadorAuditorio1",
+    "acomodadorAuditorio2", acomAud);
   markLastUsed("multimedia", mm1);
   markLastUsed("multimedia", mm2);
   markLastUsed("microfonista", mic1);
@@ -796,10 +800,12 @@ fillSelect("lectorAtalaya", byIds(lectoresAtalaya));
   fillSelect("mesPlataforma", byIds(plataforma));
 
   fillSelect("acomodadorEntrada", byIds(acomodadores));
-  fillSelect("acomodadorAuditorio", byIds(acomodadores));
+  fillSelect("acomodadorAuditorio1", byIds(acomodadores));
+  fillSelect("acomodadorAuditorio2", byIds(acomodadores));
 
   fillSelect("mesAcomodadorEntrada", byIds(acomodadores));
-  fillSelect("mesAcomodadorAuditorio", byIds(acomodadores));
+  fillSelect("mesAcomodadorAuditorio1", byIds(acomodadores));
+  fillSelect("mesAcomodadorAuditorio2", byIds(acomodadores));
 
   fillSelect("microfonista1", byIds(microfonistas));
   fillSelect("microfonista2", byIds(microfonistas));
@@ -872,131 +878,13 @@ async function firestoreVisitFor(fechaISO) {
     /* ignore */
   }
 
-  const fields = ["fecha", "fechaISO", "semana", "dia"];
-  for (const f of fields) {
-    try {
-      const qy = query(collection(db, "visitas"), where(f, "==", fechaISO));
-      const s = await getDocs(qy);
-      if (!s.empty) return { id: s.docs[0].id, ...s.docs[0].data() };
-    } catch (_) {
-      /* ignore */
-    }
-  }
-
-  try {
-    const s = await getDocs(collection(db, "visitas"));
-    for (const d of s.docs) {
-      const data = d.data() || {};
-      const fx = (data.fecha || data.fechaISO || data.semana || data.dia || "")
-        .toString()
-        .slice(0, 10);
-      if (fx === fechaISO) return { id: d.id, ...data };
-    }
-  } catch (_) {
-    /* ignore */
-  }
-
-  return null;
-}
-
-function extractVisitFields(v) {
-  if (!v) return null;
-  const nombre = v.orador || v.oradorPublico || v.nombre || v.conferenciante || "";
-  const congregacion = v.congregacion || v.congregacionVisitante || v.congreg || "";
-  const titulo = v.titulo || v.tituloDiscurso || v.tema || "";
-  const bosquejo = v.bosquejo || v.numero || v.discursoNumero || v.b || "";
-  const cancion = v.cancion || v.cancionNumero || v.c || "";
-  return { nombre, congregacion, titulo, bosquejo, cancion };
-}
-
-async function aplicarAutoVisitante(semanaISO) {
-  if (!semanaISO) return;
-
-  let v = await firestoreVisitFor(semanaISO);
-  let vf = extractVisitFields(v);
-  if (!vf) {
-    const local = localVisitanteFor(semanaISO);
-    vf = local
-      ? {
-          nombre: local.nombre || "",
-          congregacion: local.congregacion || "",
-          titulo: local.titulo || "",
-          bosquejo: local.bosquejo || "",
-          cancion: local.cancion || "",
-        }
-      : null;
-  }
-
-  if (vf) {
-    if (!getVal("oradorPublico").trim() && vf.nombre) setVal("oradorPublico", vf.nombre);
-    if (!getVal("congregacionVisitante").trim() && vf.congregacion)
-      setVal("congregacionVisitante", vf.congregacion);
-    if (!getVal("tituloDiscurso").trim() && vf.titulo) setVal("tituloDiscurso", vf.titulo);
-    if (!getVal("cancionNumero").trim() && vf.cancion) setVal("cancionNumero", String(vf.cancion));
-  }
-
-  const nextISO = addDaysISO(semanaISO, 7);
-  if (!getVal("tituloSiguienteSemana").trim() && nextISO) {
-    let v2 = await firestoreVisitFor(nextISO);
-    let v2f = extractVisitFields(v2);
-    if (!v2f) {
-      const local2 = localVisitanteFor(nextISO);
-      v2f = local2 ? { titulo: local2.titulo || "" } : null;
-    }
-    if (v2f?.titulo) setVal("tituloSiguienteSemana", v2f.titulo);
-  }
-}
-
-async function poblarDatalistOradores() {
-  const dl = $("listaOradoresVisitantes");
-  if (!dl) return;
-
-  const set = new Set();
-
-  for (const k of Object.keys(visitantesLocal || {})) {
-    const v = visitantesLocal[k];
-    if (v?.nombre) set.add(v.nombre);
-  }
-
-  try {
-    const s = await getDocs(collection(db, "visitas"));
-    for (const d of s.docs) {
-      const data = d.data() || {};
-      const name = data.orador || data.oradorPublico || data.nombre || data.conferenciante;
-      if (name) set.add(String(name));
-    }
-  } catch (_) {
-    /* ignore */
-  }
-
-  dl.innerHTML = "";
-  Array.from(set)
-    .sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }))
-    .forEach((v) => {
-      const opt = document.createElement("option");
-      opt.value = v;
-      dl.appendChild(opt);
-    });
-}
-
-
-
-// ---------------- Presidente (sugerencias) ----------------
-function normName(s){ return String(s||"").trim().toLowerCase(); }
-
-function pickNextFrom(list, storageKey){
-  if(!list || list.length===0) return "";
-  const prev = parseInt(localStorage.getItem(storageKey)||"0",10);
-  const idx = (isNaN(prev)?0:prev) % list.length;
-  const name = list[idx];
-  localStorage.setItem(storageKey, String((idx+1)%list.length));
-  return name;
-}
-
-function sugerirPresidente(){
-  if(!window.__personasCache) return;
-  const anc = getAncianos(window.__personasCache) || [];
-
+  const fields = [
+    { id: "multimedia1", label: "Multimedia 1" },
+    { id: "multimedia2", label: "Multimedia 2" },
+    { id: "acomodadorEntrada", label: "Acomodador Entrada" },
+    { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
+    { id: "acomodadorAuditorio2", label: "Acomodador Auditorio 2" },
+  ];
   const exclNames = new Set([normName("Marcelo Palavecino")]);
   const conductorId = getVal("conductorAtalaya");
   const oracionInicialId = getVal("oracionInicial");
@@ -1194,7 +1082,8 @@ function formData() {
     microfonista1Id: getVal("microfonista1"),
     microfonista2Id: getVal("microfonista2"),
     acomodadorEntradaId: getVal("acomodadorEntrada"),
-    acomodadorAuditorioId: getVal("acomodadorAuditorio"),
+    acomodadorAuditorio1Id: getVal("acomodadorAuditorio1"),
+    acomodadorAuditorio2Id: getVal("acomodadorAuditorio2"),
 
     cancionNumero: getVal("cancionNumero"),
     oradorPublico: getVal("oradorPublico"),
@@ -1219,7 +1108,8 @@ function hydrateToUI(a) {
     ["microfonista1", a.microfonista1Id],
     ["microfonista2", a.microfonista2Id],
     ["acomodadorEntrada", a.acomodadorEntradaId],
-    ["acomodadorAuditorio", a.acomodadorAuditorioId],
+    ["acomodadorAuditorio1",
+    "acomodadorAuditorio2", a.acomodadorAuditorioId],
   ].forEach(([sid, pid]) => ensureOptionById(sid, pid));
 
   setVal("presidente", a.presidenteId || "");
@@ -1233,7 +1123,8 @@ function hydrateToUI(a) {
   setVal("microfonista1", a.microfonista1Id || "");
   setVal("microfonista2", a.microfonista2Id || "");
   setVal("acomodadorEntrada", a.acomodadorEntradaId || "");
-  setVal("acomodadorAuditorio", a.acomodadorAuditorioId || "");
+  setVal("acomodadorAuditorio1",
+    "acomodadorAuditorio2", a.acomodadorAuditorioId || "");
 
   setVal("cancionNumero", a.cancionNumero || "");
   setVal("oradorPublico", a.oradorPublico || "");
@@ -1246,9 +1137,10 @@ function hydrateToUI(a) {
 function validateRequired() {
   // Ajustá acá qué campos querés obligatorios
   const required = [
-    { id: "plataforma", label: "Acomodador Plataforma" },
+    { id: "plataforma", label: "Plataforma" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
-    { id: "acomodadorAuditorio", label: "Acomodador Auditorio" },
+    { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
+    { id: "acomodadorAuditorio2", label: "Acomodador Auditorio 2" },
     { id: "multimedia1", label: "Multimedia 1" },
     { id: "multimedia2", label: "Multimedia 2" },
   ];
@@ -1269,7 +1161,8 @@ function validateNoDuplicates() {
     { id: "multimedia1", label: "Multimedia 1" },
     { id: "multimedia2", label: "Multimedia 2" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
-    { id: "acomodadorAuditorio", label: "Acomodador Auditorio" },
+    { id: "acomodadorAuditorio1",
+    "acomodadorAuditorio2", label: "Acomodador Auditorio" },
   ];
   const chosen = fields.map((f) => ({ ...f, value: getVal(f.id) })).filter((x) => x.value);
 
@@ -1375,7 +1268,8 @@ function limpiar() {
     "microfonista1",
     "microfonista2",
     "acomodadorEntrada",
-    "acomodadorAuditorio",
+    "acomodadorAuditorio1",
+    "acomodadorAuditorio2",
     "cancionNumero",
     "oradorPublico",
     "congregacionVisitante",
@@ -1703,7 +1597,9 @@ async function init() {
   $("btnSugMultimedia2")?.addEventListener("click", ()=>suggestSelect("multimedia2","multimedia", candidates.multimedia));
   $("btnSugPlataforma")?.addEventListener("click", ()=>suggestSelect("plataforma","plataforma", candidates.plataforma));
   $("btnSugAcomEntrada")?.addEventListener("click", ()=>suggestSelect("acomodadorEntrada","acomodadores", candidates.acomodadores));
-  $("btnSugAcomAuditorio")?.addEventListener("click", ()=>suggestSelect("acomodadorAuditorio","acomodadores", candidates.acomodadores));
+  $("btnSugAcomAuditorio1")?.addEventListener("click", ()=>suggestSelect("acomodadorAuditorio1","acomodadores", candidates.acomodadores));
+  $("btnSugAcomAuditorio2")?.addEventListener("click", ()=>suggestSelect("acomodadorAuditorio2","acomodadores", candidates.acomodadores));
+      "acomodadorAuditorio2","acomodadores", candidates.acomodadores));
 
   $("btnCargarMes")?.addEventListener("click", cargarMes);
   $("btnGuardarMes")?.addEventListener("click", guardarMes);
