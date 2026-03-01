@@ -41,7 +41,7 @@ function renderTopbar(active, rol){
         ${admin ? `<a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>` : ``}
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
         ${admin ? `<a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>` : ``}
-        ${admin ? `<a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Doc Presidente</a>` : ``}
+        ${admin ? `<a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>` : ``}
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
         ${admin ? `<a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>` : ``}
         ${superadmin ? `<a href="usuarios.html" class="${active==='usuarios'?'active':''}">Usuarios</a>` : ``}

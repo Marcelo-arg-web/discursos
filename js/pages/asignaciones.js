@@ -1288,7 +1288,8 @@ function limpiar() {
 function abrirPdfPresidente() {
   const s = semanaISO();
   if (!s) return setStatus("Elegí una semana primero.", true);
-  window.location.href = `presidente.html?semana=${encodeURIComponent(s)}`;
+  // Abrir en nueva pestaña y activar impresión automática
+  window.open(`presidente.html?semana=${encodeURIComponent(s)}&auto=1`, "_blank");
 }
 
 // ---------------- Aviso semanal (acomodadores + multimedia) ----------------

@@ -5,6 +5,45 @@ import { canciones } from "../data/canciones.js";
 
 const $ = (id) => document.getElementById(id);
 
+function ensureTopbarStyles(){
+  if(document.getElementById("topbarStyle")) return;
+  const s = document.createElement("style");
+  s.id="topbarStyle";
+  s.textContent = `
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;
+      background:#1a4fa3;color:#fff;padding:10px 14px;border-radius:14px;margin:14px auto;max-width:1100px;}
+    .topbar .brand{font-weight:800}
+    .topbar .links{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .topbar a{color:#fff;text-decoration:none;font-weight:700;font-size:13px;opacity:.92}
+    .topbar a.active{text-decoration:underline;opacity:1}
+    .topbar .btn.danger{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239}
+  `;
+  document.head.appendChild(s);
+}
+
+function renderTopbar(active){
+  const el = document.getElementById("topbar");
+  if(!el) return;
+  ensureTopbarStyles();
+  el.innerHTML = `
+    <div class="topbar">
+      <div class="brand">Villa Fiad</div>
+      <div class="links">
+        <a href="panel.html">Panel</a>
+        <a href="asignaciones.html">Asignaciones</a>
+        <a href="imprimir.html">Imprimir</a>
+        <a href="salientes.html">Salientes</a>
+        <button id="btnSalir" class="btn danger" type="button">Salir</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("btnSalir")?.addEventListener("click", async ()=>{
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+}
+
+
 function qp(name){
   const u = new URL(window.location.href);
   return (u.searchParams.get(name) || "").trim();
@@ -29,6 +68,7 @@ async function requireActive(){
     onAuthStateChanged(auth, async (user)=>{
       if(!user){ window.location.href = "index.html"; return; }
       // No hacemos validación extra acá para no depender de reglas; si llegó hasta aquí, está logueado.
+      renderTopbar('presidente');
       resolve(user);
     });
   });
@@ -97,6 +137,11 @@ const html = `
 `;
 
   $("contenido").innerHTML = html;
+
+  // Impresión automática si viene con &auto=1 (ideal para enviar por WhatsApp)
+  if (qp("auto") === "1") {
+    setTimeout(()=>{ try{ window.print(); }catch(e){} }, 250);
+  }
 }
 
 async function load(){
