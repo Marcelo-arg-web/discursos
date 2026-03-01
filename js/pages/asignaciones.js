@@ -34,9 +34,10 @@ const $ = (id) => document.getElementById(id);
 const getVal = (id) => ($(id)?.value ?? "");
 const setVal = (id, v) => {
   const el = $(id);
+  if (el) el.value = v ?? "";
+};
 
-
-// ---------------- Semana Jueves/Sábado: copiar asignados automáticamente ----------------
+// ---------------- Semana Jueves/Fin de semana: copiar asignados automáticamente ----------------
 function isoToDate(iso){
   const [y,m,d] = String(iso||"").split("-").map(n=>parseInt(n,10));
   if(!y||!m||!d) return null;
@@ -58,7 +59,8 @@ function getJuevesAnteriorISO(fechaISO){
   dt.setDate(dt.getDate() - delta);
   return toISODate(dt);
 }
-// Copiamos solo estos campos (dentro de asignaciones) para jueves y sábado
+
+// Copiamos solo estos campos (dentro de asignaciones) para jueves y fin de semana
 const CAMPOS_COPIAR_A_JUEVES = [
   "acomodadorEntradaId",
   "acomodadorAuditorio1Id",
@@ -92,8 +94,6 @@ async function copiarAsignadosAlJuevesSiCorresponde(fechaFinDeSemanaISO, dataAsi
     copiadoDesdeFinDeSemana: fechaFinDeSemanaISO,
   }, { merge: true });
 }
-  if (el) el.value = v ?? "";
-};
 
 function escapeHtml(str){
   return String(str ?? "")
