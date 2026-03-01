@@ -1321,7 +1321,7 @@ function buildPrintSemanaHTML(semanaSatISO, a){
 
   const pres = personaNameById(a?.presidenteId) || "—";
   const oi = personaNameById(a?.oracionInicialId) || "—";
-  const of = (a?.oracionFinalId === "__VISITANTE__") ? oracionFinalTexto(a) : (personaNameById(a?.oracionFinalId) || oracionFinalTexto(a) || "—");
+  const of = ( (a?.oradorPublico || "").trim() ) ? (oracionFinalTexto(a) || "—") : ((personaNameById(a?.oracionFinalId) || oracionFinalTexto(a) || "—"));
 
   const canNum = String(a?.cancionNumero || "").trim();
   const canTit = canNum ? (cancionesMap.get(Number(canNum)) || "") : "";

@@ -1,49 +1,72 @@
 <!DOCTYPE html>
+
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Acceso Lectura - Villa Fiad</title>
-  <link rel="stylesheet" href="css/styles.css"/>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Acceso Lectura - Villa Fiad</title>
+<link href="css/styles.css" rel="stylesheet"/>
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="topbar__left">
-        <img src="assets/favicon.svg" alt="" style="width:22px;height:22px;"/>
-        <strong>Villa Fiad</strong>
-      </div>
-      <div class="topbar__right">
-        <span class="badge">Solo lectura</span>
-      </div>
-    </header>
-
-    <main class="container" style="max-width:520px;">
-      <div class="card">
-        <h2 style="margin-top:0;">Acceso para ver</h2>
-        <p class="muted">Ingresá las credenciales genéricas para ver tableros y salientes.</p>
-
-        <label class="label" for="vfUser">Usuario</label>
-        <input id="vfUser" class="input" placeholder="VillaFiad" autocomplete="username"/>
-
-        <label class="label" for="vfPass">Contraseña</label>
-        <input id="vfPass" class="input" type="password" placeholder="@2026" autocomplete="current-password"/>
-
-        <div style="display:flex; gap:10px; margin-top:14px;">
-          <button id="btnLoginPublic" class="btn primary" style="flex:1;">Entrar</button>
-          <button id="btnClearPublic" class="btn" type="button">Limpiar</button>
-        </div>
-
-        <div id="publicLoginMsg" class="muted" style="margin-top:12px;"></div>
-
-        <hr style="margin:16px 0;">
-        <div class="muted" style="font-size:.92em;">
+<div class="app-shell">
+<header class="topbar">
+<div class="topbar__left">
+<img alt="" src="assets/favicon.svg" style="width:22px;height:22px;"/>
+<strong>Villa Fiad</strong>
+</div>
+<div class="topbar__right">
+<span class="badge">Solo lectura</span>
+</div>
+</header>
+<main class="container" style="max-width:520px;">
+<div class="card">
+<h2 style="margin-top:0;">Acceso para ver</h2>
+<p class="muted">Ingresá las credenciales genéricas para ver tableros y salientes.</p>
+<label class="label" for="vfUser">Usuario</label>
+<input autocomplete="username" class="input" id="vfUser" placeholder="VillaFiad"/>
+<label class="label" for="vfPass">Contraseña</label>
+<input autocomplete="current-password" class="input" id="vfPass" placeholder="@2026" type="password"/>
+<div style="display:flex; gap:10px; margin-top:14px;">
+<button class="btn primary" id="btnLoginPublic" style="flex:1;">Entrar</button>
+<button class="btn" id="btnClearPublic" type="button">Limpiar</button>
+</div>
+<div class="muted" id="publicLoginMsg" style="margin-top:12px;"></div>
+<hr style="margin:16px 0;"/>
+<div class="muted" style="font-size:.92em;">
           Tip: este acceso es para <b>ver</b>. Para editar, usá el ingreso normal.
         </div>
-      </div>
-    </main>
-  </div>
+</div>
+</main>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      // Si hay una versión esperando, activala
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
 
-  <script type="module" src="js/pages/public-login.js"></script>
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            nw.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+    }).catch(function(e){
+      console.log('SW error', e);
+    });
+
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+  });
+})();
+</script><script src="js/pages/public-login.js" type="module"></script>
 </body>
 </html>

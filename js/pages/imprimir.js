@@ -12,6 +12,16 @@ function toast(msg, isError=false){
 }
 
 
+
+function buildOracionFinal(oradorPublico, presidente, fallbackOracionFinal){
+  const o = String(oradorPublico || "").trim();
+  const p = String(presidente || "").trim();
+  if(o && p) return `${o}/${p}`; // sin espacios
+  if(p) return p;
+  if(o) return o;
+  return String(fallbackOracionFinal || "").trim();
+}
+
 function saturdayOfMonthWeek(mesISO, weekNum){
   const [y,m] = String(mesISO||"").split("-").map(Number);
   if(!y||!m) return null;
@@ -94,7 +104,9 @@ async function requireActiveUser(activePage){
       resolve({ user, usuario:u });
     });
   });
-}import {
+}
+
+import {
   collection,
   getDocs,
   query,
@@ -140,7 +152,7 @@ function renderItems(items){
         <td>${a.acomodadorAuditorio||""}</td>
         <td>${a.microfonista1||""}</td>
         <td>${a.microfonista2||""}</td>
-        <td>${a.oracionFinal||""}</td>
+        <td>${buildOracionFinal(a.oradorPublico, a.presidente, a.oracionFinal)||""}</td>
       </tr>
     `;
   }).join("");

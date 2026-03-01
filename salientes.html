@@ -1,94 +1,109 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Salientes · Arreglos Discursos</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Salientes · Arreglos Discursos</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
-  <div id="topbar"></div>
+<div id="topbar"></div>
+<div class="container">
+<div id="toastHost"></div>
+<div class="card pad">
+<h2 class="h1" style="margin-bottom:6px;">Salientes</h2>
+<div class="muted">Arreglos cuando nosotros salimos a dar discursos en otras congregaciones. Guardado en Firestore (<code>salientes</code>). Todos los usuarios activos pueden ver.</div>
+<hr class="sep"/>
+<form class="grid" id="form" style="grid-template-columns: repeat(6, 1fr); gap:12px;">
+<div style="grid-column: span 2;">
+<label class="lbl">Fecha (YYYY-MM-DD)</label>
+<input class="inp" id="fecha" placeholder="2026-03-01" required=""/>
+</div>
+<div style="grid-column: span 2;">
+<label class="lbl">Discursante</label>
+<input class="inp" id="orador" placeholder="Marcelo Palavecino" required=""/>
+<div class="small muted">Los 5 actuales: Marcelo Palavecino, Sergio Saldaña, Leonardo Araya, Luis Navarro, Marcelo Rodríguez (pero se puede agregar/quitar).</div>
+</div>
+<div style="grid-column: span 1;">
+<label class="lbl">Bosquejo</label>
+<input class="inp" id="bosquejo" inputmode="numeric" placeholder="146"/>
+</div>
+<div style="grid-column: span 1;">
+<label class="lbl">Congregación destino</label>
+<input class="inp" id="destino" placeholder="Este, Tucumán" required=""/>
+</div>
+<div style="grid-column: span 6;">
+<label class="lbl">Notas (opcional)</label>
+<input class="inp" id="notas" placeholder="Confirmación, horario, contacto…"/>
+</div>
+<input id="editId" type="hidden"/>
+<div class="row" style="grid-column: span 6;">
+<button class="btn primary" id="btnGuardar" type="submit">Guardar</button>
+<button class="btn" id="btnNuevo" type="button">Nuevo</button>
+<button class="btn danger" disabled="" id="btnBorrar" type="button">Borrar</button>
+</div>
+</form>
+<hr class="sep"/>
+<div class="row" style="justify-content:space-between; align-items:center;">
+<div>
+<b>Listado</b>
+<div class="small muted">Click en una fila para editar.</div>
+</div>
+<div class="row">
+<input class="inp" id="filtro" placeholder="Filtrar por orador o destino…" style="max-width:260px;"/>
+<button class="btn" id="btnRefrescar" type="button">Refrescar</button>
+</div>
+</div>
+<div style="height:10px"></div>
+<div class="card pad" style="padding:0; overflow:auto;">
+<table class="table" id="tabla">
+<thead>
+<tr>
+<th>Fecha</th>
+<th>Orador</th>
+<th>Bosquejo</th>
+<th>Destino</th>
+<th>Notas</th>
+</tr>
+</thead>
+<tbody id="tbody">
+<tr><td class="muted" colspan="5">Cargando…</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      // Si hay una versión esperando, activala
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
 
-  <div class="container">
-    <div id="toastHost"></div>
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            nw.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+    }).catch(function(e){
+      console.log('SW error', e);
+    });
 
-    <div class="card pad">
-      <h2 class="h1" style="margin-bottom:6px;">Salientes</h2>
-      <div class="muted">Arreglos cuando nosotros salimos a dar discursos en otras congregaciones. Guardado en Firestore (<code>salientes</code>). Todos los usuarios activos pueden ver.</div>
-
-      <hr class="sep"/>
-
-      <form id="form" class="grid" style="grid-template-columns: repeat(6, 1fr); gap:12px;">
-        <div style="grid-column: span 2;">
-          <label class="lbl">Fecha (YYYY-MM-DD)</label>
-          <input id="fecha" class="inp" placeholder="2026-03-01" required />
-        </div>
-
-        <div style="grid-column: span 2;">
-          <label class="lbl">Discursante</label>
-          <input id="orador" class="inp" placeholder="Marcelo Palavecino" required />
-          <div class="small muted">Los 5 actuales: Marcelo Palavecino, Sergio Saldaña, Leonardo Araya, Luis Navarro, Marcelo Rodríguez (pero se puede agregar/quitar).</div>
-        </div>
-
-        <div style="grid-column: span 1;">
-          <label class="lbl">Bosquejo</label>
-          <input id="bosquejo" class="inp" inputmode="numeric" placeholder="146" />
-        </div>
-
-        <div style="grid-column: span 1;">
-          <label class="lbl">Congregación destino</label>
-          <input id="destino" class="inp" placeholder="Este, Tucumán" required />
-        </div>
-
-        <div style="grid-column: span 6;">
-          <label class="lbl">Notas (opcional)</label>
-          <input id="notas" class="inp" placeholder="Confirmación, horario, contacto…" />
-        </div>
-
-        <input id="editId" type="hidden" />
-
-        <div style="grid-column: span 6;" class="row">
-          <button class="btn primary" type="submit" id="btnGuardar">Guardar</button>
-          <button class="btn" type="button" id="btnNuevo">Nuevo</button>
-          <button class="btn danger" type="button" id="btnBorrar" disabled>Borrar</button>
-        </div>
-      </form>
-
-      <hr class="sep"/>
-
-      <div class="row" style="justify-content:space-between; align-items:center;">
-        <div>
-          <b>Listado</b>
-          <div class="small muted">Click en una fila para editar.</div>
-        </div>
-        <div class="row">
-          <input id="filtro" class="inp" style="max-width:260px;" placeholder="Filtrar por orador o destino…" />
-          <button class="btn" type="button" id="btnRefrescar">Refrescar</button>
-        </div>
-      </div>
-
-      <div style="height:10px"></div>
-
-      <div class="card pad" style="padding:0; overflow:auto;">
-        <table class="table" id="tabla">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Orador</th>
-              <th>Bosquejo</th>
-              <th>Destino</th>
-              <th>Notas</th>
-            </tr>
-          </thead>
-          <tbody id="tbody">
-            <tr><td colspan="5" class="muted">Cargando…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <script type="module" src="js/pages/salientes.js"></script>
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+  });
+})();
+</script><script src="js/pages/salientes.js" type="module"></script>
 </body>
 </html>

@@ -1,212 +1,218 @@
 <!DOCTYPE html>
+
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Asignaciones · Villa Fiad</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>Asignaciones · Villa Fiad</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
-  <div id="topbar"></div>
-
-  <div class="container">
-    <div class="row" style="align-items:flex-start;">
-      <div class="col-2">
-        <div class="card pad">
-          <div class="section-title">
-            <h2 class="h1" style="margin:0;">Asignaciones semanales</h2>
-            <span class="pill">Jueves 20:00 · Sábado 19:30</span>
-          </div>
-          <div class="muted" style="margin-top:-4px;">Cargá, guardá e imprimí. El guardado usa <b>merge</b> para no borrar lo anterior.</div>
-
-          <div class="hr"></div>
-
-          <div class="grid two">
-            <div class="field">
-              <div class="label">Semana (fecha de referencia)</div>
-              <input class="input" type="date" id="semana" />
-              <div class="help">Sugerencia: usá el sábado de esa semana.</div>
-            </div>
-
-            <div class="field no-print">
-              <div class="label">Acciones rápidas</div>
-              <div class="row">
-                <button class="btn small" type="button" id="btnEstaSemana">Esta semana</button>
-                <button class="btn small" type="button" id="btnSemanaAnterior">◀ Semana anterior</button>
-                <button class="btn small" type="button" id="btnSemanaSiguiente">Semana siguiente ▶</button>
-              </div>
-              <div class="row" style="margin-top:8px;">
-                <button class="btn small" type="button" id="btnCargar">Cargar</button>
-                <button class="btn small danger" type="button" id="btnLimpiar">Limpiar</button>
-                <button class="btn small" type="button" id="btnCopiarAnterior">Copiar semana anterior</button>
-              </div>
-            </div>
-          </div>
-
-          <div id="status" class="notice" style="margin-top:10px; display:none;"></div>
-
-          <div class="hr"></div>
-
-          <div class="grid three">
-            <div class="field">
-              <div class="label">Presidente</div>
-              <div class="row">
-                <select id="presidente" style="flex:1"></select>
-                <button class="btn small" type="button" id="btnSugerirPresidente">Sugerir</button>
-              </div>
-            </div>
-            <div class="field">
-              <div class="label">Canción (número)</div>
-              <input class="input" id="cancionNumero" placeholder="Ej: 25" />
-            </div>
-            <div class="field">
-              <div class="label">Oración inicial</div>
-              <select id="oracionInicial"></select>
-            </div>
-          </div>
-
-          <div class="grid two">
-            <div class="field">
-              <div class="label">Orador público (visitante)</div>
-              <input class="input" id="oradorPublico" list="listaOradoresVisitantes" placeholder="Escribí o elegí un orador visitante" />
-              <div class="help">Si el orador es visitante, elegilo desde la lista.</div>
-              <datalist id="listaOradoresVisitantes"></datalist>
-            </div>
-            <div class="field">
-              <div class="label">Congregación del visitante</div>
-              <input class="input" id="congregacionVisitante" placeholder="Ej: Oeste, Tucumán" />
-            </div>
-          </div>
-
-          <div class="field">
-            <div class="label">Título del discurso (auto si hay bosquejo)</div>
-            <input class="input" id="tituloDiscurso" placeholder="Se completa automáticamente si corresponde" />
-          </div>
-
-          <div class="grid two">
-            <div class="field">
-              <div class="label">Título siguiente semana (opcional)</div>
-              <input class="input" id="tituloSiguienteSemana" />
-            </div>
-            <div class="field">
-              <div class="label">Conductor La Atalaya</div>
-              <div class="row">
-                <select id="conductorAtalaya" style="flex:1"></select>
-                <button class="btn small" type="button" id="btnSugerirConductor">Sugerir</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid two">
-            <div class="field">
-              <div class="label">Lector La Atalaya</div>
-              <select id="lectorAtalaya"></select>
-            </div>
-            <div class="field">
-              <div class="label">Oración final</div>
-              <select id="oracionFinal"></select>
+<div id="topbar"></div>
+<div class="container">
+<div class="row" style="align-items:flex-start;">
+<div class="col-2">
+<div class="card pad">
+<div class="section-title">
+<h2 class="h1" style="margin:0;">Asignaciones semanales</h2>
+<span class="pill">Jueves 20:00 · Sábado 19:30</span>
+</div>
+<div class="muted" style="margin-top:-4px;">Cargá, guardá e imprimí. El guardado usa <b>merge</b> para no borrar lo anterior.</div>
+<div class="hr"></div>
+<div class="grid two">
+<div class="field">
+<div class="label">Semana (fecha de referencia)</div>
+<input class="input" id="semana" type="date"/>
+<div class="help">Sugerencia: usá el sábado de esa semana.</div>
+</div>
+<div class="field no-print">
+<div class="label">Acciones rápidas</div>
+<div class="row">
+<button class="btn small" id="btnEstaSemana" type="button">Esta semana</button>
+<button class="btn small" id="btnSemanaAnterior" type="button">◀ Semana anterior</button>
+<button class="btn small" id="btnSemanaSiguiente" type="button">Semana siguiente ▶</button>
+</div>
+<div class="row" style="margin-top:8px;">
+<button class="btn small" id="btnCargar" type="button">Cargar</button>
+<button class="btn small danger" id="btnLimpiar" type="button">Limpiar</button>
+<button class="btn small" id="btnCopiarAnterior" type="button">Copiar semana anterior</button>
+</div>
+</div>
+</div>
+<div class="notice" id="status" style="margin-top:10px; display:none;"></div>
+<div class="hr"></div>
+<div class="grid three">
+<div class="field">
+<div class="label">Presidente</div>
+<div class="row">
+<select id="presidente" style="flex:1"></select>
+<button class="btn small" id="btnSugerirPresidente" type="button">Sugerir</button>
+</div>
+</div>
+<div class="field">
+<div class="label">Canción (número)</div>
+<input class="input" id="cancionNumero" placeholder="Ej: 25"/>
+</div>
+<div class="field">
+<div class="label">Oración inicial</div>
+<select id="oracionInicial"></select>
+</div>
+</div>
+<div class="grid two">
+<div class="field">
+<div class="label">Orador público (visitante)</div>
+<input class="input" id="oradorPublico" list="listaOradoresVisitantes" placeholder="Escribí o elegí un orador visitante"/>
+<div class="help">Si el orador es visitante, elegilo desde la lista.</div>
+<datalist id="listaOradoresVisitantes"></datalist>
+</div>
+<div class="field">
+<div class="label">Congregación del visitante</div>
+<input class="input" id="congregacionVisitante" placeholder="Ej: Oeste, Tucumán"/>
+</div>
+</div>
+<div class="field">
+<div class="label">Título del discurso (auto si hay bosquejo)</div>
+<input class="input" id="tituloDiscurso" placeholder="Se completa automáticamente si corresponde"/>
+</div>
+<div class="grid two">
+<div class="field">
+<div class="label">Título siguiente semana (opcional)</div>
+<input class="input" id="tituloSiguienteSemana"/>
+</div>
+<div class="field">
+<div class="label">Conductor La Atalaya</div>
+<div class="row">
+<select id="conductorAtalaya" style="flex:1"></select>
+<button class="btn small" id="btnSugerirConductor" type="button">Sugerir</button>
+</div>
+</div>
+</div>
+<div class="grid two">
+<div class="field">
+<div class="label">Lector La Atalaya</div>
+<select id="lectorAtalaya"></select>
+</div>
+<div class="field">
+<div class="label">Oración final</div>
+<select id="oracionFinal"></select>
 <div class="row" style="margin-top:8px;">
 </div>
-            </div>
-          </div>
+</div>
+</div>
+<div class="hr"></div>
+<div class="section-title">
+<h3>Multimedia y acomodadores</h3>
+<span class="pill">Asignación por reunión</span>
+</div>
+<div class="grid three">
+<div class="field">
+<div class="label">Multimedia 1</div>
+<div class="row">
+<select id="multimedia1" style="flex:1"></select>
+<button class="btn small" id="btnSugMultimedia1" type="button">Sugerir</button>
+</div>
+</div>
+<div class="field">
+<div class="label">Multimedia 2</div>
+<div class="row">
+<select id="multimedia2" style="flex:1"></select>
+<button class="btn small" id="btnSugMultimedia2" type="button">Sugerir</button>
+</div>
+</div>
+<div class="field">
+<div class="label">Plataforma</div>
+<div class="row">
+<select id="plataforma" style="flex:1"></select>
+<button class="btn small" id="btnSugPlataforma" type="button">Sugerir</button>
+</div>
+</div>
+</div>
+<div class="grid three">
+<div class="field">
+<div class="label">Acomodador Entrada</div>
+<div class="row">
+<select id="acomodadorEntrada" style="flex:1"></select>
+<button class="btn small" id="btnSugAcomEntrada" type="button">Sugerir</button>
+</div>
+</div>
+<div class="field">
+<div class="label">Acomodador Auditorio</div>
+<div class="row">
+<select id="acomodadorAuditorio" style="flex:1"></select>
+<button class="btn small" id="btnSugAcomAuditorio" type="button">Sugerir</button>
+</div>
+</div>
+<div class="field">
+<div class="label">Microfonistas</div>
+<div class="grid two">
+<select id="microfonista1"></select>
+<select id="microfonista2"></select>
+</div>
+</div>
+</div>
+<div class="hr"></div>
+<div class="row no-print" style="justify-content:flex-end;">
+<button class="btn" id="btnPdfPresidente" type="button">PDF Presidente</button>
+<button class="btn" id="btnImprimir" type="button">Imprimir / PDF</button>
+<button class="btn primary" id="btnGuardar" type="button">Guardar</button>
+</div>
+</div>
+<div class="card pad" style="margin-top:14px;">
+<div class="section-title">
+<h3>Avisos semanales</h3>
+<span class="pill">Para enviar el lunes</span>
+</div>
+<div class="muted" style="margin-top:-6px;">Generá el aviso general (acomodadores + multimedia para jueves y sábado).</div>
+<div class="row no-print" style="margin-top:10px;">
+<button class="btn" id="btnGenerarAviso" type="button">Generar aviso</button>
+<button class="btn" id="btnCopiarAviso" type="button">Copiar</button>
+<button class="btn" id="btnWhatsappAviso" type="button">WhatsApp Web</button>
+</div>
+<div class="field" style="margin-top:10px;">
+<textarea class="input" id="avisoText" placeholder="El aviso semanal aparecerá aquí..." rows="8"></textarea>
+<div class="help">Tip: copiá y pegá en el grupo, o abrí WhatsApp Web con el texto listo.</div>
+</div>
+<div class="hr"></div>
+<div class="section-title" style="margin-top:14px;">
+<h4 style="margin:0;">Vista tablero del mes</h4>
+<span class="pill">Se arma con lo ya guardado</span>
+</div>
+<div id="printMes" style="margin-top:10px;"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="print-only" id="printSemana"></div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      // Si hay una versión esperando, activala
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
 
-          <div class="hr"></div>
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            nw.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+    }).catch(function(e){
+      console.log('SW error', e);
+    });
 
-          <div class="section-title">
-            <h3>Multimedia y acomodadores</h3>
-            <span class="pill">Asignación por reunión</span>
-          </div>
-
-          <div class="grid three">
-            <div class="field">
-              <div class="label">Multimedia 1</div>
-              <div class="row">
-                <select id="multimedia1" style="flex:1"></select>
-                <button class="btn small" type="button" id="btnSugMultimedia1">Sugerir</button>
-              </div>
-            </div>
-            <div class="field">
-              <div class="label">Multimedia 2</div>
-              <div class="row">
-                <select id="multimedia2" style="flex:1"></select>
-                <button class="btn small" type="button" id="btnSugMultimedia2">Sugerir</button>
-              </div>
-            </div>
-            <div class="field">
-              <div class="label">Plataforma</div>
-              <div class="row">
-                <select id="plataforma" style="flex:1"></select>
-                <button class="btn small" type="button" id="btnSugPlataforma">Sugerir</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid three">
-            <div class="field">
-              <div class="label">Acomodador Entrada</div>
-              <div class="row">
-                <select id="acomodadorEntrada" style="flex:1"></select>
-                <button class="btn small" type="button" id="btnSugAcomEntrada">Sugerir</button>
-              </div>
-            </div>
-            <div class="field">
-              <div class="label">Acomodador Auditorio</div>
-              <div class="row">
-                <select id="acomodadorAuditorio" style="flex:1"></select>
-                <button class="btn small" type="button" id="btnSugAcomAuditorio">Sugerir</button>
-              </div>
-            </div>
-            <div class="field">
-              <div class="label">Microfonistas</div>
-              <div class="grid two">
-                <select id="microfonista1"></select>
-                <select id="microfonista2"></select>
-              </div>
-            </div>
-          </div>
-
-          <div class="hr"></div>
-
-          <div class="row no-print" style="justify-content:flex-end;">
-            <button class="btn" type="button" id="btnPdfPresidente">PDF Presidente</button>
-            <button class="btn" type="button" id="btnImprimir">Imprimir / PDF</button>
-            <button class="btn primary" type="button" id="btnGuardar">Guardar</button>
-          </div>
-        </div>
-
-        <div class="card pad" style="margin-top:14px;">
-          <div class="section-title">
-            <h3>Avisos semanales</h3>
-            <span class="pill">Para enviar el lunes</span>
-          </div>
-          <div class="muted" style="margin-top:-6px;">Generá el aviso general (acomodadores + multimedia para jueves y sábado).</div>
-
-          <div class="row no-print" style="margin-top:10px;">
-            <button class="btn" type="button" id="btnGenerarAviso">Generar aviso</button>
-            <button class="btn" type="button" id="btnCopiarAviso">Copiar</button>
-            <button class="btn" type="button" id="btnWhatsappAviso">WhatsApp Web</button>
-          </div>
-
-          <div class="field" style="margin-top:10px;">
-            <textarea id="avisoText" rows="8" class="input" placeholder="El aviso semanal aparecerá aquí..."></textarea>
-            <div class="help">Tip: copiá y pegá en el grupo, o abrí WhatsApp Web con el texto listo.</div>
-          </div>
-
-          <div class="hr"></div>
-
-          <div class="section-title" style="margin-top:14px;">
-            <h4 style="margin:0;">Vista tablero del mes</h4>
-            <span class="pill">Se arma con lo ya guardado</span>
-          </div>
-          <div id="printMes" style="margin-top:10px;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-        <div id="printSemana" class="print-only"></div>
-  <script type="module" src="js/pages/asignaciones.js"></script>
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+  });
+})();
+</script><script src="js/pages/asignaciones.js" type="module"></script>
 </body>
 </html>

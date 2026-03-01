@@ -1,24 +1,52 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Presidente · Villa Fiad</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Presidente · Villa Fiad</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
 </head>
 <body>
-  <div class="container">
-    <div class="card pad">
-      <div class="section-title no-print">
-        <h2 class="h1" style="margin:0;">Documento del presidente</h2>
-        <button class="btn primary" id="btnPrint" type="button">Imprimir / PDF</button>
-      </div>
+<div class="container">
+<div class="card pad">
+<div class="section-title no-print">
+<h2 class="h1" style="margin:0;">Documento del presidente</h2>
+<button class="btn primary" id="btnPrint" type="button">Imprimir / PDF</button>
+</div>
+<div id="contenido"></div>
+</div>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      // Si hay una versión esperando, activala
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
 
-      <div id="contenido"></div>
-    </div>
-  </div>
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            nw.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+    }).catch(function(e){
+      console.log('SW error', e);
+    });
 
-  <script type="module" src="js/pages/presidente.js"></script>
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+  });
+})();
+</script><script src="js/pages/presidente.js" type="module"></script>
 </body>
 </html>

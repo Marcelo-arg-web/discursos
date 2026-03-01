@@ -1,73 +1,72 @@
-const CACHE_NAME = "villa-fiad-asignaciones-v4";
-const CORE_ASSETS = [
-  "./",
-  "./asignaciones.html",
-  "./visitantes.html",
-  "./panel.html",
-  "./doc-presi.html",
-  "./estadisticas.html",
-  "./salientes.html",
-  "./personas.html",
-  "./index.html",
-  "./manifest.webmanifest",
-  "./sw.js",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/icon-512-maskable.png",
-  "./js/pages/asignaciones.js",
-  "./js/data/canciones.js",
-  "./js/data/bosquejos.js",
-  "./js/data/visitantes.js"
-  // Nota: NO cacheamos firebase-config.js para no tocarlo; igual el navegador lo va a pedir online.
-];
-
+// sw.js - Actualización automática (GitHub Pages cache busting)
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
-  );
+  // Activar la nueva versión lo antes posible
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.map((k) => (k === CACHE_NAME ? null : caches.delete(k))))
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    await self.clients.claim();
+  })());
 });
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
+// Network-first para HTML/JS/CSS (siempre traer lo último).
+// Para imágenes y otros assets: cache-first (opcional).
+const ASSET_CACHE = "assets-v1";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
+  const url = new URL(req.url);
 
-  // Solo GET
-  if (req.method !== "GET") return;
+  // Solo manejar mismo origen (tu sitio)
+  if (url.origin !== self.location.origin) return;
 
-  event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
+  const dest = req.destination; // 'document','script','style','image','font', etc.
 
-      return fetch(req)
-        .then((res) => {
-          // cache dynamic same-origin
-          const url = new URL(req.url);
-          if (url.origin === self.location.origin) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => {
-          // fallback básico: si falla, devolvemos la página principal si existe en cache
-          return caches.match("./asignaciones.html",
-  "./visitantes.html",
-  "./panel.html",
-  "./doc-presi.html",
-  "./estadisticas.html",
-  "./salientes.html",
-  "./personas.html",
-  "./index.html");
-        });
-    })
-  );
+  // Siempre traé lo último para documentos/scripts/estilos
+  if (dest === "document" || dest === "script" || dest === "style") {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(req, { cache: "no-store" });
+        return fresh;
+      } catch (e) {
+        // Fallback: intentar cache si no hay red
+        const cache = await caches.open(ASSET_CACHE);
+        const cached = await cache.match(req);
+        if (cached) return cached;
+        throw e;
+      }
+    })());
+    return;
+  }
+
+  // Assets (imágenes, íconos, fuentes): cache-first con actualización en segundo plano
+  if (dest === "image" || dest === "font" || dest === "manifest") {
+    event.respondWith((async () => {
+      const cache = await caches.open(ASSET_CACHE);
+      const cached = await cache.match(req);
+      if (cached) {
+        // actualizar en bg
+        event.waitUntil((async () => {
+          try {
+            const fresh = await fetch(req);
+            if (fresh && fresh.ok) await cache.put(req, fresh.clone());
+          } catch {}
+        })());
+        return cached;
+      }
+      const fresh = await fetch(req);
+      if (fresh && fresh.ok) await cache.put(req, fresh.clone());
+      return fresh;
+    })());
+    return;
+  }
+
+  // Default: passthrough
 });

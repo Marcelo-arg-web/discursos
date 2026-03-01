@@ -1,72 +1,93 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Estadísticas · Arreglos Discursos</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Estadísticas · Arreglos Discursos</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
-  <div id="topbar"></div>
+<div id="topbar"></div>
+<div class="container">
+<div id="toastHost"></div>
+<div class="card pad">
+<h2 class="h1" style="margin-bottom:6px;">Estadísticas</h2>
+<div class="muted">Cuenta qué bosquejos se usaron en <b>Asignaciones</b> y sugiere los menos repetidos. (Se basa en lo que esté cargado en Firestore).</div>
+<hr class="sep"/>
+<div class="row" style="align-items:end; flex-wrap:wrap;">
+<div>
+<label class="lbl">Rango (meses hacia atrás)</label>
+<input class="inp" id="meses" inputmode="numeric" style="max-width:140px;" value="12"/>
+<div class="small muted">Por defecto: últimos 12 meses.</div>
+</div>
+<div>
+<button class="btn primary" id="btnCalcular" type="button">Calcular</button>
+<button class="btn" id="btnRefrescar" type="button">Refrescar</button>
+</div>
+</div>
+<div style="height:12px"></div>
+<div class="grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
+<div class="card pad">
+<div class="h2">Menos presentados</div>
+<div class="small muted">Top 15 (menos veces).</div>
+<div style="height:8px"></div>
+<div class="small muted" id="menos">—</div>
+</div>
+<div class="card pad">
+<div class="h2">Más presentados</div>
+<div class="small muted">Top 15 (más veces).</div>
+<div style="height:8px"></div>
+<div class="small muted" id="mas">—</div>
+</div>
+</div>
+<div style="height:12px"></div>
+<div class="card pad" style="padding:0; overflow:auto;">
+<table class="table">
+<thead>
+<tr>
+<th>Bosquejo</th>
+<th>Título</th>
+<th>Cantidad</th>
+</tr>
+</thead>
+<tbody id="tbody">
+<tr><td class="muted" colspan="3">Sin datos aún.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      // Si hay una versión esperando, activala
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
 
-  <div class="container">
-    <div id="toastHost"></div>
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            nw.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+    }).catch(function(e){
+      console.log('SW error', e);
+    });
 
-    <div class="card pad">
-      <h2 class="h1" style="margin-bottom:6px;">Estadísticas</h2>
-      <div class="muted">Cuenta qué bosquejos se usaron en <b>Asignaciones</b> y sugiere los menos repetidos. (Se basa en lo que esté cargado en Firestore).</div>
-
-      <hr class="sep"/>
-
-      <div class="row" style="align-items:end; flex-wrap:wrap;">
-        <div>
-          <label class="lbl">Rango (meses hacia atrás)</label>
-          <input id="meses" class="inp" inputmode="numeric" value="12" style="max-width:140px;"/>
-          <div class="small muted">Por defecto: últimos 12 meses.</div>
-        </div>
-        <div>
-          <button class="btn primary" id="btnCalcular" type="button">Calcular</button>
-          <button class="btn" id="btnRefrescar" type="button">Refrescar</button>
-        </div>
-      </div>
-
-      <div style="height:12px"></div>
-
-      <div class="grid" style="grid-template-columns: 1fr 1fr; gap:12px;">
-        <div class="card pad">
-          <div class="h2">Menos presentados</div>
-          <div class="small muted">Top 15 (menos veces).</div>
-          <div style="height:8px"></div>
-          <div id="menos" class="small muted">—</div>
-        </div>
-        <div class="card pad">
-          <div class="h2">Más presentados</div>
-          <div class="small muted">Top 15 (más veces).</div>
-          <div style="height:8px"></div>
-          <div id="mas" class="small muted">—</div>
-        </div>
-      </div>
-
-      <div style="height:12px"></div>
-
-      <div class="card pad" style="padding:0; overflow:auto;">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Bosquejo</th>
-              <th>Título</th>
-              <th>Cantidad</th>
-            </tr>
-          </thead>
-          <tbody id="tbody">
-            <tr><td colspan="3" class="muted">Sin datos aún.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <script type="module" src="js/pages/estadisticas.js"></script>
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+  });
+})();
+</script><script src="js/pages/estadisticas.js" type="module"></script>
 </body>
 </html>

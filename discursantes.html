@@ -1,163 +1,170 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Discursantes · Arreglos Discursos</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Discursantes · Arreglos Discursos</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
-  <div id="topbar"></div>
-
-  <div class="container">
-    <div id="toastHost"></div>
-
-    <div class="row">
-      <div class="col">
-        <div class="card pad">
-          <h2 class="h1" style="margin-bottom:6px;">Discursantes</h2>
-          <div class="muted">Guardá visitantes y salidas, y generá un mensaje para WhatsApp.</div>
-
-          <hr class="sep"/>
-
-          <div class="row">
-            <div class="col">
-              <label>Nombre</label>
-              <input id="v_nombre" class="input" placeholder="Ej: Carlos Gómez">
-            </div>
-            <div class="col">
-              <label>Congregación</label>
-              <input id="v_cong" class="input" placeholder="Ej: Santa Rosa">
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col">
-              <label>Teléfono (opcional)</label>
-              <input id="v_tel" class="input" placeholder="Ej: 381 123-4567">
-            </div>
-            <div class="col">
-              <label>Tipo</label>
-              <select id="v_tipo" class="input">
-                <option value="visitante" selected>Visitante que viene</option>
-                <option value="salida">Salida (nosotros vamos)</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="col">
-              <label>Fecha</label>
-              <input id="v_fecha" class="input" type="date">
-            </div>
-            <div class="col">
-              <label>Hora</label>
-              <input id="v_hora" class="input" type="time" value="19:30">
-            </div>
-          </div>
-
-          <label>Notas</label>
-          <textarea id="v_notas" class="input" placeholder="Ej: discurso público #__ / tema / coordinaciones…"></textarea>
-
-          <div class="row" style="margin-top:12px;">
-            <button id="btnGuardar" class="btn primary">Guardar</button>
-            <button id="btnMsg" class="btn">Generar mensaje WhatsApp</button>
-          </div>
-
-          <hr class="sep"/>
-          <div class="small muted">
+<div id="topbar"></div>
+<div class="container">
+<div id="toastHost"></div>
+<div class="row">
+<div class="col">
+<div class="card pad">
+<h2 class="h1" style="margin-bottom:6px;">Discursantes</h2>
+<div class="muted">Guardá visitantes y salidas, y generá un mensaje para WhatsApp.</div>
+<hr class="sep"/>
+<div class="row">
+<div class="col">
+<label>Nombre</label>
+<input class="input" id="v_nombre" placeholder="Ej: Carlos Gómez"/>
+</div>
+<div class="col">
+<label>Congregación</label>
+<input class="input" id="v_cong" placeholder="Ej: Santa Rosa"/>
+</div>
+</div>
+<div class="row">
+<div class="col">
+<label>Teléfono (opcional)</label>
+<input class="input" id="v_tel" placeholder="Ej: 381 123-4567"/>
+</div>
+<div class="col">
+<label>Tipo</label>
+<select class="input" id="v_tipo">
+<option selected="" value="visitante">Visitante que viene</option>
+<option value="salida">Salida (nosotros vamos)</option>
+</select>
+</div>
+</div>
+<div class="row">
+<div class="col">
+<label>Fecha</label>
+<input class="input" id="v_fecha" type="date"/>
+</div>
+<div class="col">
+<label>Hora</label>
+<input class="input" id="v_hora" type="time" value="19:30"/>
+</div>
+</div>
+<label>Notas</label>
+<textarea class="input" id="v_notas" placeholder="Ej: discurso público #__ / tema / coordinaciones…"></textarea>
+<div class="row" style="margin-top:12px;">
+<button class="btn primary" id="btnGuardar">Guardar</button>
+<button class="btn" id="btnMsg">Generar mensaje WhatsApp</button>
+</div>
+<hr class="sep"/>
+<div class="small muted">
             El botón de WhatsApp arma un mensaje en texto (copiar/pegar). No envía nada automáticamente.
           </div>
-        </div>
-      </div>
-
-      <div class="col-2">
-        <div class="card pad">
-          <div class="row" style="align-items:end;">
-            <div class="col">
-              <label>Buscar</label>
-              <input id="q" class="input" placeholder="nombre, congregación, fecha…">
-            </div>
-            <div class="col" style="max-width:220px;">
-              <button id="btnExportXlsx" class="btn" style="width:100%;">Exportar Excel</button>
-            </div>
-          </div>
-
-          <hr class="sep"/>
-
-          <table class="table" id="tbl">
-            <thead>
-              <tr>
-                <th>Detalle</th>
-                <th class="no-print">Acciones</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-
-          <hr class="sep"/>
-          <div class="h2">Mensaje</div>
-          <textarea id="msg" class="input" readonly placeholder="Acá se genera el mensaje…"></textarea>
-        </div>
-
-        <div class="card pad" style="margin-top:14px;">
-          <h3 class="h2" style="margin:0;">Conferenciantes locales</h3>
-          <div class="muted">Cargá teléfonos y bosquejos, y generá un mensaje listo para WhatsApp.</div>
-
-          <hr class="sep"/>
-
-          <label>Nombre</label>
-          <input id="l_nombre" class="input" placeholder="Ej: Juan Pérez">
-
-          <div class="row">
-            <div class="col">
-              <label>Teléfono</label>
-              <input id="l_tel" class="input" placeholder="Ej: 381 123-4567">
-            </div>
-            <div class="col">
-              <label>Bosquejos (separados por coma)</label>
-              <input id="l_bosquejos" class="input" placeholder="Ej: 1, 12, 45">
-            </div>
-          </div>
-
-          <div class="row" style="margin-top:6px;">
-            <label style="display:flex;gap:8px;align-items:center;">
-              <input id="l_provisorio" type="checkbox"> Provisorio
+</div>
+</div>
+<div class="col-2">
+<div class="card pad">
+<div class="row" style="align-items:end;">
+<div class="col">
+<label>Buscar</label>
+<input class="input" id="q" placeholder="nombre, congregación, fecha…"/>
+</div>
+<div class="col" style="max-width:220px;">
+<button class="btn" id="btnExportXlsx" style="width:100%;">Exportar Excel</button>
+</div>
+</div>
+<hr class="sep"/>
+<table class="table" id="tbl">
+<thead>
+<tr>
+<th>Detalle</th>
+<th class="no-print">Acciones</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<hr class="sep"/>
+<div class="h2">Mensaje</div>
+<textarea class="input" id="msg" placeholder="Acá se genera el mensaje…" readonly=""></textarea>
+</div>
+<div class="card pad" style="margin-top:14px;">
+<h3 class="h2" style="margin:0;">Conferenciantes locales</h3>
+<div class="muted">Cargá teléfonos y bosquejos, y generá un mensaje listo para WhatsApp.</div>
+<hr class="sep"/>
+<label>Nombre</label>
+<input class="input" id="l_nombre" placeholder="Ej: Juan Pérez"/>
+<div class="row">
+<div class="col">
+<label>Teléfono</label>
+<input class="input" id="l_tel" placeholder="Ej: 381 123-4567"/>
+</div>
+<div class="col">
+<label>Bosquejos (separados por coma)</label>
+<input class="input" id="l_bosquejos" placeholder="Ej: 1, 12, 45"/>
+</div>
+</div>
+<div class="row" style="margin-top:6px;">
+<label style="display:flex;gap:8px;align-items:center;">
+<input id="l_provisorio" type="checkbox"/> Provisorio
             </label>
-            <label style="display:flex;gap:8px;align-items:center;">
-              <input id="l_proximo" type="checkbox"> Próximo (a aprobar)
+<label style="display:flex;gap:8px;align-items:center;">
+<input id="l_proximo" type="checkbox"/> Próximo (a aprobar)
             </label>
-          </div>
+</div>
+<div class="row" style="margin-top:12px;">
+<button class="btn primary" id="btnGuardarLocal">Guardar local</button>
+<button class="btn" id="btnLimpiarLocal">Limpiar</button>
+<button class="btn" id="btnMsgLocales">Mensaje WhatsApp (locales)</button>
+</div>
+<hr class="sep"/>
+<table class="table" id="tblLocales">
+<thead>
+<tr>
+<th>Detalle</th>
+<th class="no-print">Acciones</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<hr class="sep"/>
+<div class="h2">Mensaje (locales)</div>
+<textarea class="input" id="msgLocales" placeholder="Acá se genera el mensaje de locales…" readonly=""></textarea>
+</div>
+</div>
+</div>
+</div>
+<!-- SheetJS (XLSX) para exportar a Excel -->
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      // Si hay una versión esperando, activala
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
 
-          <div class="row" style="margin-top:12px;">
-            <button id="btnGuardarLocal" class="btn primary">Guardar local</button>
-            <button id="btnLimpiarLocal" class="btn">Limpiar</button>
-            <button id="btnMsgLocales" class="btn">Mensaje WhatsApp (locales)</button>
-          </div>
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            nw.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+    }).catch(function(e){
+      console.log('SW error', e);
+    });
 
-          <hr class="sep"/>
-
-          <table class="table" id="tblLocales">
-            <thead>
-              <tr>
-                <th>Detalle</th>
-                <th class="no-print">Acciones</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-
-          <hr class="sep"/>
-          <div class="h2">Mensaje (locales)</div>
-          <textarea id="msgLocales" class="input" readonly placeholder="Acá se genera el mensaje de locales…"></textarea>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- SheetJS (XLSX) para exportar a Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="js/pages/discursantes.js"></script>
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+  });
+})();
+</script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="js/pages/discursantes.js" type="module"></script>
 </body>
 </html>

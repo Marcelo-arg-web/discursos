@@ -64,8 +64,8 @@ function render(semana, a){
   // Oración final: por regla "Orador/Presidente" si hay orador público.
   let oracionFin = safe(a.oracionFinal || nameById(a.oracionFinalId));
   const oradorTmp = safe(a.oradorPublico).trim();
-  if((a.oracionFinalId === "__VISITANTE__" || !oracionFin) && oradorTmp && presidente){
-    oracionFin = `${oradorTmp}/${presidente}`;
+  if (oradorTmp && presidente) {
+    oracionFin = `${oradorTmp}/${presidente}`; // sin espacios
   }
 
   const orador = safe(a.oradorPublico);

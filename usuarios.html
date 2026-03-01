@@ -1,99 +1,119 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Usuarios · Arreglos Discursos</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Usuarios · Arreglos Discursos</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
-  <div id="topbar"></div>
-
-  <div class="container">
-    <div id="toastHost"></div>
-
-    <div class="row">
-      <div class="col-2">
-        <div class="card pad">
-          <h2 class="h1" style="margin-bottom:6px;">Alta de usuario</h2>
-          <div class="muted">Crea usuarios para ingresar al sistema. Solo superadmin puede crear.</div>
-          <hr class="sep"/>
-
-          <form id="formAlta"  autocomplete="off">
-            <label ">Nombre
-              <input id="nombre" class="input" type="text" placeholder="Nombre Apellido" required>
-            </label>
-            <label ">Email
-              <input id="email" class="input" type="email" placeholder="correo@ejemplo.com" required>
-            </label>
-            <label ">Contraseña
-              <input id="password" class="input" type="password" minlength="6" placeholder="mínimo 6" required>
-            </label>
-            <label ">Rol
-              <select id="rol" class="input" required>
-                <option value="usuario">usuario (solo lectura)</option>
-                <option value="admin">admin</option>
-                <option value="superadmin">superadmin</option>
-              </select>
-            </label>
-            <label ">Activo
-              <select id="activo" class="input" required>
-                <option value="true" selected>Sí</option>
-                <option value="false">No</option>
-              </select>
-            </label>
-
-            <div class="row" style="margin-top:8px; gap:10px;">
-              <button id="btnCrear" class="btn primary" type="submit">Crear usuario</button>
-              <button id="btnLimpiar" class="btn" type="button">Limpiar</button>
-            </div>
-          </form>
-
-          <hr class="sep"/>
-          <div class="small muted">
-            <b>Nota:</b> El usuario queda creado en <span class="pill">Authentication</span> y su perfil en <span class="pill">/usuarios</span>.
+<div id="topbar"></div>
+<div class="container">
+<div id="toastHost"></div>
+<div class="row">
+<div class="col-2">
+<div class="card pad">
+<h2 class="h1" style="margin-bottom:6px;">Alta de usuario</h2>
+<div class="muted">Crea usuarios para ingresar al sistema. Solo superadmin puede crear.</div>
+<hr class="sep"/>
+<form autocomplete="off" id="formAlta">
+<label "="">Nombre
+              <input class="input" id="nombre" placeholder="Nombre Apellido" required="" type="text"/>
+</label>
+<label "="">Email
+              <input class="input" id="email" placeholder="correo@ejemplo.com" required="" type="email"/>
+</label>
+<label "="">Contraseña
+              <input class="input" id="password" minlength="6" placeholder="mínimo 6" required="" type="password"/>
+</label>
+<label "="">Rol
+              <select class="input" id="rol" required="">
+<option value="usuario">usuario (solo lectura)</option>
+<option value="admin">admin</option>
+<option value="superadmin">superadmin</option>
+</select>
+</label>
+<label "="">Activo
+              <select class="input" id="activo" required="">
+<option selected="" value="true">Sí</option>
+<option value="false">No</option>
+</select>
+</label>
+<div class="row" style="margin-top:8px; gap:10px;">
+<button class="btn primary" id="btnCrear" type="submit">Crear usuario</button>
+<button class="btn" id="btnLimpiar" type="button">Limpiar</button>
+</div>
+</form>
+<hr class="sep"/>
+<div class="small muted">
+<b>Nota:</b> El usuario queda creado en <span class="pill">Authentication</span> y su perfil en <span class="pill">/usuarios</span>.
           </div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card pad">
-          <div class="row" style="justify-content:space-between;align-items:center;">
-            <div>
-              <div class="h2">Usuarios existentes</div>
-              <div class="muted small">Listado desde <span class="pill">/usuarios</span>.</div>
-            </div>
-            <div class="row" style="gap:10px; align-items:center;"><input id="q" class="input" type="search" placeholder="Buscar nombre o email…" style="max-width:260px;"><button id="btnRefrescar" class="btn" type="button">Refrescar</button></div>
-          </div>
-          <hr class="sep"/>
-
-          <div style="overflow:auto;">
-            <table class="table" style="min-width:680px;">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Email</th>
-                  <th>Rol</th>
-                  <th>Activo</th>
-                  <th style="width:260px;">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbodyUsuarios">
-                <tr><td colspan="5" class="muted">Cargando…</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="small muted" style="margin-top:10px;">
+</div>
+</div>
+<div class="col">
+<div class="card pad">
+<div class="row" style="justify-content:space-between;align-items:center;">
+<div>
+<div class="h2">Usuarios existentes</div>
+<div class="muted small">Listado desde <span class="pill">/usuarios</span>.</div>
+</div>
+<div class="row" style="gap:10px; align-items:center;"><input class="input" id="q" placeholder="Buscar nombre o email…" style="max-width:260px;" type="search"/><button class="btn" id="btnRefrescar" type="button">Refrescar</button></div>
+</div>
+<hr class="sep"/>
+<div style="overflow:auto;">
+<table class="table" style="min-width:680px;">
+<thead>
+<tr>
+<th>Nombre</th>
+<th>Email</th>
+<th>Rol</th>
+<th>Activo</th>
+<th style="width:260px;">Acciones</th>
+</tr>
+</thead>
+<tbody id="tbodyUsuarios">
+<tr><td class="muted" colspan="5">Cargando…</td></tr>
+</tbody>
+</table>
+</div>
+<div class="small muted" style="margin-top:10px;">
             Podés desactivar un usuario para que no ingrese.
           </div>
-        </div>
-      </div>
-    </div>
+</div>
+</div>
+</div>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      // Si hay una versión esperando, activala
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
 
-  </div>
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            nw.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+    }).catch(function(e){
+      console.log('SW error', e);
+    });
 
-  <script type="module" src="js/pages/usuarios.js"></script>
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+  });
+})();
+</script><script src="js/pages/usuarios.js" type="module"></script>
 </body>
 </html>

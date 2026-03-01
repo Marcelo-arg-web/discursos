@@ -1,43 +1,68 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Doc Presidente · Villa Fiad</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Doc Presidente · Villa Fiad</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
-  <div id="topbar"></div>
+<div id="topbar"></div>
+<div class="container">
+<div class="card pad">
+<div class="section-title">
+<h2 class="h1" style="margin:0;">Documento para el presidente</h2>
+<span class="pill">Generar · Imprimir</span>
+</div>
+<div class="muted" style="margin-top:-6px;">Genera el documento combinando visitantes/salientes para el mes seleccionado.</div>
+<div class="hr"></div>
+<div class="grid two no-print">
+<div class="field">
+<div class="label">Mes</div>
+<input class="input" id="mes" type="month"/>
+</div>
+<div class="field">
+<div class="label">Acciones</div>
+<div class="row">
+<button class="btn" id="btnGenerar" type="button">Generar</button>
+<button class="btn" id="btnPrint" type="button">Imprimir / PDF</button>
+</div>
+</div>
+</div>
+<div id="contenido" style="margin-top:12px;"></div>
+</div>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      // Si hay una versión esperando, activala
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
 
-  <div class="container">
-    <div class="card pad">
-      <div class="section-title">
-        <h2 class="h1" style="margin:0;">Documento para el presidente</h2>
-        <span class="pill">Generar · Imprimir</span>
-      </div>
-      <div class="muted" style="margin-top:-6px;">Genera el documento combinando visitantes/salientes para el mes seleccionado.</div>
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            nw.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+    }).catch(function(e){
+      console.log('SW error', e);
+    });
 
-      <div class="hr"></div>
-
-      <div class="grid two no-print">
-        <div class="field">
-          <div class="label">Mes</div>
-          <input class="input" type="month" id="mes"/>
-        </div>
-        <div class="field">
-          <div class="label">Acciones</div>
-          <div class="row">
-            <button class="btn" id="btnGenerar" type="button">Generar</button>
-            <button class="btn" id="btnPrint" type="button">Imprimir / PDF</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="contenido" style="margin-top:12px;"></div>
-    </div>
-  </div>
-
-  <script type="module" src="js/pages/doc-presi.js"></script>
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+  });
+})();
+</script><script src="js/pages/doc-presi.js" type="module"></script>
 </body>
 </html>

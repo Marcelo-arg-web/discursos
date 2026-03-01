@@ -1,50 +1,73 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Ingreso · Arreglos Discursos</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Ingreso · Arreglos Discursos</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
 </head>
 <body>
-  <div class="center-wrap">
-    <div class="card pad" style="width:min(520px, 100%);">
-      <h1 class="h1">Ingreso</h1>
-      <p class="muted" style="margin-top:0">
+<div class="center-wrap">
+<div class="card pad" style="width:min(520px, 100%);">
+<h1 class="h1">Ingreso</h1>
+<p class="muted" style="margin-top:0">
         Accedé con tu correo y contraseña. Si sos nuevo, podés registrarte y un admin te activa.
       </p>
-
-      <div id="toastHost"></div>
-
-      <div class="row">
-        <div class="col">
-          <label>Correo</label>
-          <input id="email" class="input" type="email" placeholder="tu@correo.com" autocomplete="email">
-        </div>
-        <div class="col">
-          <label>Contraseña</label>
-          <input id="password" class="input" type="password" placeholder="••••••••" autocomplete="current-password">
-        </div>
-      </div>
-
-      <div class="row" style="margin-top:10px;">
-        <button id="btnLogin" class="btn primary">Entrar</button>
-        <button id="btnRegister" class="btn">Registrarme</button>
-        <button id="btnReset" class="btn">Olvidé mi contraseña</button>
-      </div>
-
-      <a class="btn" href="public-login.html" style="width:100%; text-align:center; margin-top:10px;">Entrar solo para ver (VillaFiad)</a>
-
-      <hr class="sep"/>
-
-      <p class="small muted">
+<div id="toastHost"></div>
+<div class="row">
+<div class="col">
+<label>Correo</label>
+<input autocomplete="email" class="input" id="email" placeholder="tu@correo.com" type="email"/>
+</div>
+<div class="col">
+<label>Contraseña</label>
+<input autocomplete="current-password" class="input" id="password" placeholder="••••••••" type="password"/>
+</div>
+</div>
+<div class="row" style="margin-top:10px;">
+<button class="btn primary" id="btnLogin">Entrar</button>
+<button class="btn" id="btnRegister">Registrarme</button>
+<button class="btn" id="btnReset">Olvidé mi contraseña</button>
+</div>
+<a class="btn" href="public-login.html" style="width:100%; text-align:center; margin-top:10px;">Entrar solo para ver (VillaFiad)</a>
+<hr class="sep"/>
+<p class="small muted">
         Nota: en Firestore debe existir /usuarios/{uid} con <b>activo=true</b> para poder entrar.
         El registro crea el usuario en Auth y un documento /usuarios/{uid} con rol <b>viewer</b> y activo <b>false</b>.
       </p>
-    </div>
-  </div>
+</div>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      // Si hay una versión esperando, activala
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
 
-  <script type="module" src="js/index.js"></script>
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            nw.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+    }).catch(function(e){
+      console.log('SW error', e);
+    });
+
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+  });
+})();
+</script><script src="js/index.js" type="module"></script>
 </body>
 </html>

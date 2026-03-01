@@ -1,73 +1,93 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Importar Excel · Arreglos Discursos</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/styles.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Importar Excel · Arreglos Discursos</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
-  <div id="topbar"></div>
-
-  <div class="container">
-    <div id="toastHost"></div>
-
-    <div class="card pad">
-      <h2 class="h1" style="margin-bottom:6px;">Importar Excel (Asignaciones.xlsx)</h2>
-      <div class="muted">Subí tu archivo y elegí qué hoja/columnas usar. Esto carga registros a Firestore.</div>
-
-      <hr class="sep"/>
-
-      <div class="row">
-        <div class="col">
-          <label>Archivo .xlsx</label>
-          <input id="file" class="input" type="file" accept=".xlsx">
-        </div>
-        <div class="col">
-          <label>Hoja</label>
-          <select id="sheet" class="input" disabled></select>
-        </div>
-      </div>
-
-      <hr class="sep"/>
-
-      <div class="row">
-        <div class="col">
-          <div class="h2">Mapeo rápido (recomendado)</div>
-          <div class="small muted">
+<div id="topbar"></div>
+<div class="container">
+<div id="toastHost"></div>
+<div class="card pad">
+<h2 class="h1" style="margin-bottom:6px;">Importar Excel (Asignaciones.xlsx)</h2>
+<div class="muted">Subí tu archivo y elegí qué hoja/columnas usar. Esto carga registros a Firestore.</div>
+<hr class="sep"/>
+<div class="row">
+<div class="col">
+<label>Archivo .xlsx</label>
+<input accept=".xlsx" class="input" id="file" type="file"/>
+</div>
+<div class="col">
+<label>Hoja</label>
+<select class="input" disabled="" id="sheet"></select>
+</div>
+</div>
+<hr class="sep"/>
+<div class="row">
+<div class="col">
+<div class="h2">Mapeo rápido (recomendado)</div>
+<div class="small muted">
             Si tu Excel tiene columnas como: fechaSab, presidente, plataforma, micro1, micro2, acomodador, audio, video, notas.
           </div>
-          <div class="row" style="margin-top:10px;">
-            <button id="btnPreview" class="btn">Vista previa</button>
-            <button id="btnImport" class="btn primary">Importar a Firestore</button>
-          </div>
-        </div>
-        <div class="col">
-          <div class="h2">Importación segura</div>
-          <div class="small muted">
+<div class="row" style="margin-top:10px;">
+<button class="btn" id="btnPreview">Vista previa</button>
+<button class="btn primary" id="btnImport">Importar a Firestore</button>
+</div>
+</div>
+<div class="col">
+<div class="h2">Importación segura</div>
+<div class="small muted">
             No borra nada: solo agrega semanas nuevas. Si existe la misma fechaSab, se salta.
           </div>
-        </div>
-      </div>
-
-      <hr class="sep"/>
-
-      <div class="h2">Vista previa (primeras 20 filas)</div>
-      <div style="overflow:auto;">
-        <table class="table" id="tbl">
-          <thead></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-
-      <div class="small muted" style="margin-top:10px;">
+</div>
+</div>
+<hr class="sep"/>
+<div class="h2">Vista previa (primeras 20 filas)</div>
+<div style="overflow:auto;">
+<table class="table" id="tbl">
+<thead></thead>
+<tbody></tbody>
+</table>
+</div>
+<div class="small muted" style="margin-top:10px;">
         Si tu Excel tiene otra estructura, decime los nombres de columnas y lo ajustamos.
       </div>
-    </div>
-  </div>
+</div>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      // Si hay una versión esperando, activala
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
 
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script type="module" src="js/pages/importar.js"></script>
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            nw.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+    }).catch(function(e){
+      console.log('SW error', e);
+    });
+
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+  });
+})();
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="js/pages/importar.js" type="module"></script>
 </body>
 </html>
