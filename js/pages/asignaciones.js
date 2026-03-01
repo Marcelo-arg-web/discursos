@@ -1018,7 +1018,8 @@ function autoOracionFinal(){
   // Regla: Oración final = Orador público/Presidente (sin espacios).
   // Si no hay orador público, queda Presidente.
   const o = (getVal("oradorPublico") || "").trim();
-  const p = (getVal("presidente") || "").trim();
+  const pid = (getVal("presidente") || "").trim();
+  const p = (personaNameById(pid) || pid).trim();
 
   let v = "";
   if(o && p) v = `${o}/${p}`;
