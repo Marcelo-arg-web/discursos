@@ -113,10 +113,25 @@ async function requireActiveUser(){
   });
 }
 
-function normISO(s){
+function pad2(n){ return String(n).padStart(2,"0"); }
+function toISOFromInput(s){
   const v=(s||"").trim();
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) return "";
-  return v;
+  if(!v) return "";
+  // acepta YYYY-MM-DD
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  // acepta DD/MM/YYYY
+  const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m){
+    const dd=pad2(m[1]); const mm=pad2(m[2]); const yyyy=m[3];
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return "";
+}
+function toDMY(iso){
+  const v=(iso||"").trim();
+  const m=v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return v;
+  return `${m[3]}/${m[2]}/${m[1]}`;
 }
 function normNum(v){
   const n = String(v||"").trim();
@@ -126,7 +141,55 @@ function normNum(v){
 }
 const bosquejosMap = new Map(Object.entries(bosquejos).map(([k,v])=>[Number(k), String(v)]));
 
+function updateBosquejoTitulo(){
+  const el = document.getElementById('bosquejoTitulo');
+  if(!el) return;
+  const b = normNum(document.getElementById("bosquejo")?.value);
+  const t = b ? (bosquejosMap.get(Number(b)) || "") : "";
+  el.textContent = t ? `Bosquejo ${b}: ${t}` : "—";
+}
+
 let cache=[];
+const INITIAL_SALIENTES = [
+  { fecha:"2025-11-15", orador:"Marcelo Palavecino", bosquejo:181, destino:"Ranchillos", notas:"" },
+  { fecha:"2025-12-06", orador:"Daniel Galarzo", bosquejo:15, destino:"Oeste, Tucum\u00e1n", notas:"" },
+  { fecha:"2025-12-13", orador:"Marcelo Palavecino", bosquejo:28, destino:"Oeste, Tucum\u00e1n", notas:"" },
+  { fecha:"2025-12-20", orador:"Sergio Salda\u00f1a", bosquejo:55, destino:"Oeste, Tucum\u00e1n", notas:"" },
+  { fecha:"2026-02-07", orador:"Sergio Salda\u00f1a", bosquejo:55, destino:"El Cha\u00f1ar", notas:"" },
+  { fecha:"2026-02-14", orador:"Marcelo Palavecino", bosquejo:28, destino:"El Cha\u00f1ar", notas:"" },
+  { fecha:"2026-02-21", orador:"Leonardo Araya", bosquejo:135, destino:"El Cha\u00f1ar", notas:"" },
+  { fecha:"2026-02-28", orador:"Juan Calos Fresia", bosquejo:183, destino:"El Cha\u00f1ar", notas:"" },
+  { fecha:"2026-03-01", orador:"Luis Navarro", bosquejo:146, destino:"Este, Tucum\u00e1n", notas:"" },
+  { fecha:"2026-03-15", orador:"Juan Calos Fresia", bosquejo:103, destino:"Este, Tucum\u00e1n", notas:"" },
+  { fecha:"2026-03-21", orador:"Marcelo Palavecino", bosquejo:88, destino:"Echeverria", notas:"" },
+  { fecha:"2026-03-28", orador:"", bosquejo:"", destino:"", notas:"" },
+  { fecha:"2026-04-05", orador:"Marcelo Palavecino", bosquejo:180, destino:"Este, Tucum\u00e1n", notas:"" },
+  { fecha:"2026-04-12", orador:"", bosquejo:"", destino:"", notas:"" },
+  { fecha:"2026-04-19", orador:"Leonardo Araya", bosquejo:100, destino:"Este, Tucum\u00e1n", notas:"" },
+  { fecha:"2026-04-25", orador:"", bosquejo:"", destino:"", notas:"" },
+  { fecha:"2026-05-02", orador:"", bosquejo:"", destino:"", notas:"" },
+  { fecha:"2026-05-09", orador:"", bosquejo:"", destino:"", notas:"" },
+  { fecha:"2026-05-16", orador:"", bosquejo:"", destino:"", notas:"" },
+  { fecha:"2026-05-23", orador:"", bosquejo:"", destino:"", notas:"" },
+  { fecha:"2026-05-31", orador:"Leonardo Araya", bosquejo:181, destino:"Los Ralos", notas:"" },
+  { fecha:"2026-06-06", orador:"Luis Navarro", bosquejo:10, destino:"Banda del R\u00edo Sal\u00ed", notas:"" },
+  { fecha:"2026-06-13", orador:"Marcelo Palavecino", bosquejo:"", destino:"Banda del R\u00edo Sal\u00ed", notas:"" },
+  { fecha:"2026-06-20", orador:"Sergio Salda\u00f1a", bosquejo:55, destino:"Banda del R\u00edo Sal\u00ed", notas:"" },
+  { fecha:"2026-06-27", orador:"Leonardo Araya", bosquejo:189, destino:"Banda del R\u00edo Sal\u00ed", notas:"" },
+  { fecha:"2026-07-18", orador:"Leonardo Araya", bosquejo:181, destino:"Colombres", notas:"" },
+  { fecha:"2026-07-25", orador:"Sergio Salda\u00f1a", bosquejo:77, destino:"Colombres", notas:"" },
+  { fecha:"2026-08-01", orador:"Marcelo Palavecino", bosquejo:88, destino:"Colombres", notas:"" },
+  { fecha:"2026-08-08", orador:"Luis Navarro", bosquejo:165, destino:"Colombres", notas:"" },
+  { fecha:"2026-09-05", orador:"Leonardo Araya", bosquejo:100, destino:"Lules espa\u00f1ol", notas:"" },
+  { fecha:"2026-09-12", orador:"Sergio Salda\u00f1a", bosquejo:77, destino:"Lules espa\u00f1ol", notas:"" },
+  { fecha:"2026-09-19", orador:"Marcelo Palavecino", bosquejo:51, destino:"Lules espa\u00f1ol", notas:"" },
+  { fecha:"2026-09-26", orador:"Luis Navarro", bosquejo:68, destino:"Lules espa\u00f1ol", notas:"" },
+  { fecha:"2026-10-04", orador:"Sergio Salda\u00f1a", bosquejo:55, destino:"Los Ralos", notas:"" },
+  { fecha:"2026-10-11", orador:"Marcelo Palavecino", bosquejo:28, destino:"Los Ralos", notas:"" },
+  { fecha:"2026-10-18", orador:"Luis Navarro", bosquejo:7, destino:"Los Ralos", notas:"" },
+  { fecha:"2026-10-25", orador:"Marcelo Rodrigez", bosquejo:15, destino:"Los Ralos", notas:"" }
+];
+
 
 function escapeHtml(s){
   return String(s||"").replace(/[&<>"]/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
@@ -134,9 +197,10 @@ function escapeHtml(s){
 
 function fillFromDoc(id, d){
   $("editId").value = id;
-  $("fecha").value = d.fecha || "";
+  $("fecha").value = toDMY(d.fecha || "");
   $("orador").value = d.orador || d.oradorNombre || "";
   $("bosquejo").value = d.bosquejo ?? "";
+  updateBosquejoTitulo();
   $("destino").value = d.destino || d.congregacionDestino || "";
   $("notas").value = d.notas || "";
   $("btnBorrar").disabled = !id;
@@ -147,6 +211,7 @@ function clearForm(){
   $("fecha").value = "";
   $("orador").value = "";
   $("bosquejo").value = "";
+  updateBosquejoTitulo();
   $("destino").value = "";
   $("notas").value = "";
   $("btnBorrar").disabled = true;
@@ -166,9 +231,9 @@ function renderTable(){
   }
   tbody.innerHTML = rows.map(r=>`
     <tr data-id="${r.id}">
-      <td>${escapeHtml(r.fecha||"")}</td>
+      <td>${escapeHtml(toDMY(r.fecha||""))}</td>
       <td>${escapeHtml(r.orador||"")}</td>
-      <td>${r.bosquejo ?? ""}</td>
+      <td>${(r.bosquejo!=="" && r.bosquejo!=null) ? (r.bosquejo + " — " + escapeHtml(bosquejosMap.get(Number(r.bosquejo))||"")) : ""}</td>
       <td>${escapeHtml(r.destino||"")}</td>
       <td>${escapeHtml(r.notas||"")}</td>
     </tr>
@@ -183,6 +248,24 @@ function renderTable(){
   });
 }
 
+async function seedIfEmpty(usuario){
+  try{
+    const key="salientesSeeded_v1";
+    if(localStorage.getItem(key)==="1") return;
+    if(!isAdminRole(usuario?.rol)) return;
+    const s0 = await getDocs(collection(db,"salientes"));
+    if(!s0.empty) { localStorage.setItem(key,"1"); return; }
+    for(const r of INITIAL_SALIENTES){
+      await addDoc(collection(db,"salientes"), { ...r, updatedAt:new Date().toISOString() });
+    }
+    localStorage.setItem(key,"1");
+    toast("Cargué la lista inicial de salientes.");
+  }catch(e){
+    console.error(e);
+    toast("No pude cargar la lista inicial. Revisá permisos.", true);
+  }
+}
+
 async function load(){
   const s = await getDocs(query(collection(db,"salientes"), orderBy("fecha","asc")));
   cache = s.docs.map(d=>({ id:d.id, ...d.data() }));
@@ -191,11 +274,10 @@ async function load(){
 }
 
 async function save(){
-  const fecha = normISO($("fecha").value);
-  if(!fecha) return toast("Fecha inválida. Usá formato YYYY-MM-DD.", true);
+  const fecha = toISOFromInput($("fecha").value);
+  if(!fecha) return toast("Fecha inválida. Usá DD/MM/AAAA o YYYY-MM-DD.", true);
   const orador = ($("orador").value||"").trim();
   const destino = ($("destino").value||"").trim();
-  if(!orador || !destino) return toast("Completá orador y destino.", true);
 
   const bosquejo = normNum($("bosquejo").value);
   const notas = ($("notas").value||"").trim();
@@ -241,13 +323,17 @@ async function borrar(){
 }
 
 (async function(){
-  await requireActiveUser();
+  const { usuario } = await requireActiveUser();
+  await seedIfEmpty(usuario);
 
   $("btnNuevo")?.addEventListener("click", clearForm);
   $("btnRefrescar")?.addEventListener("click", load);
   $("filtro")?.addEventListener("input", renderTable);
   $("btnBorrar")?.addEventListener("click", borrar);
   $("form")?.addEventListener("submit", (ev)=>{ ev.preventDefault(); save(); });
+
+  $("bosquejo")?.addEventListener("input", updateBosquejoTitulo);
+  updateBosquejoTitulo();
 
   // ayuda: autocompletar título en placeholder si existe
   $("bosquejo")?.addEventListener("blur", ()=>{

@@ -18,21 +18,22 @@
 <hr class="sep"/>
 <form class="grid" id="form" style="grid-template-columns: repeat(6, 1fr); gap:12px;">
 <div style="grid-column: span 2;">
-<label class="lbl">Fecha (YYYY-MM-DD)</label>
-<input class="inp" id="fecha" placeholder="2026-03-01" required=""/>
+<label class="lbl">Fecha (DD/MM/AAAA o YYYY-MM-DD)</label>
+<input class="inp" id="fecha" placeholder="28/02/2026" required=""/>
 </div>
 <div style="grid-column: span 2;">
 <label class="lbl">Discursante</label>
-<input class="inp" id="orador" placeholder="Marcelo Palavecino" required=""/>
+<input class="inp" id="orador" placeholder="Marcelo Palavecino"/>
 <div class="small muted">Los 5 actuales: Marcelo Palavecino, Sergio Saldaña, Leonardo Araya, Luis Navarro, Marcelo Rodríguez (pero se puede agregar/quitar).</div>
 </div>
 <div style="grid-column: span 1;">
 <label class="lbl">Bosquejo</label>
 <input class="inp" id="bosquejo" inputmode="numeric" placeholder="146"/>
+<div id="bosquejoTitulo" class="small muted" style="margin-top:6px;">—</div>
 </div>
 <div style="grid-column: span 1;">
 <label class="lbl">Congregación destino</label>
-<input class="inp" id="destino" placeholder="Este, Tucumán" required=""/>
+<input class="inp" id="destino" placeholder="Este, Tucumán"/>
 </div>
 <div style="grid-column: span 6;">
 <label class="lbl">Notas (opcional)</label>
