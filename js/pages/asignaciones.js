@@ -855,11 +855,17 @@ function aplicarAutoCancion() {
 }
 
 function aplicarAutoDiscurso() {
+  const elOut = document.getElementById("discursoTituloAuto");
   const num = normNumero(getVal("discursoNumero"));
-  if (!num) return;
-  const t = bosquejosMap.get(num);
+  if (!num) {
+    if (elOut) elOut.textContent = "—";
+    return;
+  }
+  const t = bosquejosMap.get(num) || "";
+  if (elOut) elOut.textContent = t ? `Bosquejo ${num}: ${t}` : "No encontrado";
   if (t && !getVal("tituloDiscurso").trim()) setVal("tituloDiscurso", t);
 }
+
 
 // ---------------- Visitantes (Firestore + fallback local) ----------------
 function localVisitanteFor(fechaISO) {
@@ -1639,6 +1645,8 @@ async function init() {
   });
 
   $("cancionNumero")?.addEventListener("change", aplicarAutoCancion);
+  $("discursoNumero")?.addEventListener("input", aplicarAutoDiscurso);
+  $("discursoNumero")?.addEventListener("change", aplicarAutoDiscurso);
 
   try {
     await cargarPersonas();
