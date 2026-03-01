@@ -1,8 +1,18 @@
-
 import { auth, db } from "../firebase-config.js";
-import { hasPublicAccess, requirePublicAccess, setPublicAccess } from "../services/publicAccess.js";
+import { hasPublicAccess, setPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import {
+  doc,
+  getDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  startAt,
+  endAt,
+  documentId
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -17,12 +27,10 @@ async function getUsuario(uid){
   const snap = await getDoc(doc(db,"usuarios",uid));
   return snap.exists() ? snap.data() : null;
 }
-
 function isAdminRole(rol){
   const r = String(rol||"").toLowerCase();
   return r === "admin" || r === "superadmin";
 }
-
 
 function renderPublicTopbar(active){
   const el = document.getElementById("topbar");
@@ -46,6 +54,7 @@ function renderPublicTopbar(active){
     window.location.href = "index.html";
   });
 }
+
 function renderTopbar(active, rol){
   const el = document.getElementById("topbar");
   if(!el) return;
@@ -71,104 +80,112 @@ function renderTopbar(active, rol){
   });
 }
 
-
 async function requireActiveUser(active){
-  // Acceso público (solo lectura) con clave genérica
   if(hasPublicAccess()){
     renderPublicTopbar(active);
     return { user: null, usuario: { rol: "usuario", activo: true, public: true } };
   }
-  // Login normal
   return new Promise((resolve)=>{
     onAuthStateChanged(auth, async (user)=>{
-      if(!user){ window.location.href="index.html"; return; }
+      if(!user){
+        window.location.href = "index.html";
+        return;
+      }
       const u = await getUsuario(user.uid);
       if(!u?.activo){
         await signOut(auth);
-        window.location.href="index.html";
+        toast("Tu usuario todavía no está activo.", true);
+        window.location.href = "index.html";
         return;
       }
-      renderTopbar(active, u?.rol);
-      resolve({user, usuario:u});
+      renderTopbar(active, u.rol);
+      resolve({ user, usuario: u });
     });
   });
 }
 
-function getMonthPairs(mesISO){
-  const [y,m] = mesISO.split("-").map(Number);
-  const year=y, monthIndex=m-1;
-  const th=[], sa=[];
-  const d = new Date(year, monthIndex, 1);
-  while(d.getMonth()===monthIndex){
-    const day=d.getDay();
-    if(day===4) th.push(new Date(d));
-    if(day===6) sa.push(new Date(d));
-    d.setDate(d.getDate()+1);
+function escapeHtml(str){
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+
+let personasMap = new Map();
+async function loadPersonasMap(){
+  try{
+    const qy = query(collection(db,"personas"), where("activo","==", true));
+    const snap = await getDocs(qy);
+    personasMap = new Map(snap.docs.map(d=>[d.id, (d.data()?.nombre||"").toString()]));
+  }catch(e){
+    console.warn("No pude cargar personas para nombres:", e);
+    personasMap = new Map();
   }
-  const weeks = Math.max(th.length, sa.length);
-  const pairs=[];
-  for(let i=0;i<weeks;i++){
-    pairs.push({
-      semana: String(i+1),
-      jueves: th[i] ? fmt(th[i]) : "",
-      sabado: sa[i] ? fmt(sa[i]) : "",
-    });
+}
+function nombrePorId(id){
+  const k = String(id||"").trim();
+  if(!k) return "";
+  return personasMap.get(k) || "";
+}
+
+function isoToDate(iso){
+  const [y,m,d] = String(iso||"").split("-").map(n=>parseInt(n,10));
+  if(!y||!m||!d) return null;
+  return new Date(y, m-1, d);
+}
+function formatFecha(iso){
+  const dt = isoToDate(iso);
+  if(!dt) return iso;
+  return dt.toLocaleDateString("es-AR",{ weekday:"short", day:"numeric", month:"short" });
+}
+function juevesAnteriorISO(iso){
+  const dt = isoToDate(iso);
+  if(!dt) return null;
+  const dow = dt.getDay(); // 0 dom ... 6 sáb
+  const delta = (dow===6)?2:(dow===0?3:null);
+  if(delta===null) return null;
+  dt.setDate(dt.getDate()-delta);
+  const y=dt.getFullYear(), m=String(dt.getMonth()+1).padStart(2,"0"), d=String(dt.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+
+async function loadAsignacionesDoc(iso){
+  try{
+    const snap = await getDoc(doc(db,"asignaciones", iso));
+    if(!snap.exists()) return null;
+    return snap.data()?.asignaciones || null;
+  }catch(e){
+    return null;
   }
-  return pairs;
-}
-function fmt(dt){
-  const dd=String(dt.getDate()).padStart(2,"0");
-  const mm=String(dt.getMonth()+1).padStart(2,"0");
-  const yyyy=dt.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
 }
 
-function parseARToISO(ar){
-  if(!ar) return "";
-  const m = String(ar).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(!m) return "";
-  const dd=m[1].padStart(2,"0");
-  const mm=m[2].padStart(2,"0");
-  const yyyy=m[3];
-  return `${yyyy}-${mm}-${dd}`;
+async function loadDocsInMonth(mesISO){
+  const qy = query(
+    collection(db,"asignaciones"),
+    orderBy(documentId()),
+    startAt(mesISO),
+    endAt(mesISO + "\uf8ff")
+  );
+  const snap = await getDocs(qy);
+  return snap.docs.map(d=>({ id:d.id, data: d.data()?.asignaciones || {} }));
 }
 
-async function loadSemanaAsignaciones(sabadoISO){
-  if(!sabadoISO) return null;
-  const snap = await getDoc(doc(db, "asignaciones", sabadoISO));
-  if(!snap.exists()) return null;
-  const raw = snap.data() || {};
-  return raw.asignaciones || raw;
-}
-
-async function buildMonthMap(mesISO){
-  const pairs = getMonthPairs(mesISO);
-  const map = {};
-  for(const p of pairs){
-    const iso = parseARToISO(p.sabado);
-    const a = await loadSemanaAsignaciones(iso);
-    map[p.semana] = a || {};
-  }
-  return { pairs, map };
-}
-
-function render(mesISO, ctx){
+function render(mesISO, pairs){
   const host = $("contenido");
-  const pairs = ctx.pairs;
-  const semanaMap = ctx.map;
   const rows = pairs.map(p=>{
-    const w = semanaMap[p.semana] || {};
-    const mm = [w.multimedia1, w.multimedia2].filter(Boolean).join(" / ") || "—";
+    const mmJ = [p.jueves.multimedia1, p.jueves.multimedia2].filter(Boolean).join(" / ") || "—";
+    const mmF = [p.fin.multimedia1, p.fin.multimedia2].filter(Boolean).join(" / ") || "—";
     return `
       <tr>
         <td>${p.semana}</td>
-        <td>${p.jueves || "—"}</td>
-        <td>${escapeHtml(mm)}</td>
+        <td>${escapeHtml(p.juevesLabel)}</td>
+        <td>${escapeHtml(mmJ)}</td>
       </tr>
       <tr>
         <td>${p.semana}</td>
-        <td>${p.sabado || "—"}</td>
-        <td>${escapeHtml(mm)}</td>
+        <td>${escapeHtml(p.finLabel)}</td>
+        <td>${escapeHtml(mmF)}</td>
       </tr>
     `;
   }).join("");
@@ -176,14 +193,14 @@ function render(mesISO, ctx){
   host.innerHTML = `
     <div class="print-header">
       <div class="h2">Congregación Villa Fiad</div>
-      <div class="muted">Multimedia · Mes ${mesISO}</div>
+      <div class="muted">Multimedia · Mes ${escapeHtml(mesISO)}</div>
     </div>
 
     <table class="table" style="width:100%; margin-top:10px;">
       <thead>
         <tr>
           <th style="width:70px;">Sem</th>
-          <th style="width:120px;">Fecha</th>
+          <th style="width:140px;">Fecha</th>
           <th>Audio y video</th>
         </tr>
       </thead>
@@ -192,21 +209,53 @@ function render(mesISO, ctx){
   `;
 }
 
-function escapeHtml(s){
-  return String(s||"")
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
-}
-
 async function cargar(){
-  const mesISO = String($("mes")?.value||"").trim();
+  const mesISO = String($("mes")?.value||"").trim(); // YYYY-MM
   if(!mesISO) return toast("Elegí un mes.", true);
   toast("Cargando…");
   try{
-    const ctx = await buildMonthMap(mesISO);
-    const any = Object.values(ctx.map).some(v=>v && Object.keys(v).length);
-    if(!any) toast("No hay asignaciones semanales guardadas para ese mes. Podés imprimir en blanco o cargarlas en Asignaciones.", false);
-    render(mesISO, ctx);
+    await loadPersonasMap();
+    const docs = await loadDocsInMonth(mesISO);
+
+    // buscamos reuniones de fin de semana (sábado o domingo) dentro del mes
+    const finDocs = docs
+      .map(d=>({ iso:d.id, asign:d.data }))
+      .filter(d=>{
+        const dt = isoToDate(d.iso);
+        if(!dt) return false;
+        const dow = dt.getDay();
+        return dow===6 || dow===0;
+      })
+      .sort((a,b)=>a.iso.localeCompare(b.iso));
+
+    const pairs = [];
+    for(let i=0;i<finDocs.length;i++){
+      const finISO = finDocs[i].iso;
+      const juevesISO = juevesAnteriorISO(finISO);
+
+      const finAsign = finDocs[i].asign || {};
+      const juevesAsignDoc = juevesISO ? await loadAsignacionesDoc(juevesISO) : null;
+
+      const pick = (asig, key)=> nombrePorId(asig?.[key]) || "";
+      const mapMultimedia = (asig)=>({
+        multimedia1: pick(asig,"multimedia1Id"),
+        multimedia2: pick(asig,"multimedia2Id"),
+      });
+
+      const juevesAsig = juevesAsignDoc || finAsign;
+      pairs.push({
+        semana: i+1,
+        juevesLabel: juevesISO ? formatFecha(juevesISO) : "—",
+        finLabel: formatFecha(finISO),
+        jueves: mapMultimedia(juevesAsig),
+        fin: mapMultimedia(finAsign),
+      });
+    }
+
+    if(pairs.length===0){
+      toast("No hay reuniones guardadas para ese mes.", false);
+    }
+    render(mesISO, pairs);
   }catch(e){
     console.error(e);
     toast("Error cargando. Revisá permisos.", true);

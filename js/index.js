@@ -1,4 +1,5 @@
 import { auth, db } from "./firebase-config.js";
+import { allowedUids } from "./data/allowedUids.js";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -20,6 +21,11 @@ function toast(msg, isError=false){
   if(!host) return alert(msg);
   host.innerHTML = `<div class="toast ${isError ? "err" : ""}">${msg}</div>`;
   setTimeout(()=>{ host.innerHTML=""; }, 5000);
+}
+
+
+function isUidAllowed(uid){
+  return Array.isArray(allowedUids) && allowedUids.length > 0 ? allowedUids.includes(uid) : true;
 }
 
 async function ensureUsuarioDoc(user){
@@ -46,6 +52,11 @@ async function entrar(){
 
   try{
     const cred = await signInWithEmailAndPassword(auth, email, password);
+    if(!isUidAllowed(cred.user.uid)){
+      await signOut(auth);
+      toast("Tu usuario no está autorizado para ingresar. Hablá con un admin.", true);
+      return;
+    }
     const u = await ensureUsuarioDoc(cred.user);
     if(!u?.activo){
       await signOut(auth);

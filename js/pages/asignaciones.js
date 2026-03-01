@@ -34,6 +34,63 @@ const $ = (id) => document.getElementById(id);
 const getVal = (id) => ($(id)?.value ?? "");
 const setVal = (id, v) => {
   const el = $(id);
+
+
+// ---------------- Semana Jueves/Sábado: copiar asignados automáticamente ----------------
+function isoToDate(iso){
+  const [y,m,d] = String(iso||"").split("-").map(n=>parseInt(n,10));
+  if(!y||!m||!d) return null;
+  return new Date(y, m-1, d);
+}
+function toISODate(dt){
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth()+1).padStart(2,"0");
+  const d = String(dt.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+function getJuevesAnteriorISO(fechaISO){
+  const dt = isoToDate(fechaISO);
+  if(!dt) return null;
+  const dow = dt.getDay(); // 0 dom ... 6 sáb
+  // Reunión fin de semana: sábado => jueves -2, domingo => jueves -3
+  const delta = (dow === 6) ? 2 : (dow === 0 ? 3 : null);
+  if(delta === null) return null;
+  dt.setDate(dt.getDate() - delta);
+  return toISODate(dt);
+}
+// Copiamos solo estos campos (dentro de asignaciones) para jueves y sábado
+const CAMPOS_COPIAR_A_JUEVES = [
+  "acomodadorEntradaId",
+  "acomodadorAuditorioId",
+  "plataformaId",
+  "multimedia1Id",
+  "multimedia2Id",
+  "microfonista1Id",
+  "microfonista2Id",
+];
+
+async function copiarAsignadosAlJuevesSiCorresponde(fechaFinDeSemanaISO, dataAsignaciones){
+  const juevesISO = getJuevesAnteriorISO(fechaFinDeSemanaISO);
+  if(!juevesISO) return; // no es sábado/domingo
+  const refJ = doc(db, "asignaciones", juevesISO);
+  const snapJ = await getDoc(refJ);
+  const existente = snapJ.exists() ? (snapJ.data()?.asignaciones || {}) : {};
+  const patch = {};
+  for(const campo of CAMPOS_COPIAR_A_JUEVES){
+    const vSab = dataAsignaciones?.[campo];
+    if(vSab === undefined || vSab === null || String(vSab).trim() === "") continue;
+    const vJ = existente?.[campo];
+    if(vJ !== undefined && vJ !== null && String(vJ).trim() !== "") continue; // no pisar
+    patch[campo] = vSab;
+  }
+  if(Object.keys(patch).length === 0) return;
+
+  await setDoc(refJ, {
+    asignaciones: patch,
+    updatedAt: serverTimestamp(),
+    copiadoDesdeFinDeSemana: fechaFinDeSemanaISO,
+  }, { merge: true });
+}
   if (el) el.value = v ?? "";
 };
 
@@ -1274,7 +1331,16 @@ async function guardar() {
       { merge: true }
     );
 
-    setStatus("Guardado OK.");
+    
+    // Si estás guardando una reunión de fin de semana (sábado/domingo),
+    // copiamos automáticamente acomodadores/multimedia/microfonistas al jueves anterior (sin pisar lo ya cargado).
+    try{
+      await copiarAsignadosAlJuevesSiCorresponde(s, data);
+    }catch(e){
+      console.warn("No pude copiar asignados al jueves anterior:", e);
+    }
+
+setStatus("Guardado OK.");
     // deja el aviso listo para WhatsApp
     generarAviso();
   } catch (e) {
