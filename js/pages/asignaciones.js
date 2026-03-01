@@ -31,13 +31,34 @@ import {
 
 // ---------------- UI helpers ----------------
 const $ = (id) => document.getElementById(id);
+
+function renderTopbarBasic(){
+  const host = document.getElementById("topbar");
+  if(!host) return;
+  host.innerHTML = `
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">Villa Fiad</div>
+        <nav class="nav">
+          <a href="panel.html">Panel</a>
+          <a href="asignaciones.html">Asignaciones</a>
+          <a href="visitantes.html">Visitantes</a>
+          <a href="salientes.html">Salientes</a>
+          <a href="tablero-acomodadores.html">Tablero mensual</a>
+        </nav>
+        <button id="btnSalir" class="btn small">Salir</button>
+      </div>
+    </div>
+  `;
+}
+
+renderTopbarBasic();
 const getVal = (id) => ($(id)?.value ?? "");
 const setVal = (id, v) => {
   const el = $(id);
-  if (el) el.value = v ?? "";
-};
 
-// ---------------- Semana Jueves/Fin de semana: copiar asignados automáticamente ----------------
+
+// ---------------- Semana Jueves/Sábado: copiar asignados automáticamente ----------------
 function isoToDate(iso){
   const [y,m,d] = String(iso||"").split("-").map(n=>parseInt(n,10));
   if(!y||!m||!d) return null;
@@ -59,8 +80,7 @@ function getJuevesAnteriorISO(fechaISO){
   dt.setDate(dt.getDate() - delta);
   return toISODate(dt);
 }
-
-// Copiamos solo estos campos (dentro de asignaciones) para jueves y fin de semana
+// Copiamos solo estos campos (dentro de asignaciones) para jueves y sábado
 const CAMPOS_COPIAR_A_JUEVES = [
   "acomodadorEntradaId",
   "acomodadorAuditorio1Id",
@@ -94,6 +114,8 @@ async function copiarAsignadosAlJuevesSiCorresponde(fechaFinDeSemanaISO, dataAsi
     copiadoDesdeFinDeSemana: fechaFinDeSemanaISO,
   }, { merge: true });
 }
+  if (el) el.value = v ?? "";
+};
 
 function escapeHtml(str){
   return String(str ?? "")
