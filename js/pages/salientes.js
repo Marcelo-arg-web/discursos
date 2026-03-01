@@ -18,12 +18,31 @@ function toast(msg, isError=false){
   setTimeout(()=>el.remove(), 3200);
 }
 
+function isAdminRole(rol){
+  const r = String(rol||"").toLowerCase();
+  return r === "admin" || r === "superadmin";
+}
+
+
+function applyReadOnly(rol){
+  if(isAdminRole(rol)) return;
+  // Oculta formulario de alta/edición si existe
+  document.querySelectorAll(".admin-only").forEach(el=>el.style.display="none");
+  document.querySelectorAll("input, select, textarea, button").forEach(el=>{
+    if(el.id==="btnSalir") return;
+    if(el.classList.contains("allow-readonly")) return;
+    // permitir imprimir/filtrar
+    const keep = ["btnPrint","btnExport","btnImport","btnRecargar","buscar"].includes(el.id);
+    if(!keep) el.disabled = true;
+  });
+}
+
 async function getUsuario(uid){
   const snap = await getDoc(doc(db,"usuarios",uid));
   return snap.exists() ? snap.data() : null;
 }
 
-function renderTopbar(active){
+function renderTopbar(active, rol){
   const el = document.getElementById("topbar");
   if(!el) return;
   el.innerHTML = `
@@ -48,7 +67,7 @@ function renderTopbar(active){
 }
 
 async function requireActiveUser(){
-  renderTopbar("salientes");
+  renderTopbar("salientes", u?.rol);
   return new Promise((resolve)=>{
     onAuthStateChanged(auth, async (user)=>{
       if(!user){ window.location.href="index.html"; return; }

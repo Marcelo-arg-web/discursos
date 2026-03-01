@@ -305,3 +305,7 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
   background: rgba(0,0,0,.02);
   border: 1px solid rgba(15,23,42,.10);
 }
+
+
+.print-header{display:flex; flex-direction:column; gap:2px; align-items:flex-start}
+@media print{ .print-header{margin-bottom:6px;} }

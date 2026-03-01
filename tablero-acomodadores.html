@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Imprimir · Villa Fiad</title>
+  <title>Acomodadores · Villa Fiad</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -15,10 +15,10 @@
 
     <div class="card pad">
       <div class="section-title">
-        <h2 class="h1" style="margin:0;">Impresión</h2>
+        <h2 class="h1" style="margin:0;">Acomodadores</h2>
         <span class="pill">Tablero mensual</span>
       </div>
-      <div class="muted" style="margin-top:-6px;">Genera una vista lista para imprimir/guardar en PDF.</div>
+      <div class="muted" style="margin-top:-6px;">Seleccioná el mes y generá una vista lista para imprimir / enviar por WhatsApp.</div>
 
       <div class="hr"></div>
 
@@ -28,16 +28,9 @@
           <input class="input" type="month" id="mes">
         </div>
         <div class="field">
-          <div class="label">Semana (para PDF Presidente)</div>
-          <input class="input" type="number" id="semana" min="1" value="1">
-        </div>
-        <div class="field">
           <div class="label">Acciones</div>
           <div class="row">
-            <button class="btn" id="btnRecargar" type="button">Cargar</button>
-            <button class="btn" id="btnTabAcom" type="button">Tablero Acomodadores</button>
-            <button class="btn" id="btnTabMM" type="button">Tablero Multimedia</button>
-            <button class="btn" id="btnPresidente" type="button">PDF Presidente (semana)</button>
+            <button class="btn" id="btnCargar" type="button">Cargar</button>
             <button class="btn primary" id="btnPrint" type="button">Imprimir / PDF</button>
           </div>
         </div>
@@ -47,6 +40,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/pages/imprimir.js"></script>
+  <script type="module" src="js/pages/tablero-acomodadores.js"></script>
 </body>
 </html>

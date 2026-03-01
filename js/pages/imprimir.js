@@ -11,6 +11,25 @@ function toast(msg, isError=false){
   setTimeout(()=>{ host.innerHTML=""; }, 5000);
 }
 
+
+function saturdayOfMonthWeek(mesISO, weekNum){
+  const [y,m] = String(mesISO||"").split("-").map(Number);
+  if(!y||!m) return null;
+  const monthIndex = m-1;
+  const sats=[];
+  const d=new Date(y, monthIndex, 1);
+  while(d.getMonth()===monthIndex){
+    if(d.getDay()===6) sats.push(new Date(d));
+    d.setDate(d.getDate()+1);
+  }
+  const dt = sats[Math.max(0, weekNum-1)];
+  if(!dt) return null;
+  const yyyy=dt.getFullYear();
+  const mm=String(dt.getMonth()+1).padStart(2,"0");
+  const dd=String(dt.getDate()).padStart(2,"0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 async function getUsuario(uid){
   const snap = await getDoc(doc(db,"usuarios",uid));
   return snap.exists() ? snap.data() : null;
@@ -185,6 +204,17 @@ async function cargarMes(){
   const now = new Date();
   document.getElementById("mes").value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
   document.getElementById("btnPrint")?.addEventListener("click", ()=>window.print());
+  document.getElementById("btnRecargar")?.addEventListener("click", cargarMes);
+  document.getElementById("btnTabAcom")?.addEventListener("click", ()=>{ window.location.href = "tablero-acomodadores.html"; });
+  document.getElementById("btnTabMM")?.addEventListener("click", ()=>{ window.location.href = "tablero-multimedia.html"; });
+  document.getElementById("btnPresidente")?.addEventListener("click", ()=>{
+    const mesISO = String(document.getElementById("mes")?.value||"").trim();
+    const sem = String(document.getElementById("semana")?.value||"1").trim();
+    // Abrimos la hoja del presidente por semana (fecha ISO), calculando el sábado de la semana indicada.
+    const fecha = saturdayOfMonthWeek(mesISO, parseInt(sem,10) || 1);
+    if(!fecha){ toast("No pude calcular la fecha de esa semana.", true); return; }
+    window.open(`presidente.html?semana=${encodeURIComponent(fecha)}`, "_blank");
+  });
   document.getElementById("mes")?.addEventListener("change", cargarMes);
 
   await cargarMes();

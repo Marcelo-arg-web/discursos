@@ -21,10 +21,15 @@ function isAdminRole(rol){
   return r === "admin" || r === "superadmin";
 }
 
+function isSuperadmin(rol){
+  return String(rol||"").toLowerCase() === "superadmin";
+}
+
 function renderTopbar(active, rol){
   const el = document.getElementById("topbar");
   if(!el) return;
   const admin = isAdminRole(rol);
+  const superadmin = isSuperadmin(rol);
   el.innerHTML = `
     <div class="topbar">
       <div class="brand">Villa Fiad</div>
@@ -34,11 +39,12 @@ function renderTopbar(active, rol){
         ${admin ? `<a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>` : ``}
         ${admin ? `<a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>` : ``}
         ${admin ? `<a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>` : ``}
-        ${admin ? `<a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>` : ``}
+        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
         ${admin ? `<a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>` : ``}
         ${admin ? `<a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Doc Presidente</a>` : ``}
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
         ${admin ? `<a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>` : ``}
+        ${superadmin ? `<a href="usuarios.html" class="${active==='usuarios'?'active':''}">Usuarios</a>` : ``}
         <button id="btnSalir" class="btn danger" type="button">Salir</button>
       </div>
     </div>
