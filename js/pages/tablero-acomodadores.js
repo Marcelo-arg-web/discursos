@@ -112,6 +112,18 @@ function escapeHtml(str){
     .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
 }
 
+function mesTituloES(mesISO){
+  // mesISO: YYYY-MM
+  if(!mesISO) return "";
+  const [y,m] = mesISO.split("-").map(Number);
+  const d = new Date(y, (m||1)-1, 1);
+  return d.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+}
+function ahoraES(){
+  const d = new Date();
+  return d.toLocaleString("es-AR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
+}
+
 let personasMap = new Map();
 async function loadPersonasMap(){
   try{
@@ -238,8 +250,8 @@ function render(mesISO, pairs){
 
   host.innerHTML = `
     <div class="print-header">
-      <div class="h2">Congregación Villa Fiad</div>
-      <div class="muted">Tablero mensual · Mes ${escapeHtml(mesISO)}</div>
+      <div class="month-title">Acomodadores y Audio y Video</div>
+      <div class="muted">Congregación Villa Fiad · ${escapeHtml(mesTituloES(mesISO))}</div>
     </div>
 
     <div class="board-wrap" style="margin-top:10px;">
@@ -291,7 +303,10 @@ function render(mesISO, pairs){
         <tbody>${rowsAV || `<tr><td colspan="6" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
     </div>
-  `;
+  
+
+    <div class="print-footer muted">Generado el ${escapeHtml(ahoraES())}</div>
+`;
 }
 
 async function cargar(){

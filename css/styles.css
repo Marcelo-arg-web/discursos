@@ -402,3 +402,34 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
     print-color-adjust: exact;
   }
 }
+
+
+/* --- Board print enhancements --- */
+.month-title{
+  font-size:20px;
+  font-weight:800;
+  margin:0 0 2px 0;
+}
+.print-header{ margin-bottom:10px; }
+.print-footer{
+  margin-top:10px;
+  font-size:11px;
+  text-align:right;
+}
+
+/* Zebra rows for readability */
+.table.board tbody tr:nth-child(even){
+  background: rgba(15,23,42,0.03);
+}
+
+/* Ensure header colors print */
+@media print{
+  .board-section-title{
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .table.board tbody tr:nth-child(even){
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
