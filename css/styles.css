@@ -417,6 +417,67 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
   text-align:right;
 }
 
+/* Header (board) */
+.print-header .hdr{display:flex; align-items:center; gap:10px;}
+.jw-logo{width:36px; height:36px; border-radius:8px;}
+.cong-title{font-weight:800; font-size:14px; line-height:1.1;}
+.main-title{font-weight:900; letter-spacing:.5px; font-size:16px; text-transform:uppercase; line-height:1.1;}
+.month-big{font-weight:800; font-size:18px; margin-top:2px;}
+
+@media print{
+  .jw-logo{width:32px; height:32px;}
+  .cong-title{font-size:13px;}
+  .main-title{font-size:15px;}
+  .month-big{font-size:18px;}
+}
+
+/* Week separators */
+.week-row td{
+  background: rgba(26,79,163,0.08);
+  font-weight:800;
+  border-top: 2px solid rgba(26,79,163,0.25);
+}
+.week-row.incomplete td{ background: rgba(245, 158, 11, 0.12); }
+.wk-warn{
+  display:inline-block;
+  margin-left:8px;
+  font-weight:900;
+  color:#b45309;
+}
+
+@media print{
+  .week-row td{
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Ink saving mode */
+body.ink-save .board-section-title{
+  background:#fff;
+  color:#111;
+  border-bottom:1px solid rgba(0,0,0,.15);
+}
+body.ink-save .board-wrap{border-color: rgba(0,0,0,.25);}
+body.ink-save .table.board tbody tr:nth-child(even){ background: transparent; }
+body.ink-save .week-row td{ background: transparent; }
+body.ink-save .wk-warn{ color:#111; }
+
+/* WhatsApp vertical view */
+body.whatsapp .board-wrap{display:none;}
+.wa-note{margin:8px 0 10px;}
+.wa-week{border:1px solid #e6e8ef; border-radius:12px; background:#fff; padding:10px; margin:10px 0;}
+.wa-week-h{font-weight:900; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;}
+.wa-warn{font-weight:900; color:#b45309;}
+.wa-grid{display:grid; grid-template-columns:1fr; gap:10px;}
+.wa-card{border:1px solid #e6e8ef; border-radius:12px; padding:10px;}
+.wa-card-h{font-weight:900; margin-bottom:6px;}
+.wa-row{font-size:13px; line-height:1.35; margin:6px 0;}
+
+@media print{
+  body.whatsapp .wa-note{display:none;}
+}
+
 /* Zebra rows for readability */
 .table.board tbody tr:nth-child(even){
   background: rgba(15,23,42,0.03);
