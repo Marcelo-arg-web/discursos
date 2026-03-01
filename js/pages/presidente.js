@@ -112,26 +112,25 @@ const lector = safe(a.lectorAtalaya || nameById(a.lectorAtalayaId));
 
 // Documento semanal para enviar al presidente (NO incluye oración final)
 const html = `
-  <div class="hdr">
-    <div class="img"><img src="assets/jw-header.jpg" alt=""/></div>
-    <div class="t">
-      <div class="cong">Congregación Villa Fiad</div>
-      <div class="doc">Asignación Presidente</div>
-      <div class="fecha">Fecha: <span class="big">${fmtFechaLarga(semana)}</span></div>
-    </div>
-  </div>
+  <div class="pres-sheet">
+    <div class="pres-title">Asignación Presidencia</div>
 
-  <div class="body">
-    <table class="tbl">
-      <tr><td class="k">Presidente</td><td class="v">${presidente}</td></tr>
-      <tr><td class="k">Canción</td><td class="v">${canStr}</td></tr>
-      <tr><td class="k">Oración inicial</td><td class="v">${oracionIni}</td></tr>
-      <tr><td class="k">Orador público</td><td class="v">${orador}</td></tr>
-      <tr><td class="k">Congregación (de donde viene)</td><td class="v">${cong}</td></tr>
-      <tr><td class="k">Tema del discurso</td><td class="v">${tema}</td></tr>
-      <tr><td class="k">Título del discurso de la semana siguiente</td><td class="v">${prox}</td></tr>
-      <tr><td class="k">Conductor La Atalaya</td><td class="v">${conductor}</td></tr>
-      <tr><td class="k">Lector de La Atalaya</td><td class="v">${lector}</td></tr>
+    <table class="pres-table">
+      <tr><td class="k">Fecha:</td><td class="v">${fmtFechaLarga(semana)}</td></tr>
+      <tr><td class="k">Presidente:</td><td class="v">${presidente}</td></tr>
+      <tr><td class="k">Canción:</td><td class="v">${canStr}</td></tr>
+      <tr><td class="k">Oración:</td><td class="v">${oracionIni}</td></tr>
+      <tr><td class="k">Orador público:</td><td class="v">${orador}</td></tr>
+      <tr><td class="k">Congregación:</td><td class="v">${cong}</td></tr>
+      <tr><td class="k">Tema del discurso:</td><td class="v">${tema}</td></tr>
+      <tr><td class="k">Discurso (semana siguiente):</td><td class="v">${prox}</td></tr>
+    </table>
+
+    <div class="pres-subtitle">Atalaya</div>
+
+    <table class="pres-table">
+      <tr><td class="k">Conductor:</td><td class="v">${conductor}</td></tr>
+      <tr><td class="k">Lector:</td><td class="v">${lector}</td></tr>
     </table>
   </div>
 `;

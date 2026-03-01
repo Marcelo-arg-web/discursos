@@ -7,6 +7,28 @@
 <title>Presidente · Villa Fiad</title>
 <link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
 <link href="css/styles.css" rel="stylesheet"/>
+
+<style>
+/* Documento semanal para enviar al presidente (PDF WhatsApp) */
+.pres-sheet{background:#fff;border:1px solid #d7ddea;border-radius:12px;overflow:hidden}
+.pres-title{background:#6fa0e6;color:#0b1b33;font-weight:800;text-align:center;padding:12px 10px;font-size:22px}
+.pres-subtitle{background:#6fa0e6;color:#0b1b33;font-weight:800;text-align:center;padding:8px 10px;font-size:18px;margin-top:14px}
+.pres-table{width:100%;border-collapse:collapse}
+.pres-table td{border:1px solid #9fb7d6;padding:10px 12px;font-size:16px}
+.pres-table td.k{width:260px;background:#d9e7ff;font-weight:800}
+.pres-table td.v{background:#fff}
+@media print{
+  .card.pad{box-shadow:none!important}
+  .section-title.no-print{display:none!important}
+  .container{max-width:none}
+  .pres-sheet{border:none;border-radius:0}
+  .pres-title{font-size:20px}
+  .pres-subtitle{font-size:16px}
+  .pres-table td{font-size:13px;padding:7px 8px}
+  .pres-table td.k{width:220px}
+}
+</style>
+
 </head>
 <body class="has-topbar">
 <div id="topbar"></div>
