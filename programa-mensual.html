@@ -68,6 +68,11 @@
     }
   </style>
 
+<style>
+  .topnav{max-width:1100px;margin:12px auto 0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:8px 12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff}
+  .topnav a{font-weight:800;text-decoration:none;color:#1a4fa3;font-size:13px}
+  @media print{.no-print{display:none!important}}
+</style>
 </head>
 <body class="has-topbar">
   <div id="topbar"></div>
@@ -82,15 +87,6 @@
           <span class="pill">Discursos públicos</span>
         </div>
         <div class="muted" style="margin-top:-6px;">Se arma automáticamente con lo que cargaste en <b>Asignaciones</b>.</div>
-        <div class="row no-print" style="gap:10px;flex-wrap:wrap;margin-top:10px;">
-          <a class="btn" href="panel.html">Panel</a>
-          <a class="btn" href="asignaciones.html">Asignaciones</a>
-          <a class="btn" href="tablero-acomodadores.html">Tablero acomodadores</a>
-          <a class="btn" href="tablero-multimedia.html">Tablero A/V</a>
-          <a class="btn" href="salientes.html">Salientes</a>
-          <a class="btn" href="imprimir.html">Imprimir</a>
-        </div>
-
         <div class="hr"></div>
       </div>
 
@@ -140,6 +136,6 @@
     });
   })();
   </script>
-  <script type="module" src="js/pages/programa-mensual.js?v=20260302_3"></script>
+  <script type="module" src="js/pages/programa-mensual.js?v=20260302_fix"></script>
 </body>
 </html>

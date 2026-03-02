@@ -181,65 +181,40 @@ function buildOracionFinal(oradorPublico, presidente, fallbackOracionFinal){
   return String(fallbackOracionFinal || "").trim();
 }
 
-async function loadDocsInMonth(mesISO){
-  // mesISO: "YYYY-MM"
-  const [yy, mm] = String(mesISO||"").split("-").map(Number);
-  if(!yy || !mm) return [];
 
-  // 1) Intento rápido: IDs ISO "YYYY-MM-DD"
-  const startIso = `${mesISO}-01`;
-  const endIso = `${mesISO}-31\uf8ff`;
+function getSaturdaysInMonth(ym){
+  const [y,m] = String(ym||"").split("-").map(n=>parseInt(n,10));
+  if(!y||!m) return [];
+  const dates = [];
+  const d = new Date(y, m-1, 1);
+  while(d.getMonth() === (m-1)){
+    if(d.getDay() === 6){ // sábado
+      const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      dates.push(iso);
+    }
+    d.setDate(d.getDate()+1);
+  }
+  return dates;
+}
 
-  try{
-    const qyIso = query(
-      collection(db,"asignaciones"),
-      orderBy(documentId()),
-      startAt(startIso),
-      endAt(endIso)
-    );
-    const snapIso = await getDocs(qyIso);
-    const isoDocs = snapIso.docs.map(d=>{
-      const raw = d.data() || {};
+async function loadDocsForSaturdays(mesISO){
+  const sats = getSaturdaysInMonth(mesISO);
+  const out = [];
+  for(const iso of sats){
+    try{
+      const snap = await getDoc(doc(db,"asignaciones", iso));
+      if(!snap.exists()) continue;
+      const raw = snap.data() || {};
       const a = raw.asignaciones || {};
       const merged = { ...raw, ...a };
       delete merged.asignaciones;
-      return { id: d.id, data: merged };
-    });
-
-    if(isoDocs.length) return isoDocs;
-  }catch(e){
-    console.warn("Consulta ISO falló, pruebo fallback:", e);
-  }
-
-  // 2) Fallback: escaneo y parseo IDs tipo "DD/MM/YYYY" (o cualquier no-ISO)
-  const snapAll = await getDocs(collection(db,"asignaciones"));
-  const docs = [];
-  for(const d of snapAll.docs){
-    const id = String(d.id||"");
-    let dt = isoToDate(id);
-
-    if(!dt && /^\d{2}\/\d{2}\/\d{4}$/.test(id)){
-      const [dd, mo, yr] = id.split("/").map(n=>parseInt(n,10));
-      if(yr && mo && dd) dt = new Date(yr, mo-1, dd);
+      out.push({ id: iso, data: merged });
+    }catch(e){
+      console.warn("No pude leer", iso, e);
     }
-
-    if(!dt) continue;
-    if(dt.getFullYear() !== yy) continue;
-    if((dt.getMonth()+1) !== mm) continue;
-
-    const raw = d.data() || {};
-    const a = raw.asignaciones || {};
-    const merged = { ...raw, ...a };
-    delete merged.asignaciones;
-
-    const isoId = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
-    docs.push({ id: isoId, data: merged, _origId: id });
   }
-
-  docs.sort((a,b)=>a.id.localeCompare(b.id));
-  return docs;
+  return out;
 }
-
 
 
 function render(mesISO, items){
@@ -343,18 +318,7 @@ async function cargar(){
 
   try{
     await loadPersonasMap();
-    const docs = await loadDocsInMonth(mesISO);
-
-    // Solo fines de semana (sábado/domingo)
-    const items = docs
-      .map(d=>({ id:d.id, data:d.data }))
-      .filter(d=>{
-        const dt = isoToDate(d.id);
-        if(!dt) return false;
-        const dow = dt.getDay();
-        return dow === 6 || dow === 0;
-      })
-      .sort((a,b)=>a.id.localeCompare(b.id));
+    const items = await loadDocsForSaturdays(mesISO);
 
     render(mesISO, items);
   }catch(e){
