@@ -57,39 +57,6 @@
         Si tu Excel tiene otra estructura, decime los nombres de columnas y lo ajustamos.
       </div>
 </div>
-<div class="card pad" id="bosquejosCard" style="margin-top:14px;">
-<h2 class="h1" style="margin-bottom:6px;">Bosquejos (1–194)</h2>
-<div class="muted">Incluye “(No usar)” donde corresponde. Si en el futuro actualizan títulos, podés editar y guardar un override en este navegador.</div>
-<hr class="sep"/>
-<div class="row">
-<div class="col">
-<label>Número</label>
-<input id="bosqNum" max="194" min="1" placeholder="Ej: 113" type="number"/>
-</div>
-<div class="col">
-<label>Título</label>
-<input id="bosqTitle" placeholder="Se autocompleta al poner el número" type="text"/>
-</div>
-</div>
-<div class="row" style="margin-top:10px;">
-<button class="btn" id="btnBosqSave">Guardar cambio</button>
-<button class="btn secondary" id="btnBosqClear">Volver al título original</button>
-</div>
-<details style="margin-top:12px;">
-<summary class="muted" style="cursor:pointer;">Exportar / Importar cambios (para pasarlos a otra PC)</summary>
-<div class="row" style="margin-top:10px;">
-<div class="col">
-<label>JSON de cambios</label>
-<textarea id="bosqJson" rows="6" style="width:100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;"></textarea>
-</div>
-</div>
-<div class="row" style="margin-top:10px;">
-<button class="btn secondary" id="btnBosqExport">Exportar</button>
-<button class="btn" id="btnBosqImport">Importar</button>
-</div>
-</details>
-</div>
-
 </div>
 <script>
 (function(){

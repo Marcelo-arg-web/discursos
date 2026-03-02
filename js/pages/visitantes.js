@@ -166,6 +166,98 @@ function clearForm(){
   $("fecha").focus();
 }
 
+
+function parseDateToISO(s){
+  s = (s||"").trim();
+  if(!s) return "";
+  // YYYY-MM-DD
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m){
+    const y=m[1], mo=String(m[2]).padStart(2,"0"), d=String(m[3]).padStart(2,"0");
+    return `${y}-${mo}-${d}`;
+  }
+  // DD/MM/YYYY or D/M/YYYY (también corrige años tipo 0203 -> 2023)
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if(m){
+    let dd = String(m[1]).padStart(2,"0");
+    let mm = String(m[2]).padStart(2,"0");
+    let yy = m[3];
+    if(yy.length===2) yy = "20"+yy;
+    if(yy.length===4 && yy.startsWith("0")) yy = "2"+yy.slice(1); // 0203 -> 2023
+    return `${yy}-${mm}-${dd}`;
+  }
+  return "";
+}
+
+function parseTableText(text){
+  const rows = (text||"").split(/\r?\n/).map(r=>r.trim()).filter(Boolean);
+  const out = [];
+  for(const row of rows){
+    // soporta tab o muchos espacios
+    const cols = row.split(/\t+/).map(c=>c.trim());
+    const line = cols.length>=2 ? cols : row.split(/\s{2,}/).map(c=>c.trim());
+    if(!line.length) continue;
+
+    const fecha = parseDateToISO(line[0]);
+    if(!fecha) continue;
+
+    // Columnas esperadas:
+    // 0 Fecha, 1 Orador, 2 Congregación, 3 Bosquejo, 4 Cancion, 5 Titulo, 6 Observaciones, 7 Hospitalidad
+    const nombre = (line[1]||"").trim();
+    const congregacion = (line[2]||"").trim();
+    const bosquejoRaw = (line[3]||"").trim();
+    const cancionRaw = (line[4]||"").trim();
+    const titulo = (line[5]||"").trim();
+    const observaciones = (line[6]||"").trim();
+    const hospitalidad = (line[7]||"").trim();
+
+    out.push({
+      fecha, nombre, congregacion,
+      bosquejo: bosquejoRaw,
+      cancion: cancionRaw,
+      titulo, observaciones, hospitalidad
+    });
+  }
+  return out;
+}
+
+async function importar(){
+  if(!isAdmin){ toast("Solo admin/superadmin puede importar.", true); return; }
+  const text = $("importText")?.value || "";
+  const items = parseTableText(text);
+  if(!items.length){ toast("No encontré filas válidas. Pegá la tabla con Fecha al inicio.", true); return; }
+
+  $("importStatus").textContent = `Importando ${items.length}...`;
+  let ok=0, fail=0;
+
+  for(const it of items){
+    try{
+      const bosquejo = normNum(it.bosquejo);
+      const cancion = normNum(it.cancion);
+      const payload = {
+        fecha: it.fecha,
+        nombre: it.nombre,
+        congregacion: it.congregacion,
+        bosquejo: bosquejo===""? "" : bosquejo,
+        cancion: cancion===""? "" : cancion,
+        titulo: it.titulo || (bosquejo!=="" && bosquejos[bosquejo] ? bosquejos[bosquejo] : ""),
+        observaciones: it.observaciones,
+        hospitalidad: it.hospitalidad,
+        updatedAt: new Date().toISOString(),
+      };
+      await setDoc(doc(db,"visitas", it.fecha), payload, { merge:true });
+      ok++;
+    }catch(e){
+      console.error(e);
+      fail++;
+    }
+  }
+
+  $("importStatus").textContent = `Listo. OK: ${ok} · Fallas: ${fail}`;
+  toast(`Importación finalizada. OK: ${ok} · Fallas: ${fail}`, fail>0);
+  await load();
+}
+
 function applyAuto(){
   const b = normNum($("bosquejo").value);
   if(b && !$("titulo").value.trim()){
@@ -183,12 +275,18 @@ let cache = []; // {id, ...data}
 
 function renderTable(){
   const q = ($("filtro").value||"").trim().toLowerCase();
-  const mostrarAnteriores = !!$("chkMostrarAnteriores")?.checked;
-  const hoy = hoyISO();
-
-  const rows = cache.filter(r=>{
-    const fecha = String(r.id || r.fecha || "");
-    if(!mostrarAnteriores && fecha && fecha < hoy) return false;
+  let rows = cache.slice();
+  const showOld = $("chkAnteriores")?.checked;
+  const today = new Date(); today.setHours(0,0,0,0);
+  if(!showOld){
+    rows = rows.filter(r=>{
+      const d = new Date(String(r.fecha||r.id));
+      if(isNaN(d.getTime())) return false;
+      d.setHours(0,0,0,0);
+      return d >= today;
+    });
+  }
+  rows = rows.filter(r=>{
     if(!q) return true;
     return String(r.nombre||"").toLowerCase().includes(q) || String(r.congregacion||"").toLowerCase().includes(q);
   });
@@ -217,40 +315,28 @@ function renderTable(){
       window.scrollTo({top:0, behavior:"smooth"});
     });
   });
-}}
+}
 
 function escapeHtml(s){
   return String(s||"").replace(/[&<>"]/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 }
 
+
 async function load(){
   let docs = [];
-  let used = "visitas";
   try{
     const s = await getDocs(query(collection(db,"visitas"), orderBy("fecha","asc")));
-    docs = s.docs;
+    docs = s.docs.map(d=>({ id:d.id, ...d.data(), fecha: d.data().fecha || d.id }));
   }catch(e){
-    console.warn("No pude leer 'visitas'", e);
+    console.error(e);
+    // Si no hay permisos de lectura (modo público sin reglas), mostramos vacío pero no rompemos.
+    toast("No pude leer Visitantes (permisos de Firestore). Si querés que lo vean todos, habilitá lectura de la colección 'visitas' en Rules.", true);
+    docs = [];
   }
-
-  // Compatibilidad: algunas versiones usaron 'visitantes' como colección
-  if(docs.length === 0){
-    try{
-      const s2 = await getDocs(query(collection(db,"visitantes"), orderBy("fecha","asc")));
-      docs = s2.docs;
-      used = "visitantes";
-    }catch(e){
-      console.warn("No pude leer 'visitantes'", e);
-    }
-  }
-
-  cache = docs.map(d=>({ id:d.id, ...d.data(), fecha: d.data().fecha || d.id }));
+  cache = docs;
   cache.sort((a,b)=>String(a.id).localeCompare(String(b.id)));
-
-  const info = document.getElementById("dataInfo");
-  if(info) info.textContent = `Fuente: ${used} · Registros: ${cache.length}`;
-
   renderTable();
+}
 }
 
 async function save(){
@@ -311,7 +397,9 @@ async function borrar(){
   $("btnNuevo")?.addEventListener("click", clearForm);
   $("btnRefrescar")?.addEventListener("click", load);
   $("filtro")?.addEventListener("input", renderTable);
-  $("chkMostrarAnteriores")?.addEventListener("change", renderTable);
+  $("chkAnteriores")?.addEventListener("change", renderTable);
+  $("btnImportar")?.addEventListener("click", importar);
+  if($("importBox")) $("importBox").style.display = isAdmin ? "block" : "none";
   $("btnBorrar")?.addEventListener("click", borrar);
   $("form")?.addEventListener("submit", (ev)=>{ ev.preventDefault(); save(); });
 

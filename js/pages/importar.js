@@ -1,7 +1,6 @@
 import { auth, db } from "../firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-import { getBosquejoTitle, setBosquejoOverride, clearBosquejoOverride, exportBosquejosOverrides, importBosquejosOverrides } from "../data/bosquejos.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -76,86 +75,7 @@ async function requireActiveUser(activePage){
       resolve({ user, usuario:u });
     });
   });
-
-function initBosquejosUI(usuario){
-  const card = document.getElementById("bosquejosCard");
-  if(!card) return;
-
-  // Solo admins/superadmin pueden editar títulos
-  const rol = (usuario?.rol || "usuario").toLowerCase();
-  const canEdit = ["admin","superadmin"].includes(rol);
-
-  if(!canEdit){
-    // Si no puede editar, ocultamos la sección para evitar confusión
-    card.style.display = "none";
-    return;
-  }
-
-  const numEl = document.getElementById("bosqNum");
-  const titleEl = document.getElementById("bosqTitle");
-  const jsonEl = document.getElementById("bosqJson");
-  const btnSave = document.getElementById("btnBosqSave");
-  const btnClear = document.getElementById("btnBosqClear");
-  const btnExport = document.getElementById("btnBosqExport");
-  const btnImport = document.getElementById("btnBosqImport");
-
-  function syncTitle(){
-    const n = Number(numEl.value);
-    if(!Number.isFinite(n)) return;
-    titleEl.value = getBosquejoTitle(n) || "";
-  }
-
-  numEl?.addEventListener("input", syncTitle);
-
-  btnSave?.addEventListener("click", ()=>{
-    const n = Number(numEl.value);
-    if(!Number.isFinite(n) || n < 1 || n > 194){
-      toast("Número de bosquejo inválido (1–194).", true);
-      return;
-    }
-    try{
-      setBosquejoOverride(n, titleEl.value);
-      toast("Bosquejo actualizado. Refrescá la página para verlo aplicado en todos lados.");
-    }catch(e){
-      console.error(e);
-      toast("No se pudo guardar el cambio.", true);
-    }
-  });
-
-  btnClear?.addEventListener("click", ()=>{
-    const n = Number(numEl.value);
-    if(!Number.isFinite(n)){
-      toast("Elegí un número primero.", true);
-      return;
-    }
-    try{
-      clearBosquejoOverride(n);
-      syncTitle();
-      toast("Volvió al título original. Refrescá la página para verlo aplicado en todos lados.");
-    }catch(e){
-      console.error(e);
-      toast("No se pudo revertir.", true);
-    }
-  });
-
-  btnExport?.addEventListener("click", ()=>{
-    jsonEl.value = exportBosquejosOverrides();
-    toast("Cambios exportados.");
-  });
-
-  btnImport?.addEventListener("click", ()=>{
-    try{
-      importBosquejosOverrides(jsonEl.value || "{}");
-      toast("Cambios importados. Refrescá la página para aplicarlos.");
-    }catch(e){
-      console.error(e);
-      toast("JSON inválido. Revisá el contenido.", true);
-    }
-  });
-}
-
 }(async function(){
-  const ctx = await requireActiveUser("importar");
-  initBosquejosUI(ctx.usuario);
+  await requireActiveUser("importar");
   toast("Importar Excel: en esta versión falta el script. Si querés, lo integro con tu Asignaciones.xlsx y mapeo de columnas.");
 })();
