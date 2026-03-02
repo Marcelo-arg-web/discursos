@@ -181,41 +181,29 @@ function buildOracionFinal(oradorPublico, presidente, fallbackOracionFinal){
   return String(fallbackOracionFinal || "").trim();
 }
 
+async async function loadDocsInMonth(mesISO){
+  // Los IDs de tus docs suelen ser YYYY-MM-DD.
+  // Por eso consultamos por rango dentro del mes (01..31).
+  const start = `${mesISO}-01`;
+  const end = `${mesISO}-31\uf8ff`;
 
-function getSaturdaysInMonth(ym){
-  const [y,m] = String(ym||"").split("-").map(n=>parseInt(n,10));
-  if(!y||!m) return [];
-  const dates = [];
-  const d = new Date(y, m-1, 1);
-  while(d.getMonth() === (m-1)){
-    if(d.getDay() === 6){ // sábado
-      const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-      dates.push(iso);
-    }
-    d.setDate(d.getDate()+1);
-  }
-  return dates;
+  const qy = query(
+    collection(db, "asignaciones"),
+    orderBy(documentId()),
+    startAt(start),
+    endAt(end)
+  );
+
+  const snap = await getDocs(qy);
+
+  return snap.docs.map(d => {
+    const raw = d.data() || {};
+    const a = raw.asignaciones || {};
+    const merged = { ...raw, ...a };
+    delete merged.asignaciones;
+    return { id: d.id, data: merged };
+  });
 }
-
-async function loadDocsForSaturdays(mesISO){
-  const sats = getSaturdaysInMonth(mesISO);
-  const out = [];
-  for(const iso of sats){
-    try{
-      const snap = await getDoc(doc(db,"asignaciones", iso));
-      if(!snap.exists()) continue;
-      const raw = snap.data() || {};
-      const a = raw.asignaciones || {};
-      const merged = { ...raw, ...a };
-      delete merged.asignaciones;
-      out.push({ id: iso, data: merged });
-    }catch(e){
-      console.warn("No pude leer", iso, e);
-    }
-  }
-  return out;
-}
-
 
 function render(mesISO, items){
   const cont = $("contenido");
@@ -318,7 +306,18 @@ async function cargar(){
 
   try{
     await loadPersonasMap();
-    const items = await loadDocsForSaturdays(mesISO);
+    const docs = await loadDocsInMonth(mesISO);
+
+    // Solo fines de semana (sábado/domingo)
+    const items = docs
+      .map(d=>({ id:d.id, data:d.data }))
+      .filter(d=>{
+        const dt = isoToDate(d.id);
+        if(!dt) return false;
+        const dow = dt.getDay();
+        return dow === 6 || dow === 0;
+      })
+      .sort((a,b)=>a.id.localeCompare(b.id));
 
     render(mesISO, items);
   }catch(e){
