@@ -182,25 +182,64 @@ function buildOracionFinal(oradorPublico, presidente, fallbackOracionFinal){
 }
 
 async function loadDocsInMonth(mesISO){
-  // mesISO viene como "YYYY-MM"
-  const start = mesISO + "-01";
-  // end: 31 cubre todo el mes para IDs ISO ordenables (YYYY-MM-DD)
-  const end = mesISO + "-31\uf8ff";
-  const qy = query(
-    collection(db,"asignaciones"),
-    orderBy(documentId()),
-    startAt(start),
-    endAt(end)
-  );
-  const snap = await getDocs(qy);
-  return snap.docs.map(d=>{
+  // mesISO: "YYYY-MM"
+  const [yy, mm] = String(mesISO||"").split("-").map(Number);
+  if(!yy || !mm) return [];
+
+  // 1) Intento rápido: IDs ISO "YYYY-MM-DD"
+  const startIso = `${mesISO}-01`;
+  const endIso = `${mesISO}-31\uf8ff`;
+
+  try{
+    const qyIso = query(
+      collection(db,"asignaciones"),
+      orderBy(documentId()),
+      startAt(startIso),
+      endAt(endIso)
+    );
+    const snapIso = await getDocs(qyIso);
+    const isoDocs = snapIso.docs.map(d=>{
+      const raw = d.data() || {};
+      const a = raw.asignaciones || {};
+      const merged = { ...raw, ...a };
+      delete merged.asignaciones;
+      return { id: d.id, data: merged };
+    });
+
+    if(isoDocs.length) return isoDocs;
+  }catch(e){
+    console.warn("Consulta ISO falló, pruebo fallback:", e);
+  }
+
+  // 2) Fallback: escaneo y parseo IDs tipo "DD/MM/YYYY" (o cualquier no-ISO)
+  const snapAll = await getDocs(collection(db,"asignaciones"));
+  const docs = [];
+  for(const d of snapAll.docs){
+    const id = String(d.id||"");
+    let dt = isoToDate(id);
+
+    if(!dt && /^\d{2}\/\d{2}\/\d{4}$/.test(id)){
+      const [dd, mo, yr] = id.split("/").map(n=>parseInt(n,10));
+      if(yr && mo && dd) dt = new Date(yr, mo-1, dd);
+    }
+
+    if(!dt) continue;
+    if(dt.getFullYear() !== yy) continue;
+    if((dt.getMonth()+1) !== mm) continue;
+
     const raw = d.data() || {};
     const a = raw.asignaciones || {};
     const merged = { ...raw, ...a };
     delete merged.asignaciones;
-    return { id: d.id, data: merged };
-  });
+
+    const isoId = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
+    docs.push({ id: isoId, data: merged, _origId: id });
+  }
+
+  docs.sort((a,b)=>a.id.localeCompare(b.id));
+  return docs;
 }
+
 
 
 function render(mesISO, items){
