@@ -32,12 +32,9 @@ import {
 // ---------------- UI helpers ----------------
 const $ = (id) => document.getElementById(id);
 const getVal = (id) => ($(id)?.value ?? "");
-const $ = (id) => document.getElementById(id);
-const getVal = (id) => ($(id)?.value ?? "");
 const setVal = (id, v) => {
   const el = $(id);
-  if (el) el.value = v ?? "";
-};
+
 
 // ---------------- Semana Jueves/Sábado: copiar asignados automáticamente ----------------
 function isoToDate(iso){
@@ -95,7 +92,8 @@ async function copiarAsignadosAlJuevesSiCorresponde(fechaFinDeSemanaISO, dataAsi
     copiadoDesdeFinDeSemana: fechaFinDeSemanaISO,
   }, { merge: true });
 }
-
+  if (el) el.value = v ?? "";
+};
 
 function escapeHtml(str){
   return String(str ?? "")
