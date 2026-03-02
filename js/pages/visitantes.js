@@ -183,7 +183,12 @@ let cache = []; // {id, ...data}
 
 function renderTable(){
   const q = ($("filtro").value||"").trim().toLowerCase();
+  const mostrarAnteriores = !!$("chkMostrarAnteriores")?.checked;
+  const hoy = hoyISO();
+
   const rows = cache.filter(r=>{
+    const fecha = String(r.id || r.fecha || "");
+    if(!mostrarAnteriores && fecha && fecha < hoy) return false;
     if(!q) return true;
     return String(r.nombre||"").toLowerCase().includes(q) || String(r.congregacion||"").toLowerCase().includes(q);
   });
@@ -212,17 +217,39 @@ function renderTable(){
       window.scrollTo({top:0, behavior:"smooth"});
     });
   });
-}
+}}
 
 function escapeHtml(s){
   return String(s||"").replace(/[&<>"]/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 }
 
 async function load(){
-  const s = await getDocs(query(collection(db,"visitas"), orderBy("fecha","asc")));
-  cache = s.docs.map(d=>({ id:d.id, ...d.data(), fecha: d.data().fecha || d.id }));
-  // si no existe campo fecha, usamos id
+  let docs = [];
+  let used = "visitas";
+  try{
+    const s = await getDocs(query(collection(db,"visitas"), orderBy("fecha","asc")));
+    docs = s.docs;
+  }catch(e){
+    console.warn("No pude leer 'visitas'", e);
+  }
+
+  // Compatibilidad: algunas versiones usaron 'visitantes' como colección
+  if(docs.length === 0){
+    try{
+      const s2 = await getDocs(query(collection(db,"visitantes"), orderBy("fecha","asc")));
+      docs = s2.docs;
+      used = "visitantes";
+    }catch(e){
+      console.warn("No pude leer 'visitantes'", e);
+    }
+  }
+
+  cache = docs.map(d=>({ id:d.id, ...d.data(), fecha: d.data().fecha || d.id }));
   cache.sort((a,b)=>String(a.id).localeCompare(String(b.id)));
+
+  const info = document.getElementById("dataInfo");
+  if(info) info.textContent = `Fuente: ${used} · Registros: ${cache.length}`;
+
   renderTable();
 }
 
@@ -284,6 +311,7 @@ async function borrar(){
   $("btnNuevo")?.addEventListener("click", clearForm);
   $("btnRefrescar")?.addEventListener("click", load);
   $("filtro")?.addEventListener("input", renderTable);
+  $("chkMostrarAnteriores")?.addEventListener("change", renderTable);
   $("btnBorrar")?.addEventListener("click", borrar);
   $("form")?.addEventListener("submit", (ev)=>{ ev.preventDefault(); save(); });
 

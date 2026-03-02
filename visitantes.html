@@ -63,12 +63,19 @@
 <div class="row" style="justify-content:space-between; align-items:center;">
 <div>
 <b>Listado</b>
-<div class="small muted">Click en una fila para editar.</div>
+<div class="small muted">Click en una fila para editar. <span id="dataInfo" class="muted"></span></div>
 </div>
 <div class="row">
 <input class="inp" id="filtro" placeholder="Filtrar por nombre o congregación…" style="max-width:260px;"/>
 <button class="btn" id="btnRefrescar" type="button">Refrescar</button>
 </div>
+<div class="row" style="gap:10px; align-items:center;">
+  <label class="row small" style="gap:8px; margin:0;">
+    <input type="checkbox" id="chkMostrarAnteriores"/>
+    Mostrar anteriores (para estadísticas)
+  </label>
+</div>
+
 </div>
 <div style="height:10px"></div>
 <div class="card pad" style="padding:0; overflow:auto;">
@@ -121,6 +128,6 @@
     });
   });
 })();
-</script><script src="js/pages/visitantes.js?v=20260302" type="module"></script>
+</script><script src="js/pages/visitantes.js?v=20260302b" type="module"></script>
 </body>
 </html>
