@@ -36,16 +36,25 @@ function ensureTopbarStyles(){
     .topbar .btn.danger{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239}
 
     /* Programa mensual */
-    .prog-wrap{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden}
-    .prog-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid #e5e7eb}
-    .prog-header .title{font-weight:900;font-size:14px;letter-spacing:.2px}
-    .prog-header .date{font-weight:800;font-size:13px;opacity:.95}
-    .prog-grid{width:100%;border-collapse:collapse}
-    .prog-grid td{border-top:1px solid #e5e7eb;padding:7px 10px;font-size:13px;vertical-align:top}
-    .prog-grid td.k{width:160px;font-weight:800;color:#111827}
+    .month-banner{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;margin:0 0 10px 0}
+    .month-banner img{display:block;width:100%;height:82px;object-fit:cover}
+    .month-banner .meta{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;background:#eef2ff;border-top:1px solid #e5e7eb}
+    .month-banner .meta .left{font-weight:900;font-size:13px}
+    .month-banner .meta .right{font-weight:800;font-size:12px;opacity:.85}
 
-    .wk-odd .prog-header{background:#eaf2ff}
-    .wk-even .prog-header{background:#f3f4f6}
+    .prog-wrap{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;margin:0 0 10px 0}
+    .prog-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;border-bottom:1px solid #e5e7eb}
+    .prog-header .title{font-weight:900;font-size:13px;letter-spacing:.2px}
+    .prog-header .date{font-weight:900;font-size:13px;opacity:.95}
+    .prog-grid{width:100%;border-collapse:collapse}
+    .prog-grid td{border-top:1px solid #e5e7eb;padding:6px 10px;font-size:13px;vertical-align:top}
+    .prog-grid td.k{width:150px;font-weight:900;color:#111827}
+
+    /* Semanas (colores sutiles y profesionales) */
+    .wk-1 .prog-header{background:#eaf2ff}
+    .wk-2 .prog-header{background:#fff7ed}
+    .wk-3 .prog-header{background:#ecfdf5}
+    .wk-4 .prog-header{background:#f5f3ff}
 
     .month-title{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:10px}
     .month-title .h2{font-size:18px;font-weight:900;margin:0}
@@ -55,7 +64,15 @@ function ensureTopbarStyles(){
       .no-print{display:none !important}
       body{background:#fff}
       .card{box-shadow:none !important;border:0 !important}
-      .prog-wrap{break-inside:avoid-page;margin-bottom:10px}
+      .month-banner{margin:0 0 8px 0}
+      .month-banner img{height:64px}
+      .month-banner .meta{padding:6px 10px}
+      .prog-wrap{break-inside:avoid-page;margin:0 0 8px 0}
+      .prog-header{padding:6px 10px}
+      .prog-header .title{font-size:12px}
+      .prog-header .date{font-size:12px}
+      .prog-grid td{padding:4px 8px;font-size:11.3px}
+      .prog-grid td.k{width:132px}
     }
   `;
   document.head.appendChild(s);
@@ -209,12 +226,12 @@ function render(mesISO, items){
 
     const oracionFinal = buildOracionFinal(orador, presidente, resolveNombre(a, "oracionFinalId"));
 
-    const wkClass = (idx % 2 === 0) ? "wk-odd" : "wk-even";
+    const wkClass = `wk-${(idx % 4) + 1}`;
 
     return `
       <div class="prog-wrap ${wkClass}">
         <div class="prog-header">
-          <div class="title">${escapeHtml(monthTitle)}</div>
+          <div class="title">Villa Fiad</div>
           <div class="date">${escapeHtml(formatFechaLarga(it.id))}</div>
         </div>
         <table class="prog-grid">
@@ -231,9 +248,12 @@ function render(mesISO, items){
   }).join("\n");
 
   cont.innerHTML = `
-    <div class="month-title">
-      <div class="h2">${escapeHtml(monthTitle)}</div>
-      <div class="muted">Tip: imprimí en A4 vertical. Si se corta, bajá la escala a 90%.</div>
+    <div class="month-banner">
+      <img src="assets/jw-header.jpg" alt="" />
+      <div class="meta">
+        <div class="left">Mes: ${escapeHtml(monthTitle)}</div>
+        <div class="right">Programa de discursos públicos</div>
+      </div>
     </div>
     ${blocks}
   `;
