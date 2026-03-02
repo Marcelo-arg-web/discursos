@@ -1167,8 +1167,8 @@ function validateNoDuplicates() {
     { id: "multimedia1", label: "Multimedia 1" },
     { id: "multimedia2", label: "Multimedia 2" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
-    { id: "acomodadorAuditorio1",
-    "acomodadorAuditorio2", label: "Acomodador Auditorio" },
+    { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
+    { id: "acomodadorAuditorio2", label: "Acomodador Auditorio 2" },
   ];
   const chosen = fields.map((f) => ({ ...f, value: getVal(f.id) })).filter((x) => x.value);
 
