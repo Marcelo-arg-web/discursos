@@ -198,49 +198,44 @@ function render(mesISO, pairs){
   const host = $("contenido");
 
   const rowsAco = pairs.map(p=>{
-    const fmtAud = (a)=>{
-      const a1 = (a?.auditorio1||"").trim();
-      const a2 = (a?.auditorio2||"").trim();
-      if(a1 && a2) return `${a1} / ${a2}`;
-      return a1 || a2 || "—";
-    };
-
     const acoJ = {
-      plataforma: p.jueves.plataforma || "—",
       entrada: p.jueves.entrada || "—",
-      auditorio: fmtAud(p.jueves),
+      auditorio1: p.jueves.auditorio1 || "—",
+      auditorio2: p.jueves.auditorio2 || "—",
     };
     const acoF = {
-      plataforma: p.fin.plataforma || "—",
       entrada: p.fin.entrada || "—",
-      auditorio: fmtAud(p.fin),
+      auditorio1: p.fin.auditorio1 || "—",
+      auditorio2: p.fin.auditorio2 || "—",
     };
     return `
       <tr>
         <td class="td-center">${p.semana}</td>
         <td class="td-center">Jue</td>
         <td>${escapeHtml(p.juevesLabel)}</td>
-        <td>${escapeHtml(acoJ.plataforma)}</td>
         <td>${escapeHtml(acoJ.entrada)}</td>
-        <td>${escapeHtml(acoJ.auditorio)}</td>
+        <td>${escapeHtml(acoJ.auditorio1)}</td>
+        <td>${escapeHtml(acoJ.auditorio2)}</td>
       </tr>
       <tr>
         <td class="td-center">${p.semana}</td>
         <td class="td-center">Fin</td>
         <td>${escapeHtml(p.finLabel)}</td>
-        <td>${escapeHtml(acoF.plataforma)}</td>
         <td>${escapeHtml(acoF.entrada)}</td>
-        <td>${escapeHtml(acoF.auditorio)}</td>
+        <td>${escapeHtml(acoF.auditorio1)}</td>
+        <td>${escapeHtml(acoF.auditorio2)}</td>
       </tr>
     `;
   }).join("");
 
-  const rowsAV = pairs.map(p=>{
+  t rowsAV = pairs.map(p=>{
     const avJ = {
+      plataforma: p.juevesAV?.plataforma || "—",
       multimedia1: p.juevesAV?.multimedia1 || "—",
       multimedia2: p.juevesAV?.multimedia2 || "—",
     };
     const avF = {
+      plataforma: p.finAV?.plataforma || "—",
       multimedia1: p.finAV?.multimedia1 || "—",
       multimedia2: p.finAV?.multimedia2 || "—",
     };
@@ -249,6 +244,7 @@ function render(mesISO, pairs){
         <td class="td-center">${p.semana}</td>
         <td class="td-center">Jue</td>
         <td>${escapeHtml(p.juevesLabel)}</td>
+        <td>${escapeHtml(avJ.plataforma)}</td>
         <td>${escapeHtml(avJ.multimedia1)}</td>
         <td>${escapeHtml(avJ.multimedia2)}</td>
       </tr>
@@ -256,13 +252,14 @@ function render(mesISO, pairs){
         <td class="td-center">${p.semana}</td>
         <td class="td-center">Fin</td>
         <td>${escapeHtml(p.finLabel)}</td>
+        <td>${escapeHtml(avF.plataforma)}</td>
         <td>${escapeHtml(avF.multimedia1)}</td>
         <td>${escapeHtml(avF.multimedia2)}</td>
       </tr>
     `;
   }).join("");
 
-  host.innerHTML = `
+  .innerHTML = `
     <div class="print-header">
       <div class="h2">Congregación Villa Fiad</div>
       <div class="muted">Tablero mensual · Mes ${escapeHtml(mesISO)}</div>
@@ -284,9 +281,9 @@ function render(mesISO, pairs){
             <th class="td-center">Sem</th>
             <th class="td-center">Reu.</th>
             <th>Fecha</th>
-            <th>Plataforma</th>
             <th>Entrada</th>
-            <th>Auditorio</th>
+            <th>Auditorio 1</th>
+            <th>Auditorio 2</th>
           </tr>
         </thead>
         <tbody>${rowsAco || `<tr><td colspan="6" class="muted">Sin datos.</td></tr>`}</tbody>
@@ -300,19 +297,21 @@ function render(mesISO, pairs){
           <col style="width:52px;" />
           <col style="width:60px;" />
           <col style="width:140px;" />
-          <col style="width:40%;" />
-          <col style="width:40%;" />
+          <col style="width:28%;" />
+          <col style="width:28%;" />
+          <col style="width:28%;" />
         </colgroup>
         <thead>
           <tr>
             <th class="td-center">Sem</th>
             <th class="td-center">Reu.</th>
             <th>Fecha</th>
+            <th>Plataforma</th>
             <th>Multimedia 1</th>
             <th>Multimedia 2</th>
           </tr>
         </thead>
-        <tbody>${rowsAV || `<tr><td colspan="5" class="muted">Sin datos.</td></tr>`}</tbody>
+        <tbody>${rowsAV || `<tr><td colspan="6" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
     </div>
   `;
@@ -360,8 +359,6 @@ async function cargar(){
 };
 
 const mapAco = (asig)=>({
-  // Plataforma
-  plataforma: resolveNombre(asig, ["plataformaId","plataformaNombre","plataforma"]),
   // Entrada (compatible con datos antiguos)
   entrada: resolveNombre(asig, ["acomodadorEntradaId","acomodadorEntradaNombre","acomodadorEntrada"]),
   // Auditorio 1: si no existe, usa el campo antiguo "acomodadorAuditorio"
@@ -372,6 +369,7 @@ const mapAco = (asig)=>({
 
 
       const mapAV = (asig)=>({
+  plataforma: resolveNombre(asig, ["plataformaId","plataformaNombre","plataforma"]),
   multimedia1: resolveNombre(asig, ["multimedia1Id","multimedia1Nombre","multimedia1"]),
   multimedia2: resolveNombre(asig, ["multimedia2Id","multimedia2Nombre","multimedia2"]),
 });
