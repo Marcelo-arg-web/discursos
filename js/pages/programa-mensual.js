@@ -182,11 +182,15 @@ function buildOracionFinal(oradorPublico, presidente, fallbackOracionFinal){
 }
 
 async function loadDocsInMonth(mesISO){
+  // mesISO viene como "YYYY-MM"
+  const start = mesISO + "-01";
+  // end: 31 cubre todo el mes para IDs ISO ordenables (YYYY-MM-DD)
+  const end = mesISO + "-31\uf8ff";
   const qy = query(
     collection(db,"asignaciones"),
     orderBy(documentId()),
-    startAt(mesISO),
-    endAt(mesISO + "\uf8ff")
+    startAt(start),
+    endAt(end)
   );
   const snap = await getDocs(qy);
   return snap.docs.map(d=>{
