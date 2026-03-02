@@ -1114,8 +1114,10 @@ function hydrateToUI(a) {
     ["microfonista1", a.microfonista1Id],
     ["microfonista2", a.microfonista2Id],
     ["acomodadorEntrada", a.acomodadorEntradaId],
-    ["acomodadorAuditorio1",
-    "acomodadorAuditorio2", a.acomodadorAuditorioId],
+    // Compatibilidad: antes existía un solo campo "acomodadorAuditorioId".
+    // Ahora usamos Auditorio 1 y Auditorio 2.
+    ["acomodadorAuditorio1", a.acomodadorAuditorio1Id || a.acomodadorAuditorioId],
+    ["acomodadorAuditorio2", a.acomodadorAuditorio2Id],
   ].forEach(([sid, pid]) => ensureOptionById(sid, pid));
 
   setVal("presidente", a.presidenteId || "");
@@ -1129,8 +1131,8 @@ function hydrateToUI(a) {
   setVal("microfonista1", a.microfonista1Id || "");
   setVal("microfonista2", a.microfonista2Id || "");
   setVal("acomodadorEntrada", a.acomodadorEntradaId || "");
-  setVal("acomodadorAuditorio1",
-    "acomodadorAuditorio2", a.acomodadorAuditorioId || "");
+  setVal("acomodadorAuditorio1", a.acomodadorAuditorio1Id || a.acomodadorAuditorioId || "");
+  setVal("acomodadorAuditorio2", a.acomodadorAuditorio2Id || "");
 
   setVal("cancionNumero", a.cancionNumero || "");
   setVal("oradorPublico", a.oradorPublico || "");

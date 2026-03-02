@@ -111,17 +111,40 @@ import {
   getDocs,
   query,
   where,
-  orderBy
+  orderBy,
+  startAt,
+  endAt,
+  documentId
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-function monthRange(ym){
-  const [y,m] = ym.split("-").map(Number);
-  if(!y || !m) return null;
-  const start = `${y}-${String(m).padStart(2,"0")}-01`;
-  const nextM = m===12 ? 1 : m+1;
-  const nextY = m===12 ? y+1 : y;
-  const end = `${nextY}-${String(nextM).padStart(2,"0")}-01`;
-  return { start, end };
+let personasMap = new Map();
+async function loadPersonasMap(){
+  try{
+    const qy = query(collection(db,"personas"), where("activo","==", true));
+    const snap = await getDocs(qy);
+    personasMap = new Map(snap.docs.map(d=>[d.id, String(d.data()?.nombre||"")]));
+  }catch(e){
+    console.warn("No pude cargar personas:", e);
+    personasMap = new Map();
+  }
+}
+function nombrePorId(id){
+  const k = String(id||"").trim();
+  if(!k) return "";
+  return personasMap.get(k) || "";
+}
+function resolveNombre(asig, key){
+  const v = asig?.[key];
+  if(v === undefined || v === null) return "";
+  const s = String(v).trim();
+  if(!s) return "";
+  return nombrePorId(s) || s;
+}
+
+function monthPrefix(ym){
+  const s = String(ym||"").trim();
+  if(!/^\d{4}-\d{2}$/.test(s)) return null;
+  return s;
 }
 
 function renderItems(items){
@@ -134,25 +157,39 @@ function renderItems(items){
   }
 
   const rows = items.map(it=>{
-    const a = it.asignaciones || it;
+    const raw = it.data || it;
+    const a = raw.asignaciones || raw;
+
+    // Nombres
+    const presidente = resolveNombre(a, "presidenteId") || a.presidente || "";
+    const conductor = resolveNombre(a, "conductorAtalayaId") || a.conductorAtalaya || "";
+    const lector = resolveNombre(a, "lectorAtalayaId") || a.lectorAtalaya || "";
+    const acomEnt = resolveNombre(a, "acomodadorEntradaId") || a.acomodadorEntrada || "";
+    const acomA1 = resolveNombre(a, "acomodadorAuditorio1Id") || resolveNombre(a, "acomodadorAuditorioId") || a.acomodadorAuditorio1 || a.acomodadorAuditorio || "";
+    const acomA2 = resolveNombre(a, "acomodadorAuditorio2Id") || a.acomodadorAuditorio2 || "";
+    const mic1 = resolveNombre(a, "microfonista1Id") || a.microfonista1 || "";
+    const mic2 = resolveNombre(a, "microfonista2Id") || a.microfonista2 || "";
+    const mm1 = resolveNombre(a, "multimedia1Id") || a.multimedia1 || "";
+    const mm2 = resolveNombre(a, "multimedia2Id") || a.multimedia2 || "";
+
     return `
       <tr>
-        <td><b>${it.semana || it.id || ""}</b></td>
-        <td>${a.presidente||""}</td>
+        <td><b>${it.id || it.semana || ""}</b></td>
+        <td>${presidente}</td>
         <td>${(a.cancionNumero||"") ? `${a.cancionNumero} — ${a.cancionTitulo||""}` : ""}</td>
         <td>${a.oradorPublico||""}</td>
         <td>${a.congregacionVisitante||""}</td>
         <td>${(a.discursoNumero||"") ? `${a.discursoNumero} — ${a.tituloDiscurso||""}` : (a.tituloDiscurso||"")}</td>
-        <td>${a.conductorAtalaya||""}</td>
-        <td>${a.lectorAtalaya||""}</td>
-        <td>${a.multimedia1||""}</td>
-        <td>${a.multimedia2||""}</td>
-        <td>${a.acomodadorEntrada||""}</td>
-        <td>${a.acomodadorAuditorio1||""}</td>
-        <td>${a.acomodadorAuditorio2||""}</td>
-        <td>${a.microfonista1||""}</td>
-        <td>${a.microfonista2||""}</td>
-        <td>${buildOracionFinal(a.oradorPublico, a.presidente, a.oracionFinal)||""}</td>
+        <td>${conductor}</td>
+        <td>${lector}</td>
+        <td>${mm1}</td>
+        <td>${mm2}</td>
+        <td>${acomEnt}</td>
+        <td>${acomA1}</td>
+        <td>${acomA2}</td>
+        <td>${mic1}</td>
+        <td>${mic2}</td>
+        <td>${buildOracionFinal(a.oradorPublico, presidente, resolveNombre(a,"oracionFinalId") || a.oracionFinal)||""}</td>
       </tr>
     `;
   }).join("");
@@ -188,20 +225,21 @@ function renderItems(items){
 }
 
 async function cargarMes(){
-  const ym = (document.getElementById("mes").value || "").trim();
-  const r = monthRange(ym);
-  if(!r) return toast("Escribí el mes como YYYY-MM.", true);
-
-  const q = query(
-    collection(db,"asignacionesSemanales"),
-    where("semana", ">=", r.start),
-    where("semana", "<", r.end),
-    orderBy("semana","asc")
-  );
-
   try{
+    const ym = (document.getElementById("mes").value || "").trim();
+    const prefix = monthPrefix(ym);
+    if(!prefix) return toast("Escribí el mes como YYYY-MM.", true);
+
+    await loadPersonasMap();
+
+    const q = query(
+      collection(db,"asignaciones"),
+      orderBy(documentId()),
+      startAt(prefix),
+      endAt(prefix + "\uf8ff")
+    );
     const snap = await getDocs(q);
-    const items = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    const items = snap.docs.map(d=>({ id:d.id, data:d.data() }));
     renderItems(items);
   }catch(e){
     console.error(e);
@@ -219,6 +257,7 @@ async function cargarMes(){
   document.getElementById("btnRecargar")?.addEventListener("click", cargarMes);
   document.getElementById("btnTabAcom")?.addEventListener("click", ()=>{ window.location.href = "tablero-acomodadores.html"; });
   document.getElementById("btnTabMM")?.addEventListener("click", ()=>{ window.location.href = "tablero-multimedia.html"; });
+  document.getElementById("btnProgramaMensual")?.addEventListener("click", ()=>{ window.location.href = "programa-mensual.html"; });
   document.getElementById("btnPresidente")?.addEventListener("click", ()=>{
     const mesISO = String(document.getElementById("mes")?.value||"").trim();
     const sem = String(document.getElementById("semana")?.value||"1").trim();

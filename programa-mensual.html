@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Programa mensual · Villa Fiad</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="has-topbar">
+  <div id="topbar"></div>
+
+  <div class="container">
+    <div id="toastHost"></div>
+
+    <div class="card pad">
+      <div class="section-title">
+        <h2 class="h1" style="margin:0;">Programa mensual</h2>
+        <span class="pill">Discursos públicos</span>
+      </div>
+      <div class="muted" style="margin-top:-6px;">Se arma automáticamente con lo que cargaste en <b>Asignaciones</b>.</div>
+      <div class="hr"></div>
+
+      <div class="grid two no-print">
+        <div class="field">
+          <div class="label">Mes</div>
+          <input class="input" id="mes" type="month" />
+        </div>
+        <div class="field">
+          <div class="label">Acciones</div>
+          <div class="row">
+            <button class="btn" id="btnCargar" type="button">Cargar</button>
+            <button class="btn primary" id="btnPrint" type="button">Imprimir / PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="contenido" style="margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    if(!('serviceWorker' in navigator)) return;
+    let refreshing = false;
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('./sw.js').then(function(reg){
+        if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+        reg.addEventListener('updatefound', function(){
+          var nw = reg.installing;
+          if(!nw) return;
+          nw.addEventListener('statechange', function(){
+            if(nw.state === 'installed' && navigator.serviceWorker.controller){
+              nw.postMessage({type:'SKIP_WAITING'});
+            }
+          });
+        });
+      }).catch(function(e){
+        console.log('SW error', e);
+      });
+
+      navigator.serviceWorker.addEventListener('controllerchange', function(){
+        if(refreshing) return;
+        refreshing = true;
+        location.reload();
+      });
+    });
+  })();
+  </script>
+  <script type="module" src="js/pages/programa-mensual.js?v=20260302"></script>
+</body>
+</html>
