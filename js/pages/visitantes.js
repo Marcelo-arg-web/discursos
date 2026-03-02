@@ -337,7 +337,6 @@ async function load(){
   cache.sort((a,b)=>String(a.id).localeCompare(String(b.id)));
   renderTable();
 }
-}
 
 async function save(){
   const fecha = normISO($("fecha").value);
