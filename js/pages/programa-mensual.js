@@ -124,32 +124,14 @@ async function requireActiveUser(){
   });
 }
 
-function parseDateId(id){
-  const s = String(id||"").trim();
-  // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)){
-    const [y,m,d] = s.split("-").map(n=>parseInt(n,10));
-    if(!y||!m||!d) return null;
-    return new Date(y, m-1, d);
-  }
-  // DD/MM/YYYY
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)){
-    const [d,m,y] = s.split("/").map(n=>parseInt(n,10));
-    if(!y||!m||!d) return null;
-    return new Date(y, m-1, d);
-  }
-  return null;
-}
-
-function dateToISO(d){
-  const y=d.getFullYear();
-  const m=String(d.getMonth()+1).padStart(2,"0");
-  const dd=String(d.getDate()).padStart(2,"0");
-  return `${y}-${m}-${dd}`;
+function isoToDate(iso){
+  const [y,m,d] = String(iso||"").split("-").map(n=>parseInt(n,10));
+  if(!y||!m||!d) return null;
+  return new Date(y, m-1, d);
 }
 
 function formatFechaLarga(iso){
-  const dt = parseDateId(iso);
+  const dt = isoToDate(iso);
   if(!dt) return iso;
   // Ej: "sábado 7 febrero"
   const parts = dt.toLocaleDateString("es-AR", { weekday:"long", day:"numeric", month:"long" });
@@ -200,46 +182,21 @@ function buildOracionFinal(oradorPublico, presidente, fallbackOracionFinal){
 }
 
 async function loadDocsInMonth(mesISO){
-  // mesISO: YYYY-MM
-  const start = `${mesISO}-01`;
-  const end = `${mesISO}-31\uf8ff`;
-
-  // 1) Try efficient range query by doc ID (works when IDs are YYYY-MM-DD)
-  try{
-    const qy = query(
-      collection(db,"asignaciones"),
-      orderBy(documentId()),
-      startAt(start),
-      endAt(end)
-    );
-    const snap = await getDocs(qy);
-    const out = snap.docs.map(d=>({ id:d.id, data:d.data() }));
-    if(out.length) return out;
-  }catch(e){
-    console.warn("Range query failed, fallback to scan", e);
-  }
-
-  // 2) Fallback: scan all docs and filter by month (supports IDs like DD/MM/YYYY)
-  const snapAll = await getDocs(collection(db,"asignaciones"));
-  const out = [];
-  for(const d of snapAll.docs){
-    const dt = parseDateId(d.id);
-    if(!dt) continue;
-    const iso = dateToISO(dt);
-    if(iso.startsWith(mesISO + "-")){
-      out.push({ id: iso, data: d.data(), _rawId: d.id });
-    }
-  }
-  // sort and dedupe by iso id
-  out.sort((a,b)=>a.id.localeCompare(b.id));
-  const seen = new Set();
-  return out.filter(x=>{
-    if(seen.has(x.id)) return false;
-    seen.add(x.id);
-    return true;
+  const qy = query(
+    collection(db,"asignaciones"),
+    orderBy(documentId()),
+    startAt(mesISO),
+    endAt(mesISO + "\uf8ff")
+  );
+  const snap = await getDocs(qy);
+  return snap.docs.map(d=>{
+    const raw = d.data() || {};
+    const a = raw.asignaciones || {};
+    const merged = { ...raw, ...a };
+    delete merged.asignaciones;
+    return { id: d.id, data: merged };
   });
 }
-
 
 
 function render(mesISO, items){
@@ -259,10 +216,7 @@ function render(mesISO, items){
   }
 
   const blocks = items.map((it, idx)=>{
-    // En Firestore guardamos normalmente bajo { asignaciones: {...} } (merge).
-    // Soportamos ambos formatos para compatibilidad.
-    const raw = it.data || {};
-    const a = raw.asignaciones || raw;
+    const a = it.data || {};
 
     const presidente = resolveNombre(a, "presidenteId");
     const oracionInicial = resolveNombre(a, "oracionInicialId");
@@ -315,7 +269,8 @@ function render(mesISO, items){
         </table>
       </div>
     `;
-  }).join("\n");
+  }).join("
+");
 
   cont.innerHTML = `
     <div class="month-banner">
@@ -347,16 +302,14 @@ async function cargar(){
     await loadPersonasMap();
     const docs = await loadDocsInMonth(mesISO);
 
-    // No filtramos por día de la semana porque la congregación puede guardar
-    // por sábado o por otra fecha. Filtramos por “tiene datos del programa”.
+    // Solo fines de semana (sábado/domingo)
     const items = docs
+      .map(d=>({ id:d.id, data:d.data }))
       .filter(d=>{
-        const raw = d.data || {};
-        const a = raw.asignaciones || raw;
-        return Boolean(
-          a.presidenteId || a.oracionInicialId || a.oradorPublico ||
-          a.conductorAtalayaId || a.lectorAtalayaId || a.tituloDiscurso
-        );
+        const dt = isoToDate(d.id);
+        if(!dt) return false;
+        const dow = dt.getDay();
+        return dow === 6 || dow === 0;
       })
       .sort((a,b)=>a.id.localeCompare(b.id));
 
@@ -372,9 +325,6 @@ async function cargar(){
 
   const now = new Date();
   $("mes").value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-
-  // auto-load current month
-  setTimeout(() => cargar(), 0);
 
   $("btnCargar")?.addEventListener("click", cargar);
   $("mes")?.addEventListener("change", cargar);
