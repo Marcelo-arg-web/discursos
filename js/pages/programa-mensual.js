@@ -88,6 +88,8 @@ function renderTopbar(active){
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
+        <a href="tablero-acomodadores.html">Tablero acomodadores</a>
+        <a href="tablero-multimedia.html">Tablero A/V</a>
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
         <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
         <button id="btnSalir" class="btn danger" type="button">Salir</button>

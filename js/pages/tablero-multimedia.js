@@ -41,6 +41,7 @@ function renderPublicTopbar(active){
       <div class="links">
         <a href="public-home.html" class="${active==='public'?'active':''}">Inicio</a>
         <a href="tablero-multimedia.html" class="${active==='tablero'?'active':''}">Tablero</a>
+        <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
       </div>
       <div class="right">
@@ -69,6 +70,7 @@ function renderTopbar(active, rol){
         ${admin ? `<a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>` : ``}
         ${admin ? `<a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>` : ``}
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
+        <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
         <button id="btnSalir" class="btn danger" type="button">Salir</button>
       </div>
@@ -154,7 +156,11 @@ async function loadAsignacionesDoc(iso){
   try{
     const snap = await getDoc(doc(db,"asignaciones", iso));
     if(!snap.exists()) return null;
-    return snap.data()?.asignaciones || null;
+    const raw = snap.data() || {};
+    const a = raw.asignaciones || {};
+    const merged = { ...raw, ...a };
+    delete merged.asignaciones;
+    return merged;
   }catch(e){
     return null;
   }
@@ -168,7 +174,13 @@ async function loadDocsInMonth(mesISO){
     endAt(mesISO + "\uf8ff")
   );
   const snap = await getDocs(qy);
-  return snap.docs.map(d=>({ id:d.id, data: d.data()?.asignaciones || {} }));
+  return snap.docs.map(d=>{
+    const raw = d.data() || {};
+    const a = raw.asignaciones || {};
+    const merged = { ...raw, ...a };
+    delete merged.asignaciones;
+    return { id:d.id, data: merged };
+  });
 }
 
 function render(mesISO, pairs){

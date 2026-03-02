@@ -53,6 +53,7 @@ function renderPublicTopbar(active){
       <div class="links">
         <a href="public-home.html" class="${active==='public'?'active':''}">Inicio</a>
         <a href="tablero-acomodadores.html" class="${active==='tablero'?'active':''}">Tablero</a>
+        <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
       </div>
       <div class="right">
@@ -81,6 +82,7 @@ function renderTopbar(active, rol){
         ${admin ? `<a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>` : ``}
         ${admin ? `<a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>` : ``}
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
+        <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
         <button id="btnSalir" class="btn danger" type="button">Salir</button>
       </div>
@@ -200,13 +202,13 @@ function render(mesISO, pairs){
   const rowsAco = pairs.map(p=>{
     const acoJ = {
       entrada: p.jueves.entrada || "—",
-      auditorio1: p.jueves.auditorio1 || "—",
-      auditorio2: p.jueves.auditorio2 || "—",
+      aud1: p.jueves.auditorio1 || "—",
+      aud2: p.jueves.auditorio2 || "—",
     };
     const acoF = {
       entrada: p.fin.entrada || "—",
-      auditorio1: p.fin.auditorio1 || "—",
-      auditorio2: p.fin.auditorio2 || "—",
+      aud1: p.fin.auditorio1 || "—",
+      aud2: p.fin.auditorio2 || "—",
     };
     return `
       <tr>
@@ -214,21 +216,21 @@ function render(mesISO, pairs){
         <td class="td-center">Jue</td>
         <td>${escapeHtml(p.juevesLabel)}</td>
         <td>${escapeHtml(acoJ.entrada)}</td>
-        <td>${escapeHtml(acoJ.auditorio1)}</td>
-        <td>${escapeHtml(acoJ.auditorio2)}</td>
+        <td>${escapeHtml(acoJ.aud1)}</td>
+        <td>${escapeHtml(acoJ.aud2)}</td>
       </tr>
       <tr>
         <td class="td-center">${p.semana}</td>
-        <td class="td-center">Fin</td>
+        <td class="td-center">Sáb</td>
         <td>${escapeHtml(p.finLabel)}</td>
         <td>${escapeHtml(acoF.entrada)}</td>
-        <td>${escapeHtml(acoF.auditorio1)}</td>
-        <td>${escapeHtml(acoF.auditorio2)}</td>
+        <td>${escapeHtml(acoF.aud1)}</td>
+        <td>${escapeHtml(acoF.aud2)}</td>
       </tr>
     `;
   }).join("");
 
-  t rowsAV = pairs.map(p=>{
+  const rowsAV = pairs.map(p=>{
     const avJ = {
       plataforma: p.juevesAV?.plataforma || "—",
       multimedia1: p.juevesAV?.multimedia1 || "—",
@@ -250,7 +252,7 @@ function render(mesISO, pairs){
       </tr>
       <tr>
         <td class="td-center">${p.semana}</td>
-        <td class="td-center">Fin</td>
+        <td class="td-center">Sáb</td>
         <td>${escapeHtml(p.finLabel)}</td>
         <td>${escapeHtml(avF.plataforma)}</td>
         <td>${escapeHtml(avF.multimedia1)}</td>
@@ -259,7 +261,7 @@ function render(mesISO, pairs){
     `;
   }).join("");
 
-  .innerHTML = `
+  host.innerHTML = `
     <div class="print-header">
       <div class="h2">Congregación Villa Fiad</div>
       <div class="muted">Tablero mensual · Mes ${escapeHtml(mesISO)}</div>
@@ -297,9 +299,9 @@ function render(mesISO, pairs){
           <col style="width:52px;" />
           <col style="width:60px;" />
           <col style="width:140px;" />
-          <col style="width:28%;" />
-          <col style="width:28%;" />
-          <col style="width:28%;" />
+          <col style="width:26%;" />
+          <col style="width:26%;" />
+          <col style="width:26%;" />
         </colgroup>
         <thead>
           <tr>
@@ -359,6 +361,8 @@ async function cargar(){
 };
 
 const mapAco = (asig)=>({
+  // Plataforma
+  plataforma: resolveNombre(asig, ["plataformaId","plataformaNombre","plataforma"]),
   // Entrada (compatible con datos antiguos)
   entrada: resolveNombre(asig, ["acomodadorEntradaId","acomodadorEntradaNombre","acomodadorEntrada"]),
   // Auditorio 1: si no existe, usa el campo antiguo "acomodadorAuditorio"
