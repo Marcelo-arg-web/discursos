@@ -259,7 +259,10 @@ function render(mesISO, items){
   }
 
   const blocks = items.map((it, idx)=>{
-    const a = it.data || {};
+    // En Firestore guardamos normalmente bajo { asignaciones: {...} } (merge).
+    // Soportamos ambos formatos para compatibilidad.
+    const raw = it.data || {};
+    const a = raw.asignaciones || raw;
 
     const presidente = resolveNombre(a, "presidenteId");
     const oracionInicial = resolveNombre(a, "oracionInicialId");
@@ -312,8 +315,7 @@ function render(mesISO, items){
         </table>
       </div>
     `;
-  }).join("
-");
+  }).join("\n");
 
   cont.innerHTML = `
     <div class="month-banner">
@@ -345,12 +347,16 @@ async function cargar(){
     await loadPersonasMap();
     const docs = await loadDocsInMonth(mesISO);
 
+    // No filtramos por día de la semana porque la congregación puede guardar
+    // por sábado o por otra fecha. Filtramos por “tiene datos del programa”.
     const items = docs
       .filter(d=>{
-        const dt = parseDateId(d.id);
-        if(!dt) return false;
-        const dow = dt.getDay();
-        return dow === 6 || dow === 0;
+        const raw = d.data || {};
+        const a = raw.asignaciones || raw;
+        return Boolean(
+          a.presidenteId || a.oracionInicialId || a.oradorPublico ||
+          a.conductorAtalayaId || a.lectorAtalayaId || a.tituloDiscurso
+        );
       })
       .sort((a,b)=>a.id.localeCompare(b.id));
 
