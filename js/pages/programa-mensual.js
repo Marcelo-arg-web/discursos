@@ -196,6 +196,7 @@ async function loadDocsInMonth(mesISO){
   });
 }
 
+
 function render(mesISO, items){
   const cont = $("contenido");
   if(!cont) return;
@@ -229,23 +230,45 @@ function render(mesISO, items){
     const wkClass = `wk-${(idx % 4) + 1}`;
 
     return `
-      <div class="prog-wrap ${wkClass}">
-        <div class="prog-header">
-          <div class="title">Villa Fiad</div>
-          <div class="date">${escapeHtml(formatFechaLarga(it.id))}</div>
-        </div>
-        <table class="prog-grid">
-          <tr><td class="k">Presidente</td><td>${escapeHtml(presidente || "—")}</td></tr>
-          <tr><td class="k">Oración inicial</td><td>${escapeHtml(oracionInicial || "—")}</td></tr>
-          <tr><td class="k">Conferenciante</td><td>${escapeHtml(orador || "—")}</td></tr>
-          <tr><td class="k">Congregación</td><td>${escapeHtml(cong || "—")}</td></tr>
-          <tr><td class="k">Título</td><td><i>${escapeHtml(titulo || "—")}</i></td></tr>
-          <tr><td class="k">La Atalaya</td><td>${escapeHtml(conductor || "—")} · Lector: ${escapeHtml(lector || "—")}</td></tr>
-          <tr><td class="k">Oración final</td><td>${escapeHtml(oracionFinal || "—")}</td></tr>
+      <div class="model-block ${wkClass}">
+        <div class="dia-head">${escapeHtml(formatFechaLarga(it.id))}</div>
+
+        <table class="model-table">
+          <tr>
+            <td class="lbl">Presidente:</td>
+            <td class="val">${escapeHtml(presidente || "—")}</td>
+            <td class="lbl">Oración inicial:</td>
+            <td class="val">${escapeHtml(oracionInicial || "—")}</td>
+          </tr>
+
+          <tr>
+            <td class="lbl">Discursante:</td>
+            <td class="val">${escapeHtml(orador || "—")}</td>
+            <td class="lbl">Congregación:</td>
+            <td class="val">${escapeHtml(cong || "—")}</td>
+          </tr>
+
+          <tr>
+            <td class="lbl">Título:</td>
+            <td class="val title" colspan="3">${escapeHtml(titulo || "—")}</td>
+          </tr>
+
+          <tr>
+            <td class="lbl">Atalaya:</td>
+            <td class="val">${escapeHtml(conductor || "—")}</td>
+            <td class="lbl">Lector:</td>
+            <td class="val">${escapeHtml(lector || "—")}</td>
+          </tr>
+
+          <tr>
+            <td class="lbl">Oración final:</td>
+            <td class="val" colspan="3">${escapeHtml(oracionFinal || "—")}</td>
+          </tr>
         </table>
       </div>
     `;
-  }).join("\n");
+  }).join("
+");
 
   cont.innerHTML = `
     <div class="month-banner">
@@ -258,6 +281,7 @@ function render(mesISO, items){
     ${blocks}
   `;
 }
+
 
 function escapeHtml(str){
   return String(str ?? "")
