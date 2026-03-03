@@ -4,7 +4,7 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 import {
   doc, getDoc, setDoc, deleteDoc,
   collection, getDocs, query, orderBy
-, FieldPath
+  , FieldPath, startAt
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { bosquejos } from "../data/bosquejos.js";
 import { canciones } from "../data/canciones.js";
@@ -228,20 +228,20 @@ function escapeHtml(s){
 }
 
 async function load(){
+  const showAll = !!$("chkHistorial")?.checked;
+  const desde = hoyISO();
   try{
-    // Intenta ordenar por campo "fecha" (si existe y es consistente)
-    const s = await getDocs(query(collection(db,"visitas"), orderBy("fecha","asc")));
+    // Usamos documentId() porque el ID es la fecha ISO (YYYY-MM-DD) y ordena perfecto.
+    // Por defecto mostramos desde hoy; si el usuario marca historial completo, cargamos todo.
+    const q = showAll
+      ? query(collection(db,"visitas"), orderBy(FieldPath.documentId(),"asc"))
+      : query(collection(db,"visitas"), orderBy(FieldPath.documentId(),"asc"), startAt(desde));
+    const s = await getDocs(q);
     cache = s.docs.map(d=>({ id:d.id, ...d.data(), fecha: d.data().fecha || d.id }));
-  }catch(e1){
-    console.warn("Fallo orderBy(fecha), uso documentId()", e1);
-    try{
-      const s2 = await getDocs(query(collection(db,"visitas"), orderBy(FieldPath.documentId(),"asc")));
-      cache = s2.docs.map(d=>({ id:d.id, ...d.data(), fecha: d.data().fecha || d.id }));
-    }catch(e2){
-      console.error(e2);
-      toast("No pude cargar Visitantes. Revisá permisos de Firestore para 'visitas' o la consola (F12).", true);
-      cache = [];
-    }
+  }catch(e){
+    console.error(e);
+    toast("No pude cargar Visitantes. Revisá permisos de Firestore para 'visitas' o la consola (F12).", true);
+    cache = [];
   }
 
   // normaliza y ordena
@@ -254,7 +254,7 @@ async function load(){
   renderTable();
 }
 
-async function saveasync function save(){
+async function save(){
   const fecha = normISO($("fecha").value);
   if(!fecha) return toast("Fecha inválida. Usá formato YYYY-MM-DD.", true);
   const nombre = ($("nombre").value||"").trim();
@@ -319,6 +319,7 @@ async function borrar(){
   $("bosquejo")?.addEventListener("blur", applyAuto);
   $("btnNuevo")?.addEventListener("click", clearForm);
   $("btnRefrescar")?.addEventListener("click", load);
+  $("chkHistorial")?.addEventListener("change", load);
   $("filtro")?.addEventListener("input", renderTable);
   $("btnBorrar")?.addEventListener("click", borrar);
   $("form")?.addEventListener("submit", (ev)=>{ ev.preventDefault(); save(); });

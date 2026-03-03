@@ -2,16 +2,16 @@ import { auth, db } from "../firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-const $ = (id) => document.getElementById(id);
+const $ = (id)=>document.getElementById(id);
 
 function toast(msg, isError=false){
   const host = $("toastHost");
-  if(!host) return;
+  if(!host){ alert(msg); return; }
   const el = document.createElement("div");
   el.className = "toast" + (isError ? " err" : "");
   el.textContent = msg;
   host.appendChild(el);
-  setTimeout(()=>el.remove(), 4200);
+  setTimeout(()=>el.remove(), 5200);
 }
 
 async function getUsuario(uid){
@@ -26,16 +26,12 @@ function renderTopbar(active){
     <div class="topbar">
       <div class="brand"><span class="brand-dot"></span>Villa Fiad</div>
       <div class="links">
-        <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
-        <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
-        <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
-        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acomodadores</a>
-        <a href="tablero-multimedia.html" class="${active==='multimedia'?'active':''}">Multimedia</a>
-        <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
-        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
-        <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
-        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
-        <a href="usuarios.html" class="${active==='usuarios'?'active':''}">Usuarios</a>
+        <a href="panel.html">Panel</a>
+        <a href="asignaciones.html">Asignaciones</a>
+        <a href="programa-mensual.html">Programa mensual</a>
+        <a href="visitantes.html">Visitantes</a>
+        <a href="salientes.html">Salientes</a>
+        <a href="importar.html" class="active">Importar</a>
       </div>
       <div class="actions">
         <button id="btnSalir" class="btn danger sm" type="button">Salir</button>
@@ -66,5 +62,5 @@ async function requireActiveUser(){
 
 (async function(){
   await requireActiveUser();
-  toast("Elegí una opción de importación.");
+  toast("Importar Asignaciones: si querés, lo integro a tu formato exacto de Asignaciones.xlsx.");
 })();
