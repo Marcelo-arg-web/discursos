@@ -55,8 +55,7 @@ service cloud.firestore {
     }
 
     match /visitas/{id} {
-      // Permitir lectura pública (solo ver) para pantalla de Visitantes en modo público
-      allow read: if activeUser() || request.auth == null;
+      allow read: if activeUser();
       allow write: if isEditor();
     }
 

@@ -11,6 +11,11 @@ import { canciones } from "../data/canciones.js";
 
 const $ = (id) => document.getElementById(id);
 
+// Estado de sesión/permiso
+// (evita ReferenceError en navegadores estrictos)
+let currentRol = "";
+let isAdmin = false;
+
 function toast(msg, isError=false){
   const host = $("toastHost");
   if(!host){ alert(msg); return; }
@@ -244,17 +249,11 @@ async function load(){
     cache = [];
   }
 
-  // Normaliza + filtra (no mostrar eventos/asambleas en la pantalla de Visitantes)
-  cache = (cache||[])
-    .map(r=>({
-      ...r,
-      fecha: r.fecha || r.id,
-    }))
-    .filter(r=>{
-      const tipo = String(r.tipo||"visitante").toLowerCase();
-      const nombre = String(r.nombre||"" ).trim();
-      return tipo !== "evento" && nombre !== "";
-    });
+  // normaliza y ordena
+  cache = (cache||[]).map(r=>({
+    ...r,
+    fecha: r.fecha || r.id,
+  }));
 
   cache.sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
   renderTable();
