@@ -182,21 +182,39 @@ function buildOracionFinal(oradorPublico, presidente, fallbackOracionFinal){
 }
 
 async function loadDocsInMonth(mesISO){
-  const qy = query(
-    collection(db,"asignaciones"),
-    orderBy(documentId()),
-    startAt(mesISO),
-    endAt(mesISO + "\uf8ff")
-  );
-  const snap = await getDocs(qy);
-  return snap.docs.map(d=>{
-    const raw = d.data() || {};
-    const a = raw.asignaciones || {};
-    const merged = { ...raw, ...a };
-    delete merged.asignaciones;
-    return { id: d.id, data: merged };
-  });
+  // Preferible: rango por documentId() (rápido y ordenado)
+  try{
+    const qy = query(
+      collection(db,"asignaciones"),
+      orderBy(documentId()),
+      startAt(mesISO),
+      endAt(mesISO + "\uf8ff")
+    );
+    const snap = await getDocs(qy);
+    return snap.docs.map(d=>{
+      const raw = d.data() || {};
+      const a = raw.asignaciones || {};
+      const merged = { ...raw, ...a };
+      delete merged.asignaciones;
+      return { id: d.id, data: merged };
+    });
+  }catch(err){
+    // Fallback: si Firestore rechaza el rango (índice / compat / etc.), traigo todo y filtro por prefijo.
+    console.warn("Fallo query por rango en asignaciones. Uso fallback por prefijo.", err);
+    const snap = await getDocs(collection(db,"asignaciones"));
+    return snap.docs
+      .filter(d=> String(d.id||"").startsWith(mesISO))
+      .sort((a,b)=>String(a.id).localeCompare(String(b.id)))
+      .map(d=>{
+        const raw = d.data() || {};
+        const a = raw.asignaciones || {};
+        const merged = { ...raw, ...a };
+        delete merged.asignaciones;
+        return { id: d.id, data: merged };
+      });
+  }
 }
+
 
 
 function render(mesISO, items){

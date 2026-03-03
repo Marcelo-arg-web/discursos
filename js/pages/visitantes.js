@@ -8,8 +8,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { bosquejos } from "../data/bosquejos.js";
 import { canciones } from "../data/canciones.js";
+import { visitantes as visitantesLocal } from "../data/visitantes.js";
 
 const $ = (id) => document.getElementById(id);
+
+let currentRol = "usuario";
+let isAdmin = false;
 
 function toast(msg, isError=false){
   const host = $("toastHost");
@@ -114,6 +118,7 @@ async function requireActiveUser(){
       const u = await getUsuario(user.uid);
       currentRol = u?.rol || "";
       isAdmin = isAdminRole(currentRol);
+      if(isAdmin) ensureImportButton();
       applyReadOnlyMode();
       if(!u?.activo){
         await signOut(auth);
@@ -182,6 +187,72 @@ function applyAuto(){
 
 let cache = []; // {id, ...data}
 
+function localToCache(){
+  try{
+    const obj = visitantesLocal || {};
+    return Object.keys(obj).sort().map(k=>{
+      const r = obj[k] || {};
+      return {
+        id: k,
+        fecha: k,
+        nombre: r.nombre || r.orador || "",
+        congregacion: r.congregacion || "",
+        bosquejo: r.bosquejo || "",
+        cancion: r.cancion || "",
+        titulo: r.titulo || "",
+        observaciones: r.observaciones || "",
+        hospitalidad: r.hospitalidad || ""
+      };
+    });
+  }catch(_e){
+    return [];
+  }
+}
+
+async function seedFirestoreFromLocal(){
+  const rows = localToCache();
+  if(!rows.length){ toast("No hay datos locales para importar.", true); return; }
+  if(!isAdmin){ toast("Solo admin/superadmin puede importar.", true); return; }
+  if(!confirm(`Esto va a cargar/actualizar ${rows.length} registros en Firestore (colección: visitas). ¿Continuar?`)) return;
+  let ok=0, err=0;
+  for(const r of rows){
+    try{
+      await setDoc(doc(db,"visitas", r.id), {
+        fecha: r.fecha,
+        nombre: r.nombre,
+        congregacion: r.congregacion,
+        bosquejo: r.bosquejo,
+        cancion: r.cancion,
+        titulo: r.titulo,
+        observaciones: r.observaciones,
+        hospitalidad: r.hospitalidad,
+        updatedAt: new Date().toISOString()
+      }, { merge:true });
+      ok++;
+    }catch(e){
+      console.error("Seed error", r, e);
+      err++;
+    }
+  }
+  toast(`Importación finalizada. OK: ${ok}${err?` · Errores: ${err}`:""}`);
+  await load();
+  renderTable();
+}
+
+function ensureImportButton(){
+  const ref = document.getElementById("btnRefrescar");
+  if(!ref) return;
+  if(document.getElementById("btnImportLocal")) return;
+  const b = document.createElement("button");
+  b.id = "btnImportLocal";
+  b.type = "button";
+  b.className = "btn";
+  b.textContent = "Importar datos base";
+  b.style.marginLeft = "8px";
+  b.addEventListener("click", seedFirestoreFromLocal);
+  ref.parentNode?.insertBefore(b, ref.nextSibling);
+}
+
 function renderTable(){
   const q = ($("filtro").value||"").trim().toLowerCase();
   const rows = cache.filter(r=>{
@@ -233,6 +304,16 @@ async function load(){
       console.error(e2);
       toast("No pude cargar Visitantes. Revisá permisos de Firestore para 'visitas' o la consola (F12).", true);
       cache = [];
+
+  // Si Firestore está vacío, muestro datos locales como fallback (para no ver "sin datos")
+  if((cache||[]).length === 0){
+    const local = localToCache();
+    if(local.length){
+      cache = local;
+      toast("No hay datos en Firestore. Mostrando datos base locales. Si sos admin, podés importarlos.");
+      if(isAdmin) ensureImportButton();
+    }
+  }
     }
   }
 
