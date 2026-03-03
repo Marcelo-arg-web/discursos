@@ -193,6 +193,26 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
 }
 
 
+
+/* Programa mensual header image */
+.pm-top-image{
+  max-width: 820px;
+  margin: 14px auto 10px;
+}
+.pm-top-image img{
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 14px;
+  border: 1px solid rgba(148,163,184,.6);
+}
+
+@media print{
+  .pm-top-image{max-width:none; margin:0 0 8mm 0;}
+  .pm-top-image img{border:none; border-radius:0;}
+}
+
+
 /* ---------- UI helpers (v4) ---------- */
 .topbar{
   position:fixed; top:0; left:0; right:0;
