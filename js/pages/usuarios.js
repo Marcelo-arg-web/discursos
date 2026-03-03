@@ -25,66 +25,41 @@ async function getUsuario(uid){
   return snap.exists() ? snap.data() : null;
 }
 
-function renderTopbar(active, rol){
+function renderTopbar(active){
   const el = document.getElementById("topbar");
   if(!el) return;
-  const admin = isAdminRole(rol);
-  const superadmin = isSuperadmin(rol);
   el.innerHTML = `
     <div class="topbar">
-      <div class="brand">Villa Fiad</div>
+      <div class="brand"><span class="brand-dot"></span>Villa Fiad</div>
       <div class="links">
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
-        ${admin ? `<a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>` : ``}
-        ${admin ? `<a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>` : ``}
-        ${admin ? `<a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>` : ``}
-        ${admin ? `<a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>` : ``}
-        ${admin ? `<a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>` : ``}
-        ${admin ? `<a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>` : ``}
+        <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
+        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acomodadores</a>
+        <a href="tablero-multimedia.html" class="${active==='multimedia'?'active':''}">Multimedia</a>
+        <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
+        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
+        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
+        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
+        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
+        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
-        ${admin ? `<a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>` : ``}
-        ${superadmin ? `<a href="usuarios.html" class="${active==='usuarios'?'active':''}">Usuarios</a>` : ``}
-        <button id="btnSalir" class="btn danger" type="button">Salir</button>
+        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
+        <a href="usuarios.html" class="${active==='usuarios'?'active':''}">Usuarios</a>
+      </div>
+      <div class="actions">
+        <button id="btnSalir" class="btn danger sm" type="button">Salir</button>
       </div>
     </div>
   `;
   document.getElementById("btnSalir")?.addEventListener("click", async ()=>{
-    await signOut(auth);
+    try{ await signOut(auth); }catch(e){}
     window.location.href = "index.html";
   });
-
-  tbody.querySelectorAll("button[data-action='reset']").forEach(btn=>{
-    btn.addEventListener("click", async ()=>{
-      const email = btn.getAttribute("data-email");
-      if(!email){ toast("Este usuario no tiene email.", true); return; }
-      try{
-        await sendPasswordResetEmail(auth, email, { url: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/index.html') });
-        toast("Enviado ✅ Revisá Spam si no llega.");
-      }catch(e){
-        console.error(e);
-        const msg = (e && e.code === "auth/user-not-found") ? "No existe ese email en Authentication." : "No se pudo enviar el email (revisá configuración de Auth).";
-        toast(msg, true);
-      }
-    });
-  });
 }
 
-function ensureTopbarStyles(){
-  if(document.getElementById("topbarStyle")) return;
-  const s = document.createElement("style");
-  s.id="topbarStyle";
-  s.textContent = `
-    .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;
-      background:#1a4fa3;color:#fff;padding:10px 14px;border-radius:14px;margin:14px auto;max-width:1100px;}
-    .topbar .brand{font-weight:800}
-    .topbar .links{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-    .topbar a{color:#fff;text-decoration:none;font-weight:700;font-size:13px;opacity:.92}
-    .topbar a.active{text-decoration:underline;opacity:1}
-    .topbar .btn.danger{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239}
-  `;
-  document.head.appendChild(s);
-}
+
+function ensureTopbarStyles(){ /* estilos unificados en css/styles.css */ }
 
 async function requireActiveUser(activePage){
   ensureTopbarStyles();

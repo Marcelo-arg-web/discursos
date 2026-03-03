@@ -22,85 +22,41 @@ function toast(msg, isError=false){
   setTimeout(()=>{ host.innerHTML=""; }, 4500);
 }
 
-function ensureTopbarStyles(){
-  if(document.getElementById("topbarStyle")) return;
-  const s = document.createElement("style");
-  s.id = "topbarStyle";
-  s.textContent = `
-    .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;
-      background:#1a4fa3;color:#fff;padding:10px 14px;border-radius:14px;margin:14px auto;max-width:1100px;}
-    .topbar .brand{font-weight:800}
-    .topbar .links{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-    .topbar a{color:#fff;text-decoration:none;font-weight:700;font-size:13px;opacity:.92}
-    .topbar a.active{text-decoration:underline;opacity:1}
-    .topbar .btn.danger{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239}
-
-    /* Programa mensual */
-    .month-banner{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;margin:0 0 10px 0}
-    .month-banner img{display:block;width:100%;height:82px;object-fit:cover}
-    .month-banner .meta{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;background:#eef2ff;border-top:1px solid #e5e7eb}
-    .month-banner .meta .left{font-weight:900;font-size:13px}
-    .month-banner .meta .right{font-weight:800;font-size:12px;opacity:.85}
-
-    .prog-wrap{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;margin:0 0 10px 0}
-    .prog-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;border-bottom:1px solid #e5e7eb}
-    .prog-header .title{font-weight:900;font-size:13px;letter-spacing:.2px}
-    .prog-header .date{font-weight:900;font-size:13px;opacity:.95}
-    .prog-grid{width:100%;border-collapse:collapse}
-    .prog-grid td{border-top:1px solid #e5e7eb;padding:6px 10px;font-size:13px;vertical-align:top}
-    .prog-grid td.k{width:150px;font-weight:900;color:#111827}
-
-    /* Semanas (colores sutiles y profesionales) */
-    .wk-1 .prog-header{background:#eaf2ff}
-    .wk-2 .prog-header{background:#fff7ed}
-    .wk-3 .prog-header{background:#ecfdf5}
-    .wk-4 .prog-header{background:#f5f3ff}
-
-    .month-title{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:10px}
-    .month-title .h2{font-size:18px;font-weight:900;margin:0}
-
-    @media print{
-      .container{max-width:1100px}
-      .no-print{display:none !important}
-      body{background:#fff}
-      .card{box-shadow:none !important;border:0 !important}
-      .month-banner{margin:0 0 8px 0}
-      .month-banner img{height:64px}
-      .month-banner .meta{padding:6px 10px}
-      .prog-wrap{break-inside:avoid-page;margin:0 0 8px 0}
-      .prog-header{padding:6px 10px}
-      .prog-header .title{font-size:12px}
-      .prog-header .date{font-size:12px}
-      .prog-grid td{padding:4px 8px;font-size:11.3px}
-      .prog-grid td.k{width:132px}
-    }
-  `;
-  document.head.appendChild(s);
-}
+function ensureTopbarStyles(){ /* estilos unificados en css/styles.css */ }
 
 function renderTopbar(active){
   const el = document.getElementById("topbar");
   if(!el) return;
   el.innerHTML = `
     <div class="topbar">
-      <div class="brand">Villa Fiad</div>
+      <div class="brand"><span class="brand-dot"></span>Villa Fiad</div>
       <div class="links">
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
-        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
-        <a href="tablero-acomodadores.html">Tablero acomodadores</a>
-        <a href="tablero-multimedia.html">Tablero A/V</a>
-        <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
         <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
-        <button id="btnSalir" class="btn danger" type="button">Salir</button>
+        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acomodadores</a>
+        <a href="tablero-multimedia.html" class="${active==='multimedia'?'active':''}">Multimedia</a>
+        <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
+        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
+        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
+        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
+        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
+        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>
+        <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
+        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
+        <a href="usuarios.html" class="${active==='usuarios'?'active':''}">Usuarios</a>
+      </div>
+      <div class="actions">
+        <button id="btnSalir" class="btn danger sm" type="button">Salir</button>
       </div>
     </div>
   `;
   document.getElementById("btnSalir")?.addEventListener("click", async ()=>{
-    await signOut(auth);
+    try{ await signOut(auth); }catch(e){}
     window.location.href = "index.html";
   });
 }
+
 
 async function getUsuario(uid){
   const snap = await getDoc(doc(db,"usuarios",uid));
@@ -182,39 +138,21 @@ function buildOracionFinal(oradorPublico, presidente, fallbackOracionFinal){
 }
 
 async function loadDocsInMonth(mesISO){
-  // Preferible: rango por documentId() (rápido y ordenado)
-  try{
-    const qy = query(
-      collection(db,"asignaciones"),
-      orderBy(documentId()),
-      startAt(mesISO),
-      endAt(mesISO + "\uf8ff")
-    );
-    const snap = await getDocs(qy);
-    return snap.docs.map(d=>{
-      const raw = d.data() || {};
-      const a = raw.asignaciones || {};
-      const merged = { ...raw, ...a };
-      delete merged.asignaciones;
-      return { id: d.id, data: merged };
-    });
-  }catch(err){
-    // Fallback: si Firestore rechaza el rango (índice / compat / etc.), traigo todo y filtro por prefijo.
-    console.warn("Fallo query por rango en asignaciones. Uso fallback por prefijo.", err);
-    const snap = await getDocs(collection(db,"asignaciones"));
-    return snap.docs
-      .filter(d=> String(d.id||"").startsWith(mesISO))
-      .sort((a,b)=>String(a.id).localeCompare(String(b.id)))
-      .map(d=>{
-        const raw = d.data() || {};
-        const a = raw.asignaciones || {};
-        const merged = { ...raw, ...a };
-        delete merged.asignaciones;
-        return { id: d.id, data: merged };
-      });
-  }
+  const qy = query(
+    collection(db,"asignaciones"),
+    orderBy(documentId()),
+    startAt(mesISO),
+    endAt(mesISO + "\uf8ff")
+  );
+  const snap = await getDocs(qy);
+  return snap.docs.map(d=>{
+    const raw = d.data() || {};
+    const a = raw.asignaciones || {};
+    const merged = { ...raw, ...a };
+    delete merged.asignaciones;
+    return { id: d.id, data: merged };
+  });
 }
-
 
 
 function render(mesISO, items){

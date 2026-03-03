@@ -402,3 +402,100 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
     print-color-adjust: exact;
   }
 }
+
+
+
+/* =========================
+   Topbar unificada (v5)
+   ========================= */
+.has-topbar{padding-top:72px;}
+.topbar{
+  position:fixed;
+  top:0; left:0; right:0;
+  height:auto;
+  background:rgba(255,255,255,.78);
+  backdrop-filter: blur(10px);
+  border-bottom:1px solid var(--border);
+  z-index: 60;
+}
+.topbar{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:10px 16px;
+}
+.topbar .brand{
+  display:flex; align-items:center; gap:10px;
+  font-weight:900;
+  letter-spacing:.2px;
+  white-space:nowrap;
+}
+.topbar .brand-dot{
+  width:12px;height:12px;border-radius:999px;
+  background:linear-gradient(180deg, var(--primary), #60a5fa);
+  box-shadow:0 0 0 4px rgba(59,130,246,.12);
+  flex:0 0 auto;
+}
+.topbar .links{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.topbar .links a{
+  padding:7px 10px;
+  border-radius:999px;
+  border:1px solid transparent;
+  color:var(--muted);
+  font-weight:700;
+  font-size:13px;
+  text-decoration:none;
+  background:rgba(255,255,255,.35);
+}
+.topbar .links a:hover{
+  background:rgba(255,255,255,.85);
+  border-color:rgba(226,232,240,.9);
+  color:var(--text);
+}
+.topbar .links a.active{
+  background:#eaf2ff;
+  border-color:#dbeafe;
+  color:var(--primary);
+}
+.topbar .actions{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.btn.sm{padding:8px 10px; border-radius:999px; font-size:13px;}
+/* En pantallas angostas, que el botón no rompa la barra */
+@media (max-width: 860px){
+  .topbar{align-items:flex-start;}
+  .topbar .actions{margin-left:0;}
+}
+/* Impresión: ocultar topbar */
+@media print{
+  .topbar, .no-print{display:none !important;}
+  .has-topbar{padding-top:0 !important;}
+}
+
+/* =========================
+   Impresión con "toque de vida"
+   ========================= */
+@media print{
+  .print-title,
+  .section-title .h1,
+  h1.h1, h2.h1{
+    text-align:center !important;
+    font-weight:900 !important;
+    letter-spacing:.6px;
+    border:2px solid #0f172a;
+    background:#f1f5f9;
+    border-radius:14px;
+    padding:10px 12px;
+    margin:0 0 12px 0 !important;
+  }
+  .section-title{display:block !important;}
+  .section-title .pill{display:none !important;}
+}
