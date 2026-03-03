@@ -249,6 +249,8 @@ function escapeHtml(str){
 }
 
 async function cargar(){
+  const cont = $("contenido");
+  if(cont) cont.innerHTML = ""; // evita duplicados si algo se ejecuta 2 veces
   const mesISO = String($("mes")?.value||"").trim();
   if(!mesISO) return toast("Elegí un mes.", true);
   toast("Cargando…");
