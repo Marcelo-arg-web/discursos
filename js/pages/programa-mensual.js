@@ -225,8 +225,7 @@ function render(mesISO, items){
         </table>
       </div>
     `;
-  }).join("
-");
+  }).join("\n");
 
   cont.innerHTML = `
     <div class="month-banner">
@@ -258,14 +257,14 @@ async function cargar(){
     await loadPersonasMap();
     const docs = await loadDocsInMonth(mesISO);
 
-    // Solo fines de semana (sábado/domingo)
+    // Reuniones de congregación: jueves (4) y sábado (6)
     const items = docs
       .map(d=>({ id:d.id, data:d.data }))
       .filter(d=>{
         const dt = isoToDate(d.id);
         if(!dt) return false;
         const dow = dt.getDay();
-        return dow === 6 || dow === 0;
+        return dow === 4 || dow === 6;
       })
       .sort((a,b)=>a.id.localeCompare(b.id));
 
