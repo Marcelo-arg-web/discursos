@@ -519,3 +519,15 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
   .section-title{display:block !important;}
   .section-title .pill{display:none !important;}
 }
+
+
+/* Programa mensual A4 */
+.month-banner{display:flex;gap:12px;align-items:center;margin:0 0 14px 0;padding:10px 12px;border:1px solid #ddd;border-radius:12px;background:#fafafa;}
+.month-banner img{max-height:78px; width:auto; object-fit:contain;}
+.month-banner .meta{display:flex;flex-direction:column;gap:4px;}
+.month-banner .meta .left{font-weight:700;font-size:16px;}
+.month-banner .meta .right{font-weight:600;opacity:.85;}
+@media print{#topbar,.topbar,.no-print{display:none!important;} .a4-page{box-shadow:none!important;border:none!important;margin:0!important;width:auto!important;}
+.month-banner{break-inside:avoid;}
+.model-block{break-inside:avoid;}
+}

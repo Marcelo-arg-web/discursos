@@ -158,6 +158,7 @@ async function loadDocsInMonth(mesISO){
 function render(mesISO, items){
   const cont = $("contenido");
   if(!cont) return;
+  cont.innerHTML = "";
 
   const monthTitle = formatMesTitulo(mesISO);
 
