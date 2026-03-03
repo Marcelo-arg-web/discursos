@@ -3,8 +3,8 @@ import { hasPublicAccess, requirePublicAccess, setPublicAccess } from "../servic
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import {
   doc, getDoc, setDoc, deleteDoc,
-  collection, getDocs, query, orderBy
-  , FieldPath, startAt
+  collection, getDocs, query, orderBy,
+  documentId, startAt
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { bosquejos } from "../data/bosquejos.js";
 import { canciones } from "../data/canciones.js";
@@ -239,8 +239,8 @@ async function load(){
     // Usamos documentId() porque el ID es la fecha ISO (YYYY-MM-DD) y ordena perfecto.
     // Por defecto mostramos desde hoy; si el usuario marca historial completo, cargamos todo.
     const q = showAll
-      ? query(collection(db,"visitas"), orderBy(FieldPath.documentId(),"asc"))
-      : query(collection(db,"visitas"), orderBy(FieldPath.documentId(),"asc"), startAt(desde));
+      ? query(collection(db,"visitas"), orderBy(documentId(),"asc"))
+      : query(collection(db,"visitas"), orderBy(documentId(),"asc"), startAt(desde));
     const s = await getDocs(q);
     cache = s.docs.map(d=>({ id:d.id, ...d.data(), fecha: d.data().fecha || d.id }));
   }catch(e){
