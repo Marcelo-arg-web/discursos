@@ -195,6 +195,191 @@ function applyAuto(){
 
 let cache = []; // {id, ...data}
 
+// ------------------------------
+// Hospitalidad (rotación + excepciones)
+// Base definida por Marcelo: 2026-03-07 = Bracho
+// Rotación semanal: Bracho -> Santa Rosa -> Villa Fiad -> Pala Pala -> ...
+// Con "skips" (asambleas) que NO avanzan la rotación.
+// ------------------------------
+
+const HOSP_GRUPOS = ["Santa Rosa", "Villa Fiad", "Pala Pala", "Bracho"];
+const DEFAULT_HOSP_CONFIG = {
+  baseDate: "2026-03-07",
+  baseGrupo: "Bracho",
+  skips: []
+};
+
+let hospConfig = { ...DEFAULT_HOSP_CONFIG };
+let hospSkips = new Set();
+let hospExceptions = new Map(); // fechaISO -> grupo
+
+function parseISODate(iso){
+  // Interpretación local a medianoche (suficiente para comparar por semanas)
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(iso||""))) return null;
+  const d = new Date(`${iso}T00:00:00`);
+  if(Number.isNaN(d.getTime())) return null;
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function addDays(d, n){
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  x.setHours(0,0,0,0);
+  return x;
+}
+
+function isoOf(d){
+  const x = new Date(d);
+  x.setHours(0,0,0,0);
+  return x.toISOString().slice(0,10);
+}
+
+function nextSaturdayISO(){
+  const t = new Date();
+  t.setHours(0,0,0,0);
+  const day = t.getDay(); // 0 dom ... 6 sab
+  const delta = (6 - day + 7) % 7; // sáb=6
+  return isoOf(addDays(t, delta));
+}
+
+function countSkipsBetweenExclusiveInclusive(fromISO, toISO){
+  // Cuenta skips en (from, to] (solo si to >= from)
+  const a = parseISODate(fromISO);
+  const b = parseISODate(toISO);
+  if(!a || !b) return 0;
+  if(b < a) return 0;
+  let c = 0;
+  for(const s of hospSkips){
+    const ds = parseISODate(s);
+    if(!ds) continue;
+    if(ds > a && ds <= b) c++;
+  }
+  return c;
+}
+
+function stepsBetween(baseISO, targetISO){
+  // pasos de rotación desde base (0 en base). Los skips NO cuentan como paso.
+  const base = parseISODate(baseISO);
+  const target = parseISODate(targetISO);
+  if(!base || !target) return 0;
+  if(target.getTime() === base.getTime()) return 0;
+
+  const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+  if(target > base){
+    const diffWeeks = Math.floor((target - base) / MS_WEEK);
+    const skipped = countSkipsBetweenExclusiveInclusive(baseISO, targetISO);
+    return diffWeeks - skipped;
+  }
+  // target < base
+  // pasos negativos: - pasos desde target a base
+  return -stepsBetween(targetISO, baseISO);
+}
+
+function computeHospAuto(targetISO){
+  const baseISO = hospConfig.baseDate || DEFAULT_HOSP_CONFIG.baseDate;
+  const baseGrupo = hospConfig.baseGrupo || DEFAULT_HOSP_CONFIG.baseGrupo;
+  const baseIdx = Math.max(0, HOSP_GRUPOS.indexOf(baseGrupo));
+  const step = stepsBetween(baseISO, targetISO);
+  const idx = ((baseIdx + step) % HOSP_GRUPOS.length + HOSP_GRUPOS.length) % HOSP_GRUPOS.length;
+  return HOSP_GRUPOS[idx];
+}
+
+function hospForDate(iso){
+  const dISO = normISO(iso);
+  if(!dISO) return { value: "", label: "" };
+  if(hospSkips.has(dISO)) return { value: "", label: "Asamblea" };
+  if(hospExceptions.has(dISO)) return { value: hospExceptions.get(dISO), label: hospExceptions.get(dISO), isException: true };
+  const g = computeHospAuto(dISO);
+  return { value: g, label: g };
+}
+
+async function loadHospitalidadState(){
+  // config
+  try{
+    const ref = doc(db, "hospitalidad_config", "config");
+    const snap = await getDoc(ref);
+    if(!snap.exists()){
+      await setDoc(ref, { ...DEFAULT_HOSP_CONFIG }, { merge: true });
+      hospConfig = { ...DEFAULT_HOSP_CONFIG };
+    }else{
+      const d = snap.data() || {};
+      hospConfig = {
+        baseDate: d.baseDate || DEFAULT_HOSP_CONFIG.baseDate,
+        baseGrupo: d.baseGrupo || DEFAULT_HOSP_CONFIG.baseGrupo,
+        skips: Array.isArray(d.skips) ? d.skips.filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(String(x))) : []
+      };
+    }
+  }catch(e){
+    console.warn("No pude cargar hospitalidad_config", e);
+    hospConfig = { ...DEFAULT_HOSP_CONFIG };
+  }
+
+  hospSkips = new Set(hospConfig.skips || []);
+
+  // excepciones
+  hospExceptions = new Map();
+  try{
+    const s = await getDocs(collection(db, "hospitalidad_excepciones"));
+    s.docs.forEach(d=>{
+      const v = d.data() || {};
+      const g = String(v.grupo || "").trim();
+      if(g) hospExceptions.set(d.id, g);
+    });
+  }catch(e){
+    console.warn("No pude cargar hospitalidad_excepciones", e);
+  }
+}
+
+function setHospMsg(msg, isErr=false){
+  const el = $("hospMsg");
+  if(!el) return;
+  el.textContent = msg || "";
+  el.style.color = isErr ? "#b91c1c" : "";
+}
+
+function updateHospBox(){
+  const fecha = normISO($("hospFecha")?.value || "");
+  const autoEl = $("hospAuto");
+  const badge = $("hospBadge");
+  const skipEl = $("hospSkip");
+  const ovEl = $("hospOverride");
+  if(!fecha || !autoEl || !skipEl || !ovEl) return;
+
+  // Estado actual
+  const skipped = hospSkips.has(fecha);
+  skipEl.checked = skipped;
+
+  const auto = computeHospAuto(fecha);
+  const ex = hospExceptions.get(fecha) || "";
+  autoEl.textContent = skipped ? "Asamblea" : (ex || auto);
+
+  if(badge){
+    badge.style.display = ex ? "inline-flex" : "none";
+  }
+
+  ovEl.value = ex;
+  setHospMsg("");
+}
+
+function previewHospBoxFromInputs(){
+  const fecha = normISO($("hospFecha")?.value || "");
+  const autoEl = $("hospAuto");
+  const badge = $("hospBadge");
+  const skipEl = $("hospSkip");
+  const ovEl = $("hospOverride");
+  if(!fecha || !autoEl || !skipEl || !ovEl) return;
+
+  const skipped = !!skipEl.checked;
+  const ov = String(ovEl.value || "").trim();
+  const auto = computeHospAuto(fecha);
+  autoEl.textContent = skipped ? "Asamblea" : (ov || auto);
+  if(badge){
+    badge.style.display = ov ? "inline-flex" : "none";
+  }
+}
+
 function renderTable(){
   const q = ($("filtro").value||"").trim().toLowerCase();
   const rows = cache.filter(r=>{
@@ -204,7 +389,7 @@ function renderTable(){
 
   const tbody = $("tbody");
   if(!rows.length){
-    tbody.innerHTML = `<tr><td colspan="6" class="muted">Sin registros.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="muted">Sin registros.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(r=>`
@@ -215,6 +400,7 @@ function renderTable(){
       <td>${r.bosquejo ?? ""}</td>
       <td>${escapeHtml(r.titulo||"")}</td>
       <td>${r.cancion ?? ""}</td>
+      <td>${escapeHtml(r.hospLabel||"")}</td>
     </tr>
   `).join("");
 
@@ -250,10 +436,14 @@ async function load(){
   }
 
   // normaliza y ordena
-  cache = (cache||[]).map(r=>({
-    ...r,
-    fecha: r.fecha || r.id,
-  }));
+  cache = (cache||[])
+    // no mostramos eventos (asambleas, conmemoración, etc.) en esta tabla
+    .filter(r => String(r.tipo||"visitante").toLowerCase() !== "evento")
+    .map(r=>({
+      ...r,
+      fecha: r.fecha || r.id,
+      hospLabel: hospForDate(r.id).label,
+    }));
 
   cache.sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
   renderTable();
@@ -269,7 +459,10 @@ async function save(){
   const bosquejo = normNum($("bosquejo").value);
   const titulo = ($("titulo").value||"").trim();
   const cancion = normNum($("cancion").value);
-  const hospitalidad = ($("hospitalidad").value||"").trim();
+  // Si no se escribe hospitalidad manual, usamos la rotación automática
+  const hospManual = ($("hospitalidad").value||"").trim();
+  const hospAuto = hospForDate(fecha).value;
+  const hospitalidad = hospManual || hospAuto;
   const observaciones = ($("observaciones").value||"").trim();
 
   const payload = {
@@ -293,6 +486,59 @@ async function save(){
     console.error(e);
     toast("No pude guardar. Revisá permisos de Firestore.", true);
   }
+}
+
+async function hospGuardarCambios(){
+  const fecha = normISO($("hospFecha")?.value || "");
+  if(!fecha) return setHospMsg("Fecha inválida.", true);
+  if(!isAdmin) return setHospMsg("Solo admin/superadmin puede cambiar hospitalidad.", true);
+
+  const wantSkip = !!$("hospSkip")?.checked;
+  const override = String($("hospOverride")?.value || "").trim();
+
+  try{
+    // Actualiza skips
+    const ref = doc(db, "hospitalidad_config", "config");
+    const nextSkips = new Set(hospSkips);
+    if(wantSkip) nextSkips.add(fecha);
+    else nextSkips.delete(fecha);
+    await setDoc(ref, {
+      baseDate: hospConfig.baseDate || DEFAULT_HOSP_CONFIG.baseDate,
+      baseGrupo: hospConfig.baseGrupo || DEFAULT_HOSP_CONFIG.baseGrupo,
+      skips: Array.from(nextSkips).sort(),
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+
+    // Excepción por fecha
+    const exRef = doc(db, "hospitalidad_excepciones", fecha);
+    if(override){
+      await setDoc(exRef, { grupo: override, updatedAt: new Date().toISOString() }, { merge: true });
+    }else{
+      // si no hay override, borramos la excepción (si existe)
+      try{ await deleteDoc(exRef); }catch(_){ }
+    }
+
+    await loadHospitalidadState();
+    updateHospBox();
+    await load();
+    setHospMsg("Guardado.");
+  }catch(e){
+    console.error(e);
+    setHospMsg("No pude guardar. Revisá permisos.", true);
+  }
+}
+
+function hospAplicarAlFormulario(){
+  const fecha = normISO($("hospFecha")?.value || "");
+  if(!fecha) return setHospMsg("Fecha inválida.", true);
+  const h = hospForDate(fecha);
+  if(h.label === "Asamblea"){
+    $("hospitalidad").value = "";
+    setHospMsg("Ese sábado está marcado como asamblea (sin hospitalidad).", false);
+    return;
+  }
+  $("hospitalidad").value = h.value || "";
+  setHospMsg("Aplicado al formulario.");
 }
 
 async function borrar(){
@@ -319,6 +565,24 @@ async function borrar(){
     try{ renderTopbar("visitantes"); }catch(_){ }
     toast("Error iniciando Visitantes. Revisá consola (F12).", true);
     return;
+  }
+
+  // Hospitalidad state + UI
+  await loadHospitalidadState();
+  if($("hospFecha")){
+    $("hospFecha").value = nextSaturdayISO();
+    updateHospBox();
+    $("hospFecha").addEventListener("input", updateHospBox);
+    $("hospOverride").addEventListener("change", previewHospBoxFromInputs);
+    $("hospSkip").addEventListener("change", previewHospBoxFromInputs);
+    $("btnHospGuardar").addEventListener("click", hospGuardarCambios);
+    $("btnHospAplicar").addEventListener("click", hospAplicarAlFormulario);
+    if(!isAdmin){
+      // lectura: deja ver, pero no editar
+      $("btnHospGuardar").disabled = true;
+      $("hospOverride").disabled = true;
+      $("hospSkip").disabled = true;
+    }
   }
 
   $("bosquejo")?.addEventListener("blur", applyAuto);

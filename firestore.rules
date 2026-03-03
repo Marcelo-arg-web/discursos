@@ -59,6 +59,17 @@ service cloud.firestore {
       allow write: if isEditor();
     }
 
+    // Hospitalidad: config de rotación y excepciones por fecha
+    match /hospitalidad_config/{id} {
+      allow read: if activeUser();
+      allow write: if isEditor();
+    }
+
+    match /hospitalidad_excepciones/{id} {
+      allow read: if activeUser();
+      allow write: if isEditor();
+    }
+
 
     match /salientes/{id} {
       // Lectura pública (solo ver) para el grupo

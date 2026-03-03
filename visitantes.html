@@ -75,6 +75,53 @@
 </div>
 </div>
 <div style="height:10px"></div>
+
+<!-- Hospitalidad automática (rotación con excepciones) -->
+<div class="card pad" id="hospBox" style="margin-bottom:10px;">
+  <div class="row" style="justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+    <div>
+      <b>Hospitalidad (rotación)</b>
+      <div class="small muted">Base: <code>2026-03-07 = Bracho</code>. Podés marcar asamblea para “saltar” una semana o fijar un grupo manualmente.</div>
+    </div>
+  </div>
+  <div class="grid" style="grid-template-columns: repeat(6, 1fr); gap:12px; margin-top:10px;">
+    <div style="grid-column: span 2;">
+      <label class="lbl">Sábado (YYYY-MM-DD)</label>
+      <input class="inp" id="hospFecha" placeholder="2026-03-07"/>
+      <div class="small muted">Usá sábados (día del discurso).</div>
+    </div>
+    <div style="grid-column: span 2;">
+      <label class="lbl">Grupo automático</label>
+      <div class="inp" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <span id="hospAuto" style="font-weight:600;">—</span>
+        <span class="badge" id="hospBadge" style="display:none;">Excepción</span>
+      </div>
+    </div>
+    <div style="grid-column: span 2;">
+      <label class="lbl">Forzar grupo (opcional)</label>
+      <select class="inp" id="hospOverride">
+        <option value="">(sin excepción)</option>
+        <option>Santa Rosa</option>
+        <option>Villa Fiad</option>
+        <option>Pala Pala</option>
+        <option>Bracho</option>
+      </select>
+      <div class="small muted">Guarda una excepción solo para ese sábado.</div>
+    </div>
+    <div style="grid-column: span 2;">
+      <label class="lbl">Asamblea / no hay hospitalidad</label>
+      <label class="row" style="gap:8px; align-items:center; margin-top:6px;">
+        <input id="hospSkip" type="checkbox"/>
+        <span class="small">Saltar semana (no avanza la rotación)</span>
+      </label>
+    </div>
+    <div style="grid-column: span 4; display:flex; gap:10px; align-items:flex-end;">
+      <button class="btn" id="btnHospGuardar" type="button">Guardar cambios</button>
+      <button class="btn" id="btnHospAplicar" type="button">Aplicar al formulario</button>
+      <div class="small muted" id="hospMsg" style="margin-left:auto;"></div>
+    </div>
+  </div>
+</div>
 <div class="card pad" style="padding:0; overflow:auto;">
 <table class="table" id="tabla">
 <thead>
@@ -85,10 +132,11 @@
 <th>Bosquejo</th>
 <th>Título</th>
 <th>Canción</th>
+<th>Hosp.</th>
 </tr>
 </thead>
 <tbody id="tbody">
-<tr><td class="muted" colspan="6">Cargando…</td></tr>
+<tr><td class="muted" colspan="7">Cargando…</td></tr>
 </tbody>
 </table>
 </div>
@@ -147,6 +195,6 @@
 })();
 </script>
 
-  <script src="js/pages/visitantes.js?v=20260303" type="module"></script>
+  <script src="js/pages/visitantes.js?v=20260303h" type="module"></script>
 </body>
 </html>
