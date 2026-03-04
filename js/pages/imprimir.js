@@ -55,8 +55,7 @@ function renderTopbar(active){
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
         <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
-        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acomodadores</a>
-        <a href="tablero-multimedia.html" class="${active==='multimedia'?'active':''}">Multimedia</a>
+        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acom/AV</a>
         <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
         <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
@@ -249,7 +248,7 @@ async function cargarMes(){
   document.getElementById("btnPrint")?.addEventListener("click", ()=>window.print());
   document.getElementById("btnRecargar")?.addEventListener("click", cargarMes);
   document.getElementById("btnTabAcom")?.addEventListener("click", ()=>{ window.location.href = "tablero-acomodadores.html"; });
-  document.getElementById("btnTabMM")?.addEventListener("click", ()=>{ window.location.href = "tablero-multimedia.html"; });
+  document.getElementById("btnTabMM")?.addEventListener("click", ()=>{ window.location.href = "tablero-acomodadores.html#av"; });
   document.getElementById("btnProgramaMensual")?.addEventListener("click", ()=>{ window.location.href = "programa-mensual.html"; });
   document.getElementById("btnPresidente")?.addEventListener("click", ()=>{
     const mesISO = String(document.getElementById("mes")?.value||"").trim();

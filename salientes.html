@@ -26,6 +26,21 @@
 <input class="inp" id="orador" placeholder="Marcelo Palavecino"/>
 <div class="small muted">Los 5 actuales: Marcelo Palavecino, Sergio Saldaña, Leonardo Araya, Luis Navarro, Marcelo Rodríguez (pero se puede agregar/quitar).</div>
 </div>
+
+<div style="grid-column: span 2;">
+  <label class="lbl">Tipo</label>
+  <select class="inp" id="tipo">
+    <option value="normal">Salida normal</option>
+    <option value="asamblea">Asamblea / No se sale</option>
+    <option value="especial">Discurso especial</option>
+    <option value="otro">Otro</option>
+  </select>
+  <div class="small muted">Usá esto cuando no hay bosquejo (asamblea o discurso especial).</div>
+</div>
+<div style="grid-column: span 4;">
+  <label class="lbl">Detalle (opcional)</label>
+  <input class="inp" id="detalle" placeholder="Ej: Asamblea regional / Discurso especial / Conmemoración…" />
+</div>
 <div style="grid-column: span 1;">
 <label class="lbl">Bosquejo</label>
 <input class="inp" id="bosquejo" inputmode="numeric" placeholder="146"/>

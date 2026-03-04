@@ -54,7 +54,7 @@ function renderPublicTopbar(active){
       <div class="brand">Villa Fiad</div>
       <div class="links">
         <a href="public-home.html" class="${active==='public'?'active':''}">Inicio</a>
-        <a href="tablero-acomodadores.html" class="${active==='tableros'?'active':''}">Tableros</a>
+        <a href="tablero-acomodadores.html" class="${active==='tableros'?'active':''}">Acom/AV</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
       </div>
       <div class="right">
@@ -78,8 +78,7 @@ function renderTopbar(active){
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
         <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
-        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acomodadores</a>
-        <a href="tablero-multimedia.html" class="${active==='multimedia'?'active':''}">Multimedia</a>
+        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acom/AV</a>
         <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
         <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
@@ -207,10 +206,15 @@ function escapeHtml(s){
   return String(s||"").replace(/[&<>"]/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 }
 
+const tipoLabel = (t)=>({normal:"Salida",asamblea:"Asamblea / No se sale",especial:"Discurso especial",otro:"Otro"}[t]||t||"");
+
+
 function fillFromDoc(id, d){
   $("editId").value = id;
   $("fecha").value = toDMY(d.fecha || "");
   $("orador").value = d.orador || d.oradorNombre || "";
+  $("tipo") && ($("tipo").value = d.tipo || "normal");
+  $("detalle") && ($("detalle").value = d.detalle || "");
   $("bosquejo").value = d.bosquejo ?? "";
   updateBosquejoTitulo();
   $("destino").value = d.destino || d.congregacionDestino || "";
@@ -222,6 +226,8 @@ function clearForm(){
   $("editId").value = "";
   $("fecha").value = "";
   $("orador").value = "";
+  if($("tipo")) $("tipo").value = "normal";
+  if($("detalle")) $("detalle").value = "";
   $("bosquejo").value = "";
   updateBosquejoTitulo();
   $("destino").value = "";
@@ -234,7 +240,7 @@ function renderTable(){
   const q = ($("filtro").value||"").trim().toLowerCase();
   const rows = cache.filter(r=>{
     if(!q) return true;
-    return String(r.orador||"").toLowerCase().includes(q) || String(r.destino||"").toLowerCase().includes(q);
+    return String(r.orador||"").toLowerCase().includes(q) || String(r.destino||"").toLowerCase().includes(q) || String(r.detalle||"").toLowerCase().includes(q) || String(r.notas||"").toLowerCase().includes(q);
   });
 
   // Mostrar por defecto desde la próxima fecha futura más cercana (si no hay filtro).
@@ -253,7 +259,7 @@ function renderTable(){
     <tr data-id="${r.id}">
       <td>${escapeHtml(toDMY(r.fecha||""))}</td>
       <td>${escapeHtml(r.orador||"")}</td>
-      <td>${(r.bosquejo!=="" && r.bosquejo!=null) ? (r.bosquejo + " — " + escapeHtml(bosquejosMap.get(Number(r.bosquejo))||"")) : ""}</td>
+      <td>${(r.bosquejo!=="" && r.bosquejo!=null) ? (r.bosquejo + " — " + escapeHtml(bosquejosMap.get(Number(r.bosquejo))||"")) : ( (r.tipo && r.tipo!=="normal") ? (escapeHtml(tipoLabel(r.tipo)) + (r.detalle?(" — "+escapeHtml(r.detalle)):"")) : (r.detalle?escapeHtml(r.detalle):"") )}</td>
       <td>${escapeHtml(r.destino||"")}</td>
       <td>${escapeHtml(r.notas||"")}</td>
     </tr>
@@ -299,12 +305,16 @@ async function save(){
   const orador = ($("orador").value||"").trim();
   const destino = ($("destino").value||"").trim();
 
+  const tipo = ($("tipo")?.value||"normal").trim();
+  const detalle = ($("detalle")?.value||"").trim();
   const bosquejo = normNum($("bosquejo").value);
   const notas = ($("notas").value||"").trim();
 
   const payload = {
     fecha,
     orador,
+    tipo,
+    detalle,
     bosquejo: bosquejo===""? "" : bosquejo,
     destino,
     notas,

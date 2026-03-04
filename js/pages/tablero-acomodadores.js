@@ -52,7 +52,7 @@ function renderPublicTopbar(active){
       <div class="brand">Villa Fiad</div>
       <div class="links">
         <a href="public-home.html" class="${active==='public'?'active':''}">Inicio</a>
-        <a href="tablero-acomodadores.html" class="${active==='tablero'?'active':''}">Tablero</a>
+        <a href="tablero-acomodadores.html" class="${active==='tablero'?'active':''}">Acom/AV</a>
         <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
       </div>
@@ -78,8 +78,7 @@ function renderTopbar(active){
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
         <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
-        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acomodadores</a>
-        <a href="tablero-multimedia.html" class="${active==='multimedia'?'active':''}">Multimedia</a>
+        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acom/AV</a>
         <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
         <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
@@ -272,10 +271,10 @@ function render(mesISO, pairs){
   host.innerHTML = `
     <div class="print-header">
       <div class="h2">Congregación Villa Fiad</div>
-      <div class="muted">Tablero mensual · Mes ${escapeHtml(mesISO)}</div>
+      <div class="muted">Acom/AV · Mes ${escapeHtml(mesISO)}</div>
     </div>
 
-    <div class="board-wrap" style="margin-top:10px;">
+    <div class="board-wrap" id="aco" style="margin-top:10px;">
       <div class="board-section-title">Acomodadores</div>
       <table class="table board" style="width:100%;">
         <colgroup>
@@ -300,7 +299,7 @@ function render(mesISO, pairs){
       </table>
     </div>
 
-    <div class="board-wrap" style="margin-top:14px;">
+    <div class="board-wrap" id="av" style="margin-top:14px;">
       <div class="board-section-title">Audio y video</div>
       <table class="table board" style="width:100%;">
         <colgroup>
