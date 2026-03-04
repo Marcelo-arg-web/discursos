@@ -27,33 +27,109 @@ function isAdminRole(rol){
   return r === "admin" || r === "superadmin";
 }
 
+
+let _deferredInstallPrompt = null;
+function initPWAInstall(){
+  const btn = document.getElementById("pwaInstallBtn");
+  if(!btn) return;
+
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  if(isStandalone){ btn.classList.remove("show"); return; }
+
+  if(!window.__pwa_install_listener){
+    window.__pwa_install_listener = true;
+    window.addEventListener("beforeinstallprompt", (e)=>{
+      e.preventDefault();
+      _deferredInstallPrompt = e;
+      const b = document.getElementById("pwaInstallBtn");
+      if(b) b.classList.add("show");
+    });
+  }
+
+  btn.addEventListener("click", async ()=>{
+    if(!_deferredInstallPrompt){
+      alert("En Android: abrí el menú del navegador y tocá “Agregar a pantalla de inicio”.");
+      return;
+    }
+    _deferredInstallPrompt.prompt();
+    try{ await _deferredInstallPrompt.userChoice; }catch(_){}
+    _deferredInstallPrompt = null;
+    btn.classList.remove("show");
+  });
+}
+
 function renderTopbar(active){
   const el = document.getElementById("topbar");
   if(!el) return;
+
+  const linksAdmin = [
+    ["panel.html","panel","Panel"],
+    ["asignaciones.html","asignaciones","Asignaciones"],
+    ["programa-mensual.html","programa","Programa mensual"],
+    ["tablero-acomodadores.html","acomodadores","Acomodadores"],
+    ["tablero-multimedia.html","multimedia","Multimedia"],
+    ["visitantes.html","visitantes","Visitantes"],
+    ["salientes.html","salientes","Salientes"],
+    ["personas.html","personas","Personas"],
+    ["discursantes.html","discursantes","Discursantes"],
+    ["estadisticas.html","estadisticas","Estadísticas"],
+    ["doc-presi.html","docpresi","Visitas/Salidas"],
+    ["imprimir.html","imprimir","Imprimir"],
+    ["importar.html","importar","Importar"],
+    ["usuarios.html","usuarios","Usuarios"],
+  ];
+
+  const linksUser = [
+    ["programa-mensual.html","programa","Asignaciones mensuales"],
+    ["visitantes.html","visitantes","Discursantes visitantes"],
+    ["salientes.html","salientes","Discursantes salientes"],
+  ];
+
+  const links = (isAdmin ? linksAdmin : linksUser)
+    .map(([href,key,label]) => `<a href="${href}" class="${active===key?'active':''}">${label}</a>`)
+    .join("");
+
   el.innerHTML = `
-    <div class="topbar">
+    <div class="topbar" id="topbarShell">
       <div class="brand"><span class="brand-dot"></span>Villa Fiad</div>
-      <div class="links">
-        <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
-        <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
-        <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
-        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acomodadores</a>
-        <a href="tablero-multimedia.html" class="${active==='multimedia'?'active':''}">Multimedia</a>
-        <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
-        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
-        <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
-        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Menú">☰</button>
+
+      <div class="links" id="navLinks">
+        ${links}
       </div>
+
       <div class="actions">
-        <button id="btnSalir" class="btn danger sm" type="button">Salir</button>
+        <button class="btn pwa-install" id="pwaInstallBtn" type="button">Instalar</button>
+        <button class="btn ghost" id="btnLogout" type="button">Salir</button>
       </div>
     </div>
   `;
-  document.getElementById("btnSalir")?.addEventListener("click", async ()=>{
-    try{ await signOut(auth); }catch(e){}
-    window.location.href = "index.html";
-  });
+
+  const shell = document.getElementById("topbarShell");
+  const toggle = document.getElementById("navToggle");
+  const navLinks = document.getElementById("navLinks");
+  if(toggle && shell){
+    toggle.addEventListener("click", ()=> shell.classList.toggle("open"));
+  }
+  if(navLinks && shell){
+    navLinks.addEventListener("click", (e)=>{
+      const a = e.target?.closest?.("a");
+      if(a) shell.classList.remove("open");
+    });
+  }
+
+  const btnLogout = document.getElementById("btnLogout");
+  if(btnLogout){
+    btnLogout.addEventListener("click", async ()=>{
+      try{ await signOut(auth); }catch(_){}
+      window.location.href = "public-login.html";
+    });
+  }
+
+  initPWAInstall();
 }
+
 
 async function requireAdmin(){
   renderTopbar("importar");

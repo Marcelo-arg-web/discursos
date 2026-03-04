@@ -571,3 +571,43 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
 .month-banner{break-inside:avoid;}
 .model-block{break-inside:avoid;}
 }
+
+
+/* ===== Mobile nav (retractil) ===== */
+.nav-toggle{
+  display:none;
+  border:1px solid rgba(226,232,240,.9);
+  background:rgba(255,255,255,.85);
+  border-radius:12px;
+  padding:8px 10px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+@media (max-width: 820px){
+  .topbar{ position:sticky; top:0; }
+  .topbar .links{
+    display:none;
+    position:absolute;
+    left:0; right:0;
+    top:56px;
+    padding:10px 12px;
+    background:rgba(243,247,255,.98);
+    border-bottom:1px solid rgba(226,232,240,.9);
+    flex-direction:column;
+    align-items:stretch;
+    gap:8px;
+  }
+  .topbar.open .links{ display:flex; }
+  .topbar .links a{
+    padding:10px 12px;
+    border-radius:12px;
+    background:rgba(255,255,255,.75);
+    border:1px solid rgba(226,232,240,.85);
+  }
+  .nav-toggle{ display:inline-flex; align-items:center; justify-content:center; }
+}
+
+/* Botón instalar (PWA) */
+.pwa-install{ display:none; }
+.pwa-install.show{ display:inline-flex; }
