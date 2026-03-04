@@ -18,6 +18,28 @@ import {
 
 const $ = (id) => document.getElementById(id);
 
+const LS_KEY_LOCALES = "vf_conferenciantesLocales_local";
+
+// Lee locales guardados en este navegador (respaldo cuando no hay permisos en Firestore)
+function readLocalesLocal(){
+  try{
+    const raw = localStorage.getItem(LS_KEY_LOCALES);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch(_){ return []; }
+}
+function writeLocalesLocal(arr){
+  try{ localStorage.setItem(LS_KEY_LOCALES, JSON.stringify(arr||[])); }catch(_){}
+}
+function upsertLocalesLocal(item){
+  const arr = readLocalesLocal();
+  const key = String(item.nombre||"").trim().toLowerCase();
+  const idx = arr.findIndex(x => String(x.nombre||"").trim().toLowerCase() === key);
+  if(idx >= 0) arr[idx] = { ...arr[idx], ...item };
+  else arr.push(item);
+  writeLocalesLocal(arr);
+}
+
 function toast(msg, isError = false) {
   const host = $("toastHost");
   if (!host) return alert(msg);
@@ -297,11 +319,23 @@ async function cargarLocales() {
         activo: p.activo !== false
       }));
     renderLocales();
-    // Deshabilitar botones de guardado local si estamos en fallback
-    document.getElementById("btnGuardarLocal")?.setAttribute("disabled", "disabled");
-    document.getElementById("btnLimpiarLocal")?.setAttribute("disabled", "disabled");
+    // Respaldo activo: permitimos guardar en este navegador (localStorage)
+    const localExtra = readLocalesLocal();
+    // Agregar/actualizar por nombre
+    localExtra.forEach((x)=>{
+      const key = String(x.nombre||"").trim().toLowerCase();
+      if(!key) return;
+      const i = cacheLoc.findIndex((y)=>String(y.nombre||"").trim().toLowerCase()===key);
+      if(i>=0) cacheLoc[i] = { ...cacheLoc[i], ...x };
+      else cacheLoc.push(x);
+    });
+    cacheLoc.sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"", "es"));
+    renderLocales();
+
+    document.getElementById("btnGuardarLocal")?.removeAttribute("disabled");
+    document.getElementById("btnLimpiarLocal")?.removeAttribute("disabled");
     document.getElementById("btnMsgLocales")?.removeAttribute("disabled");
-    toast("Locales: leyendo desde Personas. Para editar/agregar, usá la pantalla Personas.");
+    toast("Locales: leyendo desde Personas. Si no tenés permisos, podés guardar cambios en este navegador.");
   } catch (e) {
     console.error(e);
     toast("No pude cargar conferenciantes locales. Revisá permisos.", true);
@@ -382,13 +416,28 @@ async function guardarLocal() {
       await addDoc(collection(db, "conferenciantesLocales"), { ...payload, createdAt: serverTimestamp() });
       toast("Local guardado.");
     }
+    // Si existía guardado local, lo limpiamos
+    try{
+      const arr = readLocalesLocal();
+      const key = String(payload.nombre||"").trim().toLowerCase();
+      writeLocalesLocal(arr.filter(x=>String(x.nombre||"").trim().toLowerCase()!==key));
+    }catch(_){}
     limpiarLocForm();
     await cargarLocales();
   } catch (e) {
     console.error(e);
     toast("No pude guardar local. Revisá permisos.", true);
   }
-}
+try{
+    if(localesFromPersonasFallback){
+      // Guardar en este navegador
+      upsertLocalesLocal({ ...payload, updatedAt: new Date().toISOString() });
+      toast("Local guardado (este navegador).");
+      limpiarLocForm();
+      await cargarLocales();
+      return;
+    }
+
 
 function generarMensajeLocales() {
   const activos = cacheLoc

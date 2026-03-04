@@ -127,14 +127,15 @@ async function calcular(){
   const desde = isoMinusMonths(today, meses);
 
   try{
-    const s = await getDocs(collection(db,"asignaciones"));
+    // Basado en VISITANTES (colección: "visitas")
+    const s = await getDocs(collection(db,"visitas"));
     const counts = new Map();
 
     s.docs.forEach(d=>{
-      const id = d.id; // suele ser semana ISO
-      if(id && id >= desde && id <= today){
-        const data = d.data()?.asignaciones || d.data() || {};
-        const num = data.discursoNumero ?? data.discurso ?? data.bosquejo ?? "";
+      const data = d.data() || {};
+      const fecha = String(data.fecha || d.id || "");
+      if(fecha && fecha >= desde && fecha <= today){
+        const num = data.bosquejo ?? data.discursoNumero ?? data.discurso ?? data.bosquejoNumero ?? "";
         const n = Number(num);
         if(Number.isFinite(n) && n>0){
           counts.set(n, (counts.get(n)||0)+1);

@@ -236,6 +236,14 @@ function renderTable(){
     if(!q) return true;
     return String(r.orador||"").toLowerCase().includes(q) || String(r.destino||"").toLowerCase().includes(q);
   });
+
+  // Mostrar por defecto desde la próxima fecha futura más cercana (si no hay filtro).
+  if(!q){
+    const hoy = hoyISO();
+    const i0 = rows.findIndex(r => String(r.fecha||"") >= hoy);
+    if(i0 >= 0) rows.splice(0, i0);
+  }
+
   const tbody = $("tbody");
   if(!rows.length){
     tbody.innerHTML = `<tr><td colspan="5" class="muted">Sin registros.</td></tr>`;
