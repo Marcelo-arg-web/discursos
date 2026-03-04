@@ -531,3 +531,32 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
 .month-banner{break-inside:avoid;}
 .model-block{break-inside:avoid;}
 }
+
+
+/* ===== PROGRAMA MENSUAL (encabezado sin recorte) ===== */
+.pm-header{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:10px 12px;
+  border:1px solid #ddd;
+  border-radius:12px;
+  background:#fff;
+  margin: 8px 0 14px 0;
+}
+.pm-header__img{
+  width: 40%;
+  max-width: 360px;
+  height:auto;
+  object-fit:contain; /* CLAVE: no recorta */
+  display:block;
+}
+.pm-header__text{flex:1;text-align:center;line-height:1.05}
+.pm-title{font-size:30px;font-weight:900;letter-spacing:.2px}
+.pm-subtitle{font-size:22px;font-weight:800;margin-top:6px}
+.pm-subtitle2{font-size:18px;font-weight:800;margin-top:6px;opacity:.95}
+
+@media print{
+  .pm-header{break-inside:avoid;page-break-inside:avoid}
+  .pm-header__img{width:42%;max-width:none}
+}
