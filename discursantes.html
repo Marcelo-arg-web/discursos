@@ -40,6 +40,22 @@
 <div class="card pad">
 <h2 class="h1" style="margin-bottom:6px;">Discursantes</h2>
 <div class="muted">Guardá visitantes y salidas, y generá un mensaje para WhatsApp.</div>
+<div class="card pad" style="margin-top:14px;">
+<h3 class="h2" style="margin:0;">Conferenciantes locales</h3>
+<div class="muted">Cargá teléfonos y bosquejos, y generá un mensaje listo para WhatsApp.</div>
+<hr class="sep"/>
+<label>Nombre</label>
+<input class="input" id="l_nombre" placeholder="Ej: Juan Pérez"/>
+<div class="row">
+<div class="col">
+<label>Teléfono</label>
+<input class="input" id="l_tel" placeholder="Ej: 381 123-4567"/>
+</div>
+<div class="col">
+<label>Bosquejos (separados por coma)</label>
+<input class="input" id="l_bosquejos" placeholder="Ej: 1, 12, 45"/>
+</div>
+</div>
 <hr class="sep"/>
 <div class="row">
 <div class="col">
@@ -111,22 +127,7 @@
 <div class="h2">Mensaje</div>
 <textarea class="input" id="msg" placeholder="Acá se genera el mensaje…" readonly=""></textarea>
 </div>
-<div class="card pad" style="margin-top:14px;">
-<h3 class="h2" style="margin:0;">Conferenciantes locales</h3>
-<div class="muted">Cargá teléfonos y bosquejos, y generá un mensaje listo para WhatsApp.</div>
-<hr class="sep"/>
-<label>Nombre</label>
-<input class="input" id="l_nombre" placeholder="Ej: Juan Pérez"/>
-<div class="row">
-<div class="col">
-<label>Teléfono</label>
-<input class="input" id="l_tel" placeholder="Ej: 381 123-4567"/>
-</div>
-<div class="col">
-<label>Bosquejos (separados por coma)</label>
-<input class="input" id="l_bosquejos" placeholder="Ej: 1, 12, 45"/>
-</div>
-</div>
+
 <div class="row" style="margin-top:6px;">
 <label style="display:flex;gap:8px;align-items:center;">
 <input id="l_provisorio" type="checkbox"/> Provisorio
