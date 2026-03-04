@@ -164,9 +164,9 @@ function render(mesISO, items){
 
   if(!items.length){
     cont.innerHTML = `
-      ${headerHTML(monthTitle)}
-      <div class="pm-empty">
-        <div class="muted" style="margin-top:6px;">No hay reuniones cargadas para este mes.</div>
+      <div class="month-title">
+        <div class="h2">${monthTitle}</div>
+        <div class="muted">No hay reuniones guardadas para este mes.</div>
       </div>
     `;
     return;
@@ -229,7 +229,13 @@ function render(mesISO, items){
   }).join("\n");
 
   cont.innerHTML = `
-    ${headerHTML(monthTitle)}
+    <div class="month-banner">
+      <img src="assets/jw-header.jpg" alt="" />
+      <div class="meta">
+        <div class="left">Mes: ${escapeHtml(monthTitle)}</div>
+        <div class="right">Programa de discursos públicos</div>
+      </div>
+    </div>
     ${blocks}
   `;
 }
@@ -241,20 +247,6 @@ function escapeHtml(str){
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
-}
-
-function headerHTML(monthTitle){
-  return `
-    <div class="pm-header">
-      <img class="pm-header__img" src="assets/jw-header.jpg" alt="Encabezado" />
-      <div class="pm-header__text">
-        <div class="pm-title">Programa mensual</div>
-        <div class="pm-subtitle">Mes: ${escapeHtml(monthTitle)}</div>
-        <div class="pm-subtitle2">Congr. Villa Fiad</div>
-      </div>
-    </div>
-  `;
-}
 }
 
 async function cargar(){
