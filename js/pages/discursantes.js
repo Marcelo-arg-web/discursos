@@ -408,6 +408,15 @@ async function guardarLocal() {
     updatedAt: serverTimestamp()
   };
 
+  // Si estamos en modo fallback (sin permisos/lectura desde Personas), guardamos en este navegador
+  if (localesFromPersonasFallback) {
+    upsertLocalesLocal({ ...l, activo: true, updatedAt: new Date().toISOString() });
+    toast("Local guardado (este navegador).");
+    limpiarLocForm();
+    await cargarLocales();
+    return;
+  }
+
   try {
     if (editLocId) {
       await updateDoc(doc(db, "conferenciantesLocales", editLocId), payload);
@@ -416,28 +425,21 @@ async function guardarLocal() {
       await addDoc(collection(db, "conferenciantesLocales"), { ...payload, createdAt: serverTimestamp() });
       toast("Local guardado.");
     }
-    // Si existía guardado local, lo limpiamos
-    try{
+
+    // Si existía guardado local (respaldo), lo limpiamos
+    try {
       const arr = readLocalesLocal();
-      const key = String(payload.nombre||"").trim().toLowerCase();
-      writeLocalesLocal(arr.filter(x=>String(x.nombre||"").trim().toLowerCase()!==key));
-    }catch(_){}
+      const key = String(l.nombre || "").trim().toLowerCase();
+      writeLocalesLocal(arr.filter(x => String(x.nombre || "").trim().toLowerCase() !== key));
+    } catch (_) {}
+
     limpiarLocForm();
     await cargarLocales();
   } catch (e) {
     console.error(e);
     toast("No pude guardar local. Revisá permisos.", true);
   }
-try{
-    if(localesFromPersonasFallback){
-      // Guardar en este navegador
-      upsertLocalesLocal({ ...payload, updatedAt: new Date().toISOString() });
-      toast("Local guardado (este navegador).");
-      limpiarLocForm();
-      await cargarLocales();
-      return;
-    }
-
+}
 
 function generarMensajeLocales() {
   const activos = cacheLoc
