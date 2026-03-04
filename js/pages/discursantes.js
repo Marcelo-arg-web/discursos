@@ -33,14 +33,6 @@ async function getUsuario(uid) {
 }
 
 function ensureTopbarStyles(){ /* estilos unificados en css/styles.css */ }
-    .topbar .brand{font-weight:800}
-    .topbar .links{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-    .topbar a{color:#fff;text-decoration:none;font-weight:700;font-size:13px;opacity:.92}
-    .topbar a.active{text-decoration:underline;opacity:1}
-    .topbar .btn.danger{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239}
-  `;
-  document.head.appendChild(s);
-}
 
 function renderTopbar(active){
   const el = document.getElementById("topbar");

@@ -230,10 +230,13 @@ function render(mesISO, items){
 
   cont.innerHTML = `
     <div class="month-banner">
-      <img src="assets/jw-header.jpg" alt="" />
-      <div class="meta">
-        <div class="left">Mes: ${escapeHtml(monthTitle)}</div>
-        <div class="right">Programa de discursos públicos</div>
+      <div class="mb-row">
+        <img class="mb-img" src="assets/jw-header.jpg" alt="" />
+        <div class="mb-text">
+          <div class="mb-title">Asignaciones Mensuales</div>
+          <div class="mb-month">${escapeHtml(monthTitle)}</div>
+          <div class="mb-cong">Congr. Villa Fiad</div>
+        </div>
       </div>
     </div>
     ${blocks}
