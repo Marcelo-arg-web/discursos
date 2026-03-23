@@ -18,7 +18,7 @@ async function getUsuario(uid){
 
 function isAdminRole(rol){
   const r = String(rol||"").toLowerCase();
-  return r === "admin" || r === "superadmin";
+  return r === "editor" || r === "admin" || r === "superadmin";
 }
 
 function isSuperadmin(rol){

@@ -18,7 +18,7 @@ async function getUsuario(uid){
 
 function isAdminRole(rol){
   const r = String(rol||"").toLowerCase();
-  return r === "admin" || r === "superadmin";
+  return r === "editor" || r === "admin" || r === "superadmin";
 }
 
 function renderTopbar(active){
@@ -103,6 +103,7 @@ function hasRole(p, role){
 function render(){
   const q = (document.getElementById("q")?.value || "").toLowerCase();
   const filtro = (document.getElementById("filtroRol")?.value || "").toLowerCase();
+  const filtroEstado = (document.getElementById("filtroEstado")?.value || "").toLowerCase();
 
   const tbody = document.querySelector("#tbl tbody");
   if(!tbody) return;
@@ -111,6 +112,13 @@ function render(){
   const rows = cache
     .filter(p => (p.nombre || "").toLowerCase().includes(q))
     .filter(p => !filtro || hasRole(p, filtro))
+    .filter(p => {
+      if(!filtroEstado) return true;
+      const activo = p.activo !== false;
+      if(filtroEstado === "activos") return activo;
+      if(filtroEstado === "inactivos") return !activo;
+      return true;
+    })
     .sort((a,b)=> (a.nombre||"").localeCompare(b.nombre||"","es"));
 
   for(const p of rows){
@@ -141,6 +149,7 @@ function render(){
         document.getElementById("p_nombre").value = p.nombre || "";
         document.getElementById("p_tel").value = p.telefono || "";
         document.getElementById("p_roles").value = (p.roles||[]).join(", ");
+        document.getElementById("p_activo").checked = p.activo !== false;
         document.getElementById("p_id").value = p.id;
         toast("Editando: "+(p.nombre||""), false);
       }
@@ -167,6 +176,8 @@ function limpiar(){
   document.getElementById("p_nombre").value = "";
   document.getElementById("p_tel").value = "";
   document.getElementById("p_roles").value = "";
+  const activo = document.getElementById("p_activo");
+  if(activo) activo.checked = true;
 }
 
 async function guardar(){
@@ -174,6 +185,7 @@ async function guardar(){
   const telefono = (document.getElementById("p_tel").value || "").trim();
   const roles = parseRoles(document.getElementById("p_roles").value);
   const id = (document.getElementById("p_id").value || "").trim();
+  const activo = document.getElementById("p_activo")?.checked !== false;
 
   if(!nombre) return toast("Falta nombre.", true);
 
@@ -181,7 +193,7 @@ async function guardar(){
     nombre,
     telefono,
     roles,
-    activo: true,
+    activo,
     updatedAt: serverTimestamp()
   };
 
@@ -223,7 +235,7 @@ async function guardar(){
     const b2 = document.getElementById("btnLimpiar");
     if(b1) b1.disabled = true;
     if(b2) b2.disabled = true;
-    ["p_nombre","p_tel","p_roles"].forEach(id=>{ const el = document.getElementById(id); if(el) el.disabled = true; });
+    ["p_nombre","p_tel","p_roles","p_activo"].forEach(id=>{ const el = document.getElementById(id); if(el) el.disabled = true; });
     // Oculta la columna de acciones
     const ths = document.querySelectorAll("#tbl thead th");
     if(ths && ths.length) ths[ths.length-1].style.display = "none";
@@ -231,6 +243,7 @@ async function guardar(){
 
   document.getElementById("q")?.addEventListener("input", render);
   document.getElementById("filtroRol")?.addEventListener("change", render);
+  document.getElementById("filtroEstado")?.addEventListener("change", render);
 
   await cargar();
 })();

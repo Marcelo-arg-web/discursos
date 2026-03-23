@@ -267,7 +267,7 @@ function renderTopbar(active){
 
 function isAdminRole(rol){
   const r = String(rol||"").toLowerCase();
-  return r === "admin" || r === "superadmin";
+  return r === "editor" || r === "admin" || r === "superadmin";
 }
 
 function applyReadOnlyMode(){
