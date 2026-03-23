@@ -107,7 +107,8 @@ function escapeHtml(str){
 function setStatus(msg, isError = false) {
   const box = $("status");
   if (!box) return;
-  box.textContent = msg;
+  box.textContent = msg || "";
+  box.style.display = msg ? "block" : "none";
   box.style.background = isError ? "#fff1f2" : "#f8fafc";
   box.style.borderColor = isError ? "#fecdd3" : "#e5e7eb";
   box.style.color = isError ? "#9f1239" : "#111827";
@@ -228,7 +229,91 @@ const candidates = {
   multimedia: [],
   plataforma: [],
   acomodadores: [],
+  microfonistas: [],
 };
+
+function saturdayForMeetingWeek(dateISO) {
+  const dt = isoToDate(dateISO);
+  if (!dt) return "";
+  const dow = dt.getDay();
+  let delta = 0;
+  if (dow === 4) delta = 2;       // jueves -> sábado
+  else if (dow === 5) delta = 1;  // viernes -> sábado
+  else if (dow === 6) delta = 0;  // sábado
+  else if (dow === 0) delta = -1; // domingo -> sábado anterior
+  dt.setDate(dt.getDate() + delta);
+  return toISODate(dt);
+}
+
+async function poblarDatalistOradores() {
+  const list = $("listaOradoresVisitantes");
+  if (!list) return;
+  const seen = new Set();
+  const items = [];
+
+  const pushItem = (nombre, congregacion = "") => {
+    const n = String(nombre || "").trim();
+    const c = String(congregacion || "").trim();
+    if (!n) return;
+    const key = `${normalize(n)}|${normalize(c)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    items.push({ nombre: n, congregacion: c });
+  };
+
+  Object.values(visitantesLocal || {}).forEach((v) => {
+    pushItem(v?.nombre || v?.discursante, v?.congregacion);
+  });
+
+  try {
+    const snap = await getDocs(collection(db, "visitantes"));
+    snap.docs.forEach((d) => {
+      const v = d.data() || {};
+      pushItem(v?.nombre || v?.discursante, v?.congregacion);
+    });
+  } catch (e) {
+    console.warn("No pude cargar visitantes para datalist:", e);
+  }
+
+  items.sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }));
+  list.innerHTML = "";
+  items.forEach((item) => {
+    const opt = document.createElement("option");
+    opt.value = item.nombre;
+    opt.label = item.congregacion ? `${item.nombre} — ${item.congregacion}` : item.nombre;
+    list.appendChild(opt);
+  });
+}
+
+async function aplicarAutoVisitante(semanaRefISO) {
+  const refISO = saturdayForMeetingWeek(semanaRefISO || semanaISO());
+  if (!refISO) return;
+
+  let v = visitantesLocal?.[refISO] || null;
+  if (!v) {
+    try {
+      const snap = await getDoc(doc(db, "visitantes", refISO));
+      if (snap.exists()) v = snap.data() || null;
+    } catch (e) {
+      console.warn("No pude leer visitante automático:", e);
+    }
+  }
+  if (!v) return;
+
+  const actualOrador = String(getVal("oradorPublico") || "").trim();
+  const actualCong = String(getVal("congregacionVisitante") || "").trim();
+  const actualTitulo = String(getVal("tituloDiscurso") || "").trim();
+  const actualNum = String(getVal("discursoNumero") || "").trim();
+  const actualCancion = String(getVal("cancionNumero") || "").trim();
+
+  if (!actualOrador && (v.nombre || v.discursante)) setVal("oradorPublico", v.nombre || v.discursante || "");
+  if (!actualCong && v.congregacion) setVal("congregacionVisitante", v.congregacion || "");
+  if (!actualNum && (v.bosquejo || v.numero)) setVal("discursoNumero", String(v.bosquejo || v.numero || ""));
+  if (!actualTitulo && v.titulo) setVal("tituloDiscurso", v.titulo || "");
+  if (!actualCancion && v.cancion) setVal("cancionNumero", String(v.cancion || ""));
+
+  try { aplicarAutoDiscurso(); } catch (_e) {}
+}
 
 async function getUsuario(uid){
   try{
@@ -722,7 +807,8 @@ async function guardarMes() {
       : { semanas: { [weekKey]: weekData } };
     lastMesDoc = data;
     renderMesPreview(mesISO, data);
-    setStatus("Mes guardado OK.");
+    setStatus("Mes guardado con éxito.");
+    toastLite("Mes guardado con éxito.");
   } catch (e) {
     console.error(e);
     setStatus(`No pude guardar el mes.${e?.message ? " " + e.message : ""}`, true);
@@ -789,6 +875,7 @@ function poblarSelects() {
   candidates.multimedia = (multimedia || []).map(p=>p.id);
   candidates.plataforma = (plataforma || []).map(p=>p.id);
   candidates.acomodadores = (acomodadores || []).map(p=>p.id);
+  candidates.microfonistas = (microfonistas || []).map(p=>p.id);
 
   const byIds = (arr) => {
     const set = new Set((arr || []).map((p) => p.id));
