@@ -583,3 +583,9 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
   .topbar .actions{ margin-left:auto; }
   .topbar .btn.pwa-install{ display:inline-flex; }
 }
+
+
+.status-ok{background:#ecfdf5!important;border-color:#a7f3d0!important;color:#166534!important;}
+.topbar .links{row-gap:6px;}
+.topbar .links a{padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.55);border:1px solid rgba(148,163,184,.25);}
+.topbar .links a.active{background:#eaf2ff;color:var(--primary);border-color:#bfdbfe;text-decoration:none;}

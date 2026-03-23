@@ -77,17 +77,17 @@ function renderTopbar(active){
       <div class="links">
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
-        <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
         <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acom/AV</a>
-        <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
-        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
+        <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
         <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
         <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
-        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
-        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>
+        <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
+        <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
         <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
         <a href="usuarios.html" class="${active==='usuarios'?'active':''}">Usuarios</a>
+        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
+        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>
       </div>
       <div class="actions">
         <button id="btnSalir" class="btn danger sm" type="button">Salir</button>
@@ -136,8 +136,7 @@ function escapeHtml(str){
 let personasMap = new Map();
 async function loadPersonasMap(){
   try{
-    const qy = query(collection(db,"personas"), where("activo","==", true));
-    const snap = await getDocs(qy);
+    const snap = await getDocs(collection(db,"personas"));
     personasMap = new Map(snap.docs.map(d=>[d.id, (d.data()?.nombre||"").toString()]));
   }catch(e){
     console.warn("No pude cargar personas para nombres:", e);
@@ -159,12 +158,6 @@ function formatFecha(iso){
   const dt = isoToDate(iso);
   if(!dt) return iso;
   return dt.toLocaleDateString("es-AR",{ weekday:"short", day:"numeric", month:"short" });
-}
-function formatFechaCorta(iso){
-  const dt = isoToDate(iso);
-  if(!dt) return iso;
-  const wk = dt.toLocaleDateString("es-AR",{ weekday:"short" }).replace('.', '');
-  return `${wk.charAt(0).toUpperCase()+wk.slice(1)} ${dt.getDate()}`;
 }
 function juevesAnteriorISO(iso){
   const dt = isoToDate(iso);
@@ -209,55 +202,45 @@ async function loadDocsInMonth(mesISO){
   });
 }
 
+function joinPair(a, b){
+  const left = String(a || "").trim() || "—";
+  const right = String(b || "").trim() || "—";
+  return `${left} / ${right}`;
+}
+
+function buildHeader(cols){
+  return `<thead><tr><th class="td-center">Sem</th><th>Fecha</th>${cols.map(c=>`<th>${c}</th>`).join("")}</tr><tr><th></th><th></th>${cols.map(()=>`<th>Jue / Sab</th>`).join("")}</tr></thead>`;
+}
+
 function render(mesISO, pairs){
   const host = $("contenido");
 
-  const fechaRango = (p) => `${p.juevesCorta} / ${p.finCorta}`;
-  const duo = (j, s) => `${escapeHtml(j || "—")} / ${escapeHtml(s || "—")}`;
+  const rowsAco = pairs.map(p => `
+    <tr>
+      <td class="td-center">${p.semana}</td>
+      <td>${escapeHtml(p.fechaLabel)}</td>
+      <td>${escapeHtml(joinPair(p.jueves.entrada, p.fin.entrada))}</td>
+      <td>${escapeHtml(joinPair(p.jueves.auditorio1, p.fin.auditorio1))}</td>
+      <td>${escapeHtml(joinPair(p.jueves.auditorio2, p.fin.auditorio2))}</td>
+    </tr>`).join("");
 
-  const rowsAco = pairs.map(p=>`
-      <tr>
-        <td class="td-center">${p.semana}</td>
-        <td>${escapeHtml(fechaRango(p))}</td>
-        <td>${duo(p.jueves.entrada, p.fin.entrada)}</td>
-        <td>${duo(p.jueves.auditorio1, p.fin.auditorio1)}</td>
-        <td>${duo(p.jueves.auditorio2, p.fin.auditorio2)}</td>
-      </tr>
-    `).join("");
+  const rowsAV = pairs.map(p => `
+    <tr>
+      <td class="td-center">${p.semana}</td>
+      <td>${escapeHtml(p.fechaLabel)}</td>
+      <td>${escapeHtml(joinPair(p.juevesAV.audio, p.finAV.audio))}</td>
+      <td>${escapeHtml(joinPair(p.juevesAV.video, p.finAV.video))}</td>
+    </tr>`).join("");
 
-  const rowsAV = pairs.map(p=>`
-      <tr>
-        <td class="td-center">${p.semana}</td>
-        <td>${escapeHtml(fechaRango(p))}</td>
-        <td>${duo(p.juevesAV.audio, p.finAV.audio)}</td>
-        <td>${duo(p.juevesAV.video, p.finAV.video)}</td>
-      </tr>
-    `).join("");
-
-  const rowsMic = pairs.map(p=>`
-      <tr>
-        <td class="td-center">${p.semana}</td>
-        <td>${escapeHtml(fechaRango(p))}</td>
-        <td>${duo(p.juevesMic.microfonista1, p.finMic.microfonista1)}</td>
-        <td>${duo(p.juevesMic.microfonista2, p.finMic.microfonista2)}</td>
-      </tr>
-    `).join("");
-
-  const subhead = (cols) => `<tr class="board-subhead"><th></th>${cols.map(()=>'<th class="td-center">Jue / Sab</th>').join('')}</tr>`;
+  const rowsMic = pairs.map(p => `
+    <tr>
+      <td class="td-center">${p.semana}</td>
+      <td>${escapeHtml(p.fechaLabel)}</td>
+      <td>${escapeHtml(joinPair(p.juevesMic.mic1, p.finMic.mic1))}</td>
+      <td>${escapeHtml(joinPair(p.juevesMic.mic2, p.finMic.mic2))}</td>
+    </tr>`).join("");
 
   host.innerHTML = `
-    <style>
-      .board-compact th, .board-compact td { padding: 6px 8px; font-size: 12px; vertical-align: top; }
-      .board-compact thead th { font-size: 12px; }
-      .board-compact .td-center { text-align: center; }
-      .board-subhead th { font-size: 11px; color: #6b7280; font-weight: 600; background: #f8fafc; }
-      .board-wrap { break-inside: avoid; }
-      @media print {
-        .board-compact th, .board-compact td { padding: 5px 6px; font-size: 11px; }
-        .board-subhead th { font-size: 10px; }
-        .board-section-title { margin-bottom: 4px; }
-      }
-    </style>
     <div class="print-header">
       <div class="h2">Congregación Villa Fiad</div>
       <div class="muted">Acom/AV · Mes ${escapeHtml(mesISO)}</div>
@@ -265,68 +248,24 @@ function render(mesISO, pairs){
 
     <div class="board-wrap" id="aco" style="margin-top:10px;">
       <div class="board-section-title">Acomodadores</div>
-      <table class="table board board-compact" style="width:100%;">
-        <colgroup>
-          <col style="width:46px;" />
-          <col style="width:120px;" />
-          <col style="width:28%;" />
-          <col style="width:28%;" />
-          <col style="width:28%;" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="td-center">Sem</th>
-            <th>Fecha</th>
-            <th>Entrada</th>
-            <th>Auditorio 1</th>
-            <th>Auditorio 2</th>
-          </tr>
-          ${subhead([1,2,3,4])}
-        </thead>
+      <table class="table board" style="width:100%;">
+        ${buildHeader(["Entrada","Auditorio 1","Auditorio 2"])}
         <tbody>${rowsAco || `<tr><td colspan="5" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
     </div>
 
-    <div class="board-wrap" id="av" style="margin-top:12px;">
+    <div class="board-wrap" id="av" style="margin-top:14px;">
       <div class="board-section-title">Audio y video</div>
-      <table class="table board board-compact" style="width:100%;">
-        <colgroup>
-          <col style="width:46px;" />
-          <col style="width:120px;" />
-          <col style="width:37%;" />
-          <col style="width:37%;" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="td-center">Sem</th>
-            <th>Fecha</th>
-            <th>Audio</th>
-            <th>Video</th>
-          </tr>
-          ${subhead([1,2,3])}
-        </thead>
+      <table class="table board" style="width:100%;">
+        ${buildHeader(["Audio","Video"])}
         <tbody>${rowsAV || `<tr><td colspan="4" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
     </div>
 
-    <div class="board-wrap" id="mic" style="margin-top:12px;">
+    <div class="board-wrap" id="mic" style="margin-top:14px;">
       <div class="board-section-title">Microfonistas</div>
-      <table class="table board board-compact" style="width:100%;">
-        <colgroup>
-          <col style="width:46px;" />
-          <col style="width:120px;" />
-          <col style="width:37%;" />
-          <col style="width:37%;" />
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="td-center">Sem</th>
-            <th>Fecha</th>
-            <th>Mic. 1</th>
-            <th>Mic. 2</th>
-          </tr>
-          ${subhead([1,2,3])}
-        </thead>
+      <table class="table board" style="width:100%;">
+        ${buildHeader(["Mic. 1","Mic. 2"])}
         <tbody>${rowsMic || `<tr><td colspan="4" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
     </div>
@@ -387,20 +326,17 @@ const mapAco = (asig)=>({
 
 
       const mapAV = (asig)=>({
-  audio: resolveNombre(asig, ["audioId","audioNombre","audio","multimedia1Id","multimedia1Nombre","multimedia1"]),
-  video: resolveNombre(asig, ["videoId","videoNombre","video","multimedia2Id","multimedia2Nombre","multimedia2"]),
+  audio: resolveNombre(asig, ["multimedia1Id","multimedia1Nombre","multimedia1"]),
+  video: resolveNombre(asig, ["multimedia2Id","multimedia2Nombre","multimedia2"]),
 });
 const mapMic = (asig)=>({
-  microfonista1: resolveNombre(asig, ["microfonista1Id","microfonista1Nombre","microfonista1"]),
-  microfonista2: resolveNombre(asig, ["microfonista2Id","microfonista2Nombre","microfonista2"]),
+  mic1: resolveNombre(asig, ["microfonista1Id","microfonista1Nombre","microfonista1"]),
+  mic2: resolveNombre(asig, ["microfonista2Id","microfonista2Nombre","microfonista2"]),
 });
 const juevesAsig = juevesAsignDoc || finAsign;
       pairs.push({
         semana: i+1,
-        juevesLabel: juevesISO ? formatFecha(juevesISO) : "—",
-        finLabel: formatFecha(finISO),
-        juevesCorta: juevesISO ? formatFechaCorta(juevesISO) : "Jue —",
-        finCorta: formatFechaCorta(finISO),
+        fechaLabel: `${juevesISO ? formatFecha(juevesISO) : "—"} / ${formatFecha(finISO)}`,
         jueves: mapAco(juevesAsig),
         fin: mapAco(finAsign),
         juevesAV: mapAV(juevesAsig),

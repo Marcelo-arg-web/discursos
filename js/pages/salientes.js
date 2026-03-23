@@ -23,7 +23,7 @@ function hoyISO(){ const h=new Date(); h.setHours(0,0,0,0); return h.toISOString
 
 function isAdminRole(rol){
   const r = String(rol||"").toLowerCase();
-  return r === "editor" || r === "admin" || r === "superadmin";
+  return r === "admin" || r === "superadmin";
 }
 
 

@@ -11,13 +11,6 @@ function toast(msg, isError=false){
   setTimeout(()=>{ host.innerHTML=""; }, 5000);
 }
 
-function setSaveMsg(msg, isError=false){
-  const box = $("saveMsg");
-  if(!box) return;
-  box.textContent = msg || "";
-  box.style.color = isError ? "#9f1239" : "#166534";
-}
-
 async function getUsuario(uid){
   const snap = await getDoc(doc(db,"usuarios",uid));
   return snap.exists() ? snap.data() : null;
@@ -25,7 +18,7 @@ async function getUsuario(uid){
 
 function isAdminRole(rol){
   const r = String(rol||"").toLowerCase();
-  return r === "editor" || r === "admin" || r === "superadmin";
+  return r === "admin" || r === "superadmin";
 }
 
 function renderTopbar(active){
@@ -42,7 +35,12 @@ function renderTopbar(active){
         <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
         <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
+        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
+        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
+        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
+        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
+        <a href="usuarios.html" class="${active==='usuarios'?'active':''}">Usuarios</a>
       </div>
       <div class="actions">
         <button id="btnSalir" class="btn danger sm" type="button">Salir</button>
@@ -102,17 +100,9 @@ function hasRole(p, role){
   return roles.map(r=>String(r).toLowerCase()).includes(String(role).toLowerCase());
 }
 
-function isPersonaActiva(p){
-  const v = p?.activo;
-  if (v === false || v === 0) return false;
-  const n = String(v ?? "").trim().toLowerCase();
-  return !["false","0","no","inactivo","inactive"].includes(n);
-}
-
 function render(){
   const q = (document.getElementById("q")?.value || "").toLowerCase();
   const filtro = (document.getElementById("filtroRol")?.value || "").toLowerCase();
-  const filtroEstado = (document.getElementById("filtroEstado")?.value || "").toLowerCase();
 
   const tbody = document.querySelector("#tbl tbody");
   if(!tbody) return;
@@ -121,13 +111,6 @@ function render(){
   const rows = cache
     .filter(p => (p.nombre || "").toLowerCase().includes(q))
     .filter(p => !filtro || hasRole(p, filtro))
-    .filter(p => {
-      if(!filtroEstado) return true;
-      const activo = isPersonaActiva(p);
-      if(filtroEstado === "activos") return activo;
-      if(filtroEstado === "inactivos") return !activo;
-      return true;
-    })
     .sort((a,b)=> (a.nombre||"").localeCompare(b.nombre||"","es"));
 
   for(const p of rows){
@@ -158,9 +141,7 @@ function render(){
         document.getElementById("p_nombre").value = p.nombre || "";
         document.getElementById("p_tel").value = p.telefono || "";
         document.getElementById("p_roles").value = (p.roles||[]).join(", ");
-        document.getElementById("p_activo").checked = isPersonaActiva(p);
         document.getElementById("p_id").value = p.id;
-        setSaveMsg("Editando: " + (p.nombre||""));
         toast("Editando: "+(p.nombre||""), false);
       }
 
@@ -182,13 +163,10 @@ async function cargar(){
 }
 
 function limpiar(){
-  const pid = document.getElementById("p_id");
-  if(pid) pid.value = "";
+  document.getElementById("p_id").value = "";
   document.getElementById("p_nombre").value = "";
   document.getElementById("p_tel").value = "";
   document.getElementById("p_roles").value = "";
-  const activo = document.getElementById("p_activo");
-  if(activo) activo.checked = true;
 }
 
 async function guardar(){
@@ -196,38 +174,31 @@ async function guardar(){
   const telefono = (document.getElementById("p_tel").value || "").trim();
   const roles = parseRoles(document.getElementById("p_roles").value);
   const id = (document.getElementById("p_id").value || "").trim();
-  const activo = document.getElementById("p_activo")?.checked !== false;
 
   if(!nombre) return toast("Falta nombre.", true);
-
-  setSaveMsg("Guardando…");
 
   const payload = {
     nombre,
     telefono,
     roles,
-    activo,
+    activo: true,
     updatedAt: serverTimestamp()
   };
 
   try{
     if(id){
       await updateDoc(docRef(db,"personas",id), payload);
-      setSaveMsg("Guardado con éxito.");
-      toast("Guardado con éxito.");
+      toast("Actualizado.");
     }else{
       payload.createdAt = serverTimestamp();
       await addDoc(collection(db,"personas"), payload);
-      setSaveMsg("Guardado con éxito.");
-      toast("Guardado con éxito.");
+      toast("Guardado.");
     }
     limpiar();
     await cargar();
   }catch(e){
     console.error(e);
-    const detail = e?.message ? ` ${e.message}` : "";
-    setSaveMsg("No pude guardar." + detail, true);
-    toast("No pude guardar." + detail, true);
+    toast("No pude guardar. Revisá permisos.", true);
   }
 }
 
@@ -236,16 +207,23 @@ async function guardar(){
   const admin = isAdminRole(usuario?.rol);
   IS_ADMIN = admin;
 
-    if(admin){
-    document.getElementById("btnGuardar")?.addEventListener("click", (e)=>{ e.preventDefault(); guardar(); });
-    document.getElementById("btnLimpiar")?.addEventListener("click", (e)=>{ e.preventDefault(); limpiar(); setSaveMsg("Formulario limpio."); toast("Formulario limpio."); });
+  // hidden id for editing
+  if(!document.getElementById("p_id")){
+    const hid = document.createElement("input");
+    hid.type="hidden"; hid.id="p_id";
+    document.body.appendChild(hid);
+  }
+
+  if(admin){
+    document.getElementById("btnGuardar")?.addEventListener("click", guardar);
+    document.getElementById("btnLimpiar")?.addEventListener("click", ()=>{ limpiar(); toast("Formulario limpio."); });
   }else{
     toast("Modo solo lectura: no podés editar Personas.");
     const b1 = document.getElementById("btnGuardar");
     const b2 = document.getElementById("btnLimpiar");
     if(b1) b1.disabled = true;
     if(b2) b2.disabled = true;
-    ["p_nombre","p_tel","p_roles","p_activo"].forEach(id=>{ const el = document.getElementById(id); if(el) el.disabled = true; });
+    ["p_nombre","p_tel","p_roles"].forEach(id=>{ const el = document.getElementById(id); if(el) el.disabled = true; });
     // Oculta la columna de acciones
     const ths = document.querySelectorAll("#tbl thead th");
     if(ths && ths.length) ths[ths.length-1].style.display = "none";
@@ -253,16 +231,6 @@ async function guardar(){
 
   document.getElementById("q")?.addEventListener("input", render);
   document.getElementById("filtroRol")?.addEventListener("change", render);
-  document.getElementById("filtroEstado")?.addEventListener("change", render);
-
-  ["p_nombre","p_tel","p_roles"].forEach(id=>{
-    document.getElementById(id)?.addEventListener("keydown", (e)=>{
-      if(e.key === "Enter" && IS_ADMIN){
-        e.preventDefault();
-        guardar();
-      }
-    });
-  });
 
   await cargar();
 })();

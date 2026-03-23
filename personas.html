@@ -17,7 +17,6 @@
 <div class="card pad">
 <h2 class="h1" style="margin-bottom:6px;">Personas</h2>
 <div class="muted">Cargá hermanos (y visitantes si querés) con roles para asignaciones.</div>
-<div id="saveMsg" class="small muted" style="margin-top:10px;"></div>
 <hr class="sep"/>
 <div class="row">
 <div class="col">
@@ -31,16 +30,9 @@
 </div>
 <label>Roles (separados por coma)</label>
 <input class="input" id="p_roles" placeholder="Ej: anciano, discursante, microfonista"/>
-<div class="row" style="margin-top:10px;align-items:center;gap:12px;">
-<label style="display:flex;align-items:center;gap:8px;margin:0;">
-<input id="p_activo" type="checkbox" checked/>
-<span>Activo para sugerencias</span>
-</label>
-</div>
 <div class="row" style="margin-top:12px;">
-<input id="p_id" type="hidden"/>
-<button class="btn primary" id="btnGuardar" type="button">Guardar</button>
-<button class="btn" id="btnLimpiar" type="button">Limpiar</button>
+<button class="btn primary" id="btnGuardar">Guardar</button>
+<button class="btn" id="btnLimpiar">Limpiar</button>
 </div>
 <hr class="sep"/>
 <div class="small muted">
@@ -66,14 +58,6 @@
 <option value="acomodador">Acomodadores</option>
 <option value="audio">Audio</option>
 <option value="video">Video</option>
-</select>
-</div>
-<div class="col" style="max-width:220px;">
-<label>Estado</label>
-<select id="filtroEstado">
-<option value="">Todos</option>
-<option value="activos">Solo activos</option>
-<option value="inactivos">Solo inactivos</option>
 </select>
 </div>
 </div>
@@ -125,7 +109,7 @@
     });
   });
 })();
-</script><script src="js/pages/personas.js?v=20260324a" type="module"></script>
+</script><script src="js/pages/personas.js?v=20260302" type="module"></script>
   <script src="js/nav-mobile.js"></script>
 </body>
 </html>

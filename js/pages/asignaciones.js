@@ -34,63 +34,7 @@ const $ = (id) => document.getElementById(id);
 const getVal = (id) => ($(id)?.value ?? "");
 const setVal = (id, v) => {
   const el = $(id);
-  if (el) el.value = v ?? "";
-};
 
-function normalizeText(s) {
-  return String(s || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[\.\,\;\:]+$/g, "")
-    .replace(/\s+/g, " ");
-}
-
-function isPersonaActiva(p) {
-  const v = p?.activo;
-  if (v === false || v === 0) return false;
-  const n = normalizeText(v);
-  if (["false", "0", "no", "inactivo", "inactive"].includes(n)) return false;
-  return true;
-}
-
-function personaById(id) {
-  return personas.find((p) => p.id === id) || null;
-}
-
-function personaByName(name) {
-  const target = normalizeText(name);
-  if (!target) return null;
-  return personas.find((p) => normalizeText(p?.nombre) === target) || null;
-}
-
-function resolvePersonaId(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  if (personaById(raw)) return raw;
-  const byName = personaByName(raw);
-  return byName?.id || raw;
-}
-
-function ensureSelectValue(selectId, rawValue) {
-  const sel = $(selectId);
-  if (!sel || !sel.options) return resolvePersonaId(rawValue);
-  const value = resolvePersonaId(rawValue);
-  if (!value) return "";
-
-  if (Array.from(sel.options).some((o) => o.value === value)) return value;
-
-  const p = personaById(value);
-  if (p) {
-    const suffix = isPersonaActiva(p) ? "" : " (inactivo)";
-    addOpt(sel, p.id, `${displayName(p)}${suffix}`);
-    return value;
-  }
-
-  addOpt(sel, value, String(rawValue));
-  return value;
-}
 
 // ---------------- Semana Jueves/Sábado: copiar asignados automáticamente ----------------
 function isoToDate(iso){
@@ -148,6 +92,8 @@ async function copiarAsignadosAlJuevesSiCorresponde(fechaFinDeSemanaISO, dataAsi
     copiadoDesdeFinDeSemana: fechaFinDeSemanaISO,
   }, { merge: true });
 }
+  if (el) el.value = v ?? "";
+};
 
 function escapeHtml(str){
   return String(str ?? "")
@@ -161,20 +107,10 @@ function escapeHtml(str){
 function setStatus(msg, isError = false) {
   const box = $("status");
   if (!box) return;
-  box.textContent = msg || "";
-  box.style.display = msg ? "block" : "none";
+  box.textContent = msg;
   box.style.background = isError ? "#fff1f2" : "#f8fafc";
   box.style.borderColor = isError ? "#fecdd3" : "#e5e7eb";
   box.style.color = isError ? "#9f1239" : "#111827";
-}
-
-function toastLite(msg, isError = false) {
-  const host = $("toastHost") || document.body;
-  const el = document.createElement("div");
-  el.className = `toast ${isError ? "err" : ""}`;
-  el.textContent = msg;
-  host.prepend(el);
-  setTimeout(()=>el.remove(), 4000);
 }
 
 function setBusy(btnId, busy, busyLabel = "Procesando…") {
@@ -283,91 +219,7 @@ const candidates = {
   multimedia: [],
   plataforma: [],
   acomodadores: [],
-  microfonistas: [],
 };
-
-function saturdayForMeetingWeek(dateISO) {
-  const dt = isoToDate(dateISO);
-  if (!dt) return "";
-  const dow = dt.getDay();
-  let delta = 0;
-  if (dow === 4) delta = 2;       // jueves -> sábado
-  else if (dow === 5) delta = 1;  // viernes -> sábado
-  else if (dow === 6) delta = 0;  // sábado
-  else if (dow === 0) delta = -1; // domingo -> sábado anterior
-  dt.setDate(dt.getDate() + delta);
-  return toISODate(dt);
-}
-
-async function poblarDatalistOradores() {
-  const list = $("listaOradoresVisitantes");
-  if (!list) return;
-  const seen = new Set();
-  const items = [];
-
-  const pushItem = (nombre, congregacion = "") => {
-    const n = String(nombre || "").trim();
-    const c = String(congregacion || "").trim();
-    if (!n) return;
-    const key = `${normalize(n)}|${normalize(c)}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    items.push({ nombre: n, congregacion: c });
-  };
-
-  Object.values(visitantesLocal || {}).forEach((v) => {
-    pushItem(v?.nombre || v?.discursante, v?.congregacion);
-  });
-
-  try {
-    const snap = await getDocs(collection(db, "visitantes"));
-    snap.docs.forEach((d) => {
-      const v = d.data() || {};
-      pushItem(v?.nombre || v?.discursante, v?.congregacion);
-    });
-  } catch (e) {
-    console.warn("No pude cargar visitantes para datalist:", e);
-  }
-
-  items.sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }));
-  list.innerHTML = "";
-  items.forEach((item) => {
-    const opt = document.createElement("option");
-    opt.value = item.nombre;
-    opt.label = item.congregacion ? `${item.nombre} — ${item.congregacion}` : item.nombre;
-    list.appendChild(opt);
-  });
-}
-
-async function aplicarAutoVisitante(semanaRefISO) {
-  const refISO = saturdayForMeetingWeek(semanaRefISO || semanaISO());
-  if (!refISO) return;
-
-  let v = visitantesLocal?.[refISO] || null;
-  if (!v) {
-    try {
-      const snap = await getDoc(doc(db, "visitantes", refISO));
-      if (snap.exists()) v = snap.data() || null;
-    } catch (e) {
-      console.warn("No pude leer visitante automático:", e);
-    }
-  }
-  if (!v) return;
-
-  const actualOrador = String(getVal("oradorPublico") || "").trim();
-  const actualCong = String(getVal("congregacionVisitante") || "").trim();
-  const actualTitulo = String(getVal("tituloDiscurso") || "").trim();
-  const actualNum = String(getVal("discursoNumero") || "").trim();
-  const actualCancion = String(getVal("cancionNumero") || "").trim();
-
-  if (!actualOrador && (v.nombre || v.discursante)) setVal("oradorPublico", v.nombre || v.discursante || "");
-  if (!actualCong && v.congregacion) setVal("congregacionVisitante", v.congregacion || "");
-  if (!actualNum && (v.bosquejo || v.numero)) setVal("discursoNumero", String(v.bosquejo || v.numero || ""));
-  if (!actualTitulo && v.titulo) setVal("tituloDiscurso", v.titulo || "");
-  if (!actualCancion && v.cancion) setVal("cancionNumero", String(v.cancion || ""));
-
-  try { aplicarAutoDiscurso(); } catch (_e) {}
-}
 
 async function getUsuario(uid){
   try{
@@ -389,12 +241,17 @@ function renderTopbar(active){
       <div class="links">
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
-        <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
         <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acom/AV</a>
+        <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
+        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
+        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
         <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
-        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
+        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
+        <a href="usuarios.html" class="${active==='usuarios'?'active':''}">Usuarios</a>
+        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
+        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>
       </div>
       <div class="actions">
         <button id="btnSalir" class="btn danger sm" type="button">Salir</button>
@@ -410,7 +267,7 @@ function renderTopbar(active){
 
 function isAdminRole(rol){
   const r = String(rol||"").toLowerCase();
-  return r === "editor" || r === "admin" || r === "superadmin";
+  return r === "admin" || r === "superadmin";
 }
 
 function applyReadOnlyMode(){
@@ -442,19 +299,12 @@ function applyReadOnlyMode(){
   // Botones sugerir
   [
     "btnSugerirPresidente","btnSugerirConductor","btnSugMultimedia1","btnSugMultimedia2","btnSugPlataforma",
-    "btnSugAcomEntrada","btnSugAcomAuditorio1","btnSugAcomAuditorio2","btnSugMicrofonista1","btnSugMicrofonista2"
   ].forEach(id=>{ const b = $(id); if(b) b.disabled = true; });
 }
 
 // ---------------- Asignaciones mensuales (tablero) ----------------
 const COL_MES = "asignaciones_mensuales";
 let lastMesDoc = null; // cache del último doc mensual cargado
-const USAR_AUDITORIO_2 = false;
-
-function aplicarConfiguracionUI(){
-  const wrapAud2 = $("fieldAcomodadorAuditorio2");
-  if (wrapAud2) wrapAud2.style.display = USAR_AUDITORIO_2 ? "" : "none";
-}
 
 function monthParts(mesISO) {
   const [yS, mS] = String(mesISO || "").split("-");
@@ -522,8 +372,7 @@ function isoMonthToday() {
 
 function personaNameById(id) {
   if (!id) return "";
-  const resolved = resolvePersonaId(id);
-  return personaById(resolved)?.nombre || String(id || "");
+  return personas.find((p) => p.id === id)?.nombre || "";
 }
 
 function formMesData() {
@@ -551,7 +400,18 @@ function emptyMesData() {
 }
 
 function ensureOptionById(selectId, personaId) {
-  return ensureSelectValue(selectId, personaId);
+  const sel = $(selectId);
+  if (!sel || !personaId) return;
+  // Evita errores si el id apunta a un input (o un elemento que no es <select>)
+  if (!sel.options) return;
+
+  const exists = Array.from(sel.options).some((o) => o.value === personaId);
+  if (exists) return;
+
+  const p = personas.find((x) => x.id === personaId);
+  if (!p) return;
+
+  addOpt(sel, p.id, displayName(p));
 }
 
 function hydrateMesToUI(m) {
@@ -668,8 +528,8 @@ function monthUsageCounts(m) {
     const entries = [
       ["plataforma", w.plataformaId],
       ["acomodadorEntrada", w.acomodadorEntradaId],
-      ["acomodadorAuditorio1", w.acomodadorAuditorio1Id || w.acomodadorAuditorioId],
-      ["acomodadorAuditorio2", w.acomodadorAuditorio2Id],
+      ["acomodadorAuditorio1",
+    "acomodadorAuditorio2", w.acomodadorAuditorioId],
       ["multimedia", w.multimedia1Id],
       ["multimedia", w.multimedia2Id],
       ["microfonista", w.microfonista1Id],
@@ -729,7 +589,8 @@ function applyMesWeekSuggestion(targetWeekKey) {
   const acomEnt = getVal("mesAcomodadorEntrada") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorEntrada", used);
   used.add(acomEnt);
 
-  const acomAud = getVal("mesAcomodadorAuditorio") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio1", used);
+  const acomAud = getVal("mesAcomodadorAuditorio") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio1",
+    "acomodadorAuditorio2", used);
   used.add(acomAud);
 
   const mm1 = getVal("mesMultimedia1") || pickFairCandidate(candidates.multimedia, counts, "multimedia", used);
@@ -765,7 +626,8 @@ function applyMesWeekSuggestion(targetWeekKey) {
   // Marca uso para el criterio de desempate local
   markLastUsed("plataforma", platforma);
   markLastUsed("acomodadorEntrada", acomEnt);
-  markLastUsed("acomodadorAuditorio1", acomAud);
+  markLastUsed("acomodadorAuditorio1",
+    "acomodadorAuditorio2", acomAud);
   markLastUsed("multimedia", mm1);
   markLastUsed("multimedia", mm2);
   markLastUsed("microfonista", mic1);
@@ -851,12 +713,10 @@ async function guardarMes() {
       : { semanas: { [weekKey]: weekData } };
     lastMesDoc = data;
     renderMesPreview(mesISO, data);
-    setStatus("Mes guardado con éxito.");
-    toastLite("Mes guardado con éxito.");
+    setStatus("Mes guardado OK.");
   } catch (e) {
     console.error(e);
-    setStatus(`No pude guardar el mes.${e?.message ? " " + e.message : ""}`, true);
-    toastLite(`No pude guardar el mes.${e?.message ? " " + e.message : ""}`, true);
+    setStatus("No pude guardar el mes. Revisá permisos de Firestore.", true);
   } finally {
     setBusy("btnGuardarMes", false);
   }
@@ -889,40 +749,34 @@ async function cargarPersonas() {
   const snap = await getDocs(collection(db, "personas"));
   personas = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((p) => p?.nombre);
-  personas.sort((a, b) =>
-    displayName(a).localeCompare(displayName(b), "es", { sensitivity: "base" })
-  );
+    .filter((p) => p?.nombre)
+    .sort((a, b) => displayName(a).localeCompare(displayName(b), "es", { sensitivity: "base" }));
 }
 
 function fillSelect(id, filterFn) {
   const sel = $(id);
   if (!sel) return;
-  const currentRaw = sel.value || "";
-  const currentResolved = resolvePersonaId(currentRaw);
   sel.innerHTML = "";
   addOpt(sel, "", "— Seleccionar —");
   for (const p of personas) {
-    if (!isPersonaActiva(p)) continue;
     if (filterFn(p)) addOpt(sel, p.id, displayName(p));
   }
-  if (currentResolved) ensureSelectValue(id, currentResolved);
 }
 
 function poblarSelects() {
-  const ancSiervos = getAncianosOSiervos(personas);
-  const ancianos = getAncianos(personas);
-  const acomodadores = getAcomodadores(personas);
-  const plataforma = getPlataforma(personas);
-  const multimedia = getMultimedia(personas);
-  const microfonistas = getMicrofonistas(personas);
-  const lectoresAtalaya = getLectoresAtalaya(personas);
+  const personasActivas = personas.filter((p) => p?.activo !== false);
+  const ancSiervos = getAncianosOSiervos(personasActivas);
+  const ancianos = getAncianos(personasActivas);
+  const acomodadores = getAcomodadores(personasActivas);
+  const plataforma = getPlataforma(personasActivas);
+  const multimedia = getMultimedia(personasActivas);
+  const microfonistas = getMicrofonistas(personasActivas);
+  const lectoresAtalaya = getLectoresAtalaya(personasActivas);
 
   // cache de candidatos (para sugerencias/rotación)
   candidates.multimedia = (multimedia || []).map(p=>p.id);
   candidates.plataforma = (plataforma || []).map(p=>p.id);
   candidates.acomodadores = (acomodadores || []).map(p=>p.id);
-  candidates.microfonistas = (microfonistas || []).map(p=>p.id);
 
   const byIds = (arr) => {
     const set = new Set((arr || []).map((p) => p.id));
@@ -1041,12 +895,9 @@ async function firestoreVisitFor(fechaISO) {
   const fields = [
     { id: "multimedia1", label: "Multimedia 1" },
     { id: "multimedia2", label: "Multimedia 2" },
-    { id: "plataforma", label: "Plataforma" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
     { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
-    { id: "microfonista1", label: "Microfonista 1" },
-    { id: "microfonista2", label: "Microfonista 2" },
-  ];
+      ];
   const exclNames = new Set([normName("Marcelo Palavecino")]);
   const conductorId = getVal("conductorAtalaya");
   const oracionInicialId = getVal("oracionInicial");
@@ -1066,7 +917,7 @@ async function firestoreVisitFor(fechaISO) {
 
   // Ajusta oración inicial si quedó igual al presidente
   autoOracionInicialIfNeeded();
-  autoOracionFinal(false);
+  autoOracionFinal();
 }
 
 function sugerirConductorAtalaya(){
@@ -1144,28 +995,22 @@ function updateOracionFinalVisitorOptionLabel(){
   }
 }
 
-function autoOracionFinal(force = false){
+function autoOracionFinal(){
+  updateOracionFinalVisitorOptionLabel();
   const sel = document.getElementById("oracionFinal");
   if(!sel) return;
 
-  updateOracionFinalVisitorOptionLabel();
-
-  const actual = String(getVal("oracionFinal") || "").trim();
-  if (actual && !force) return;
+  const current = String(sel.value || "").trim();
+  if(current) return;
 
   const visitante = (getVal("oradorPublico") || "").trim();
-  const pid = resolvePersonaId(getVal("presidente"));
-
-  if (visitante) {
+  if(visitante){
     sel.value = "__VISITANTE__";
     return;
   }
-  if (pid) {
-    ensureSelectValue("oracionFinal", pid);
-    sel.value = pid;
-    return;
-  }
-  sel.value = "";
+
+  const presidenteId = (getVal("presidente") || "").trim();
+  if(presidenteId) sel.value = presidenteId;
 }
 
 
@@ -1223,21 +1068,20 @@ async function copiarSemanaAnterior() {
 
 
 function formData() {
-  const oracionFinalRaw = getVal("oracionFinal");
   return {
-    presidenteId: resolvePersonaId(getVal("presidente")),
-    oracionInicialId: resolvePersonaId(getVal("oracionInicial")),
-    oracionFinalId: oracionFinalRaw === "__VISITANTE__" ? "__VISITANTE__" : resolvePersonaId(oracionFinalRaw),
-    conductorAtalayaId: resolvePersonaId(getVal("conductorAtalaya")),
-    lectorAtalayaId: resolvePersonaId(getVal("lectorAtalaya")),
-    multimedia1Id: resolvePersonaId(getVal("multimedia1")),
-    multimedia2Id: resolvePersonaId(getVal("multimedia2")),
-    plataformaId: resolvePersonaId(getVal("plataforma")),
-    microfonista1Id: resolvePersonaId(getVal("microfonista1")),
-    microfonista2Id: resolvePersonaId(getVal("microfonista2")),
-    acomodadorEntradaId: resolvePersonaId(getVal("acomodadorEntrada")),
-    acomodadorAuditorio1Id: resolvePersonaId(getVal("acomodadorAuditorio1")),
-    acomodadorAuditorio2Id: USAR_AUDITORIO_2 ? resolvePersonaId(getVal("acomodadorAuditorio2")) : "",
+    presidenteId: getVal("presidente"),
+    oracionInicialId: getVal("oracionInicial"),
+    oracionFinalId: getVal("oracionFinal"),
+    conductorAtalayaId: getVal("conductorAtalaya"),
+    lectorAtalayaId: getVal("lectorAtalaya"),
+    multimedia1Id: getVal("multimedia1"),
+    multimedia2Id: getVal("multimedia2"),
+    plataformaId: getVal("plataforma"),
+    microfonista1Id: getVal("microfonista1"),
+    microfonista2Id: getVal("microfonista2"),
+    acomodadorEntradaId: getVal("acomodadorEntrada"),
+    acomodadorAuditorio1Id: getVal("acomodadorAuditorio1"),
+    acomodadorAuditorio2Id: getVal("acomodadorAuditorio2"),
 
     cancionNumero: getVal("cancionNumero"),
     oradorPublico: getVal("oradorPublico"),
@@ -1250,48 +1094,43 @@ function formData() {
 function hydrateToUI(a) {
   if (!a) return;
 
-  const values = {
-    presidente: resolvePersonaId(a.presidenteId),
-    oracionInicial: resolvePersonaId(a.oracionInicialId),
-    oracionFinal: a.oracionFinalId === "__VISITANTE__" ? "__VISITANTE__" : resolvePersonaId(a.oracionFinalId),
-    conductorAtalaya: resolvePersonaId(a.conductorAtalayaId),
-    lectorAtalaya: resolvePersonaId(a.lectorAtalayaId),
-    multimedia1: resolvePersonaId(a.multimedia1Id),
-    multimedia2: resolvePersonaId(a.multimedia2Id),
-    plataforma: resolvePersonaId(a.plataformaId),
-    microfonista1: resolvePersonaId(a.microfonista1Id),
-    microfonista2: resolvePersonaId(a.microfonista2Id),
-    acomodadorEntrada: resolvePersonaId(a.acomodadorEntradaId),
-    acomodadorAuditorio1: resolvePersonaId(a.acomodadorAuditorio1Id || a.acomodadorAuditorioId),
-    acomodadorAuditorio2: resolvePersonaId(a.acomodadorAuditorio2Id),
-  };
+  [
+    ["presidente", a.presidenteId],
+    ["oracionInicial", a.oracionInicialId],
+    ["oracionFinal", a.oracionFinalId],
+    ["conductorAtalaya", a.conductorAtalayaId],
+    ["lectorAtalaya", a.lectorAtalayaId],
+    ["multimedia1", a.multimedia1Id],
+    ["multimedia2", a.multimedia2Id],
+    ["plataforma", a.plataformaId],
+    ["microfonista1", a.microfonista1Id],
+    ["microfonista2", a.microfonista2Id],
+    ["acomodadorEntrada", a.acomodadorEntradaId],
+    // Compatibilidad: antes existía un solo campo "acomodadorAuditorioId".
+    // Ahora usamos Auditorio 1 y Auditorio 2.
+    ["acomodadorAuditorio1", a.acomodadorAuditorio1Id || a.acomodadorAuditorioId],
+    ["acomodadorAuditorio2", a.acomodadorAuditorio2Id],
+  ].forEach(([sid, pid]) => ensureOptionById(sid, pid));
 
-  Object.entries(values).forEach(([sid, pid]) => {
-    if (sid === "oracionFinal" && pid === "__VISITANTE__") return;
-    ensureSelectValue(sid, pid);
-  });
-
-  setVal("presidente", values.presidente || "");
-  setVal("oracionInicial", values.oracionInicial || "");
-  setVal("oracionFinal", values.oracionFinal || "");
-  setVal("conductorAtalaya", values.conductorAtalaya || "");
-  setVal("lectorAtalaya", values.lectorAtalaya || "");
-  setVal("multimedia1", values.multimedia1 || "");
-  setVal("multimedia2", values.multimedia2 || "");
-  setVal("plataforma", values.plataforma || "");
-  setVal("microfonista1", values.microfonista1 || "");
-  setVal("microfonista2", values.microfonista2 || "");
-  setVal("acomodadorEntrada", values.acomodadorEntrada || "");
-  setVal("acomodadorAuditorio1", values.acomodadorAuditorio1 || "");
-  setVal("acomodadorAuditorio2", values.acomodadorAuditorio2 || "");
+  setVal("presidente", a.presidenteId || "");
+  setVal("oracionInicial", a.oracionInicialId || "");
+  setVal("oracionFinal", a.oracionFinalId || "");
+  setVal("conductorAtalaya", a.conductorAtalayaId || "");
+  setVal("lectorAtalaya", a.lectorAtalayaId || "");
+  setVal("multimedia1", a.multimedia1Id || "");
+  setVal("multimedia2", a.multimedia2Id || "");
+  setVal("plataforma", a.plataformaId || "");
+  setVal("microfonista1", a.microfonista1Id || "");
+  setVal("microfonista2", a.microfonista2Id || "");
+  setVal("acomodadorEntrada", a.acomodadorEntradaId || "");
+  setVal("acomodadorAuditorio1", a.acomodadorAuditorio1Id || a.acomodadorAuditorioId || "");
+  setVal("acomodadorAuditorio2", a.acomodadorAuditorio2Id || "");
 
   setVal("cancionNumero", a.cancionNumero || "");
   setVal("oradorPublico", a.oradorPublico || "");
   setVal("congregacionVisitante", a.congregacionVisitante || "");
   setVal("tituloDiscurso", a.tituloDiscurso || "");
   setVal("tituloSiguienteSemana", a.tituloSiguienteSemana || "");
-
-  updateOracionFinalVisitorOptionLabel();
 }
 
 
@@ -1301,7 +1140,7 @@ function validateRequired() {
     { id: "plataforma", label: "Plataforma" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
     { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
-    { id: "multimedia1", label: "Multimedia 1" },
+        { id: "multimedia1", label: "Multimedia 1" },
     { id: "multimedia2", label: "Multimedia 2" },
   ];
   const missing = required.filter((r) => !getVal(r.id));
@@ -1320,12 +1159,9 @@ function validateNoDuplicates() {
   const fields = [
     { id: "multimedia1", label: "Multimedia 1" },
     { id: "multimedia2", label: "Multimedia 2" },
-    { id: "plataforma", label: "Plataforma" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
     { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
-    { id: "microfonista1", label: "Microfonista 1" },
-    { id: "microfonista2", label: "Microfonista 2" },
-  ];
+      ];
   const chosen = fields.map((f) => ({ ...f, value: getVal(f.id) })).filter((x) => x.value);
 
   const seen = new Map();
@@ -1354,7 +1190,7 @@ async function cargarSemana() {
       hydrateToUI(a);
       await aplicarAutoVisitante(s);
       try{ autoPresidenteIfNeeded(); }catch(_e){}
-      try{ autoOracionFinal(false); }catch(_e){}
+      try{ autoOracionFinal(); }catch(_e){}
       // refresca aviso
       try{ await generarAviso(); }catch(_e){}
       setStatus("Datos cargados.");
@@ -1362,7 +1198,7 @@ async function cargarSemana() {
       setStatus("No hay datos guardados para esta semana. Podés cargar y guardar.");
       await aplicarAutoVisitante(s);
       try{ autoPresidenteIfNeeded(); }catch(_e){}
-      try{ autoOracionFinal(false); }catch(_e){}
+      try{ autoOracionFinal(); }catch(_e){}
       setAvisoText("");
     }
   } catch (e) {
@@ -1375,7 +1211,7 @@ async function guardar() {
   const s = semanaISO();
   if (!s) return setStatus("Elegí una semana (fecha).", true);
 
-  autoOracionFinal(false);
+  autoOracionFinal();
 
   const miss = validateRequired();
   if (miss) return setStatus(miss, true);
@@ -1407,13 +1243,11 @@ async function guardar() {
     }
 
 setStatus("Guardado con éxito.");
-    toastLite("Guardado con éxito.");
     // deja el aviso listo para WhatsApp
     generarAviso();
   } catch (e) {
     console.error(e);
-    setStatus(`No pude guardar.${e?.message ? " " + e.message : ""}`, true);
-    toastLite(`No pude guardar.${e?.message ? " " + e.message : ""}`, true);
+    setStatus("No pude guardar. Revisá permisos de Firestore.", true);
   } finally {
     setBusy("btnGuardar", false);
   }
@@ -1565,7 +1399,7 @@ function imprimirSemana(){
   // usa la asignación cargada actualmente
   const a = formData();
   // asegúrate de aplicar regla de oración final
-  autoOracionFinal(false);
+  autoOracionFinal();
 
   const host = $("printSemana");
   if(host) host.innerHTML = buildPrintSemanaHTML(s, a);
@@ -1729,8 +1563,8 @@ async function init() {
   $("btnCargar")?.addEventListener("click", cargarSemana);
   $("btnGuardar")?.addEventListener("click", guardar);
   $("btnLimpiar")?.addEventListener("click", limpiar);
-  $("oradorPublico")?.addEventListener("change", ()=>{ try{ updateOracionFinalVisitorOptionLabel(); autoOracionFinal(false); }catch(_e){} });
-  $("presidente")?.addEventListener("change", ()=>{ try{ updateOracionFinalVisitorOptionLabel(); autoOracionFinal(false); }catch(_e){} });
+  $("oradorPublico")?.addEventListener("change", ()=>{ try{ autoOracionFinal(); }catch(_e){} });
+  $("presidente")?.addEventListener("change", ()=>{ try{ autoOracionFinal(); }catch(_e){} });
   $("btnPdfPresidente")?.addEventListener("click", abrirPdfPresidente);
 
   $("btnImprimir")?.addEventListener("click", imprimirSemana);
@@ -1756,15 +1590,12 @@ async function init() {
 
   // Sugerencias / rotación
   $("btnSugerirPresidente")?.addEventListener("click", ()=>{ sugerirPresidente(); });
-  $("btnSugerirConductor")?.addEventListener("click", ()=>{ sugerirConductorAtalaya(); autoOracionFinal(false); });
+  $("btnSugerirConductor")?.addEventListener("click", ()=>{ sugerirConductorAtalaya(); autoOracionFinal(); });
   $("btnSugMultimedia1")?.addEventListener("click", ()=>suggestSelect("multimedia1","multimedia", candidates.multimedia));
   $("btnSugMultimedia2")?.addEventListener("click", ()=>suggestSelect("multimedia2","multimedia", candidates.multimedia));
   $("btnSugPlataforma")?.addEventListener("click", ()=>suggestSelect("plataforma","plataforma", candidates.plataforma));
   $("btnSugAcomEntrada")?.addEventListener("click", ()=>suggestSelect("acomodadorEntrada","acomodadores", candidates.acomodadores));
   $("btnSugAcomAuditorio1")?.addEventListener("click", ()=>suggestSelect("acomodadorAuditorio1","acomodadores", candidates.acomodadores));
-  $("btnSugAcomAuditorio2")?.addEventListener("click", ()=>suggestSelect("acomodadorAuditorio2","acomodadores", candidates.acomodadores));
-  $("btnSugMicrofonista1")?.addEventListener("click", ()=>suggestSelect("microfonista1","microfonista", candidates.microfonistas));
-  $("btnSugMicrofonista2")?.addEventListener("click", ()=>suggestSelect("microfonista2","microfonista", candidates.microfonistas));
 
   $("btnCargarMes")?.addEventListener("click", cargarMes);
   $("btnGuardarMes")?.addEventListener("click", guardarMes);
@@ -1810,14 +1641,13 @@ async function init() {
   try {
     await cargarPersonas();
     poblarSelects();
-    aplicarConfiguracionUI();
   // Mantener reglas de oraciones
   const presEl = $("presidente");
-  if (presEl) presEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); autoOracionFinal(false); });
+  if (presEl) presEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); autoOracionFinal(); });
   const oiEl = $("oracionInicial");
   if (oiEl) oiEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); });
   const oradorEl = $("oradorPublico");
-  if (oradorEl) oradorEl.addEventListener("input", () => { autoOracionFinal(false); });
+  if (oradorEl) oradorEl.addEventListener("input", () => { autoOracionFinal(); });
 
     await poblarDatalistOradores();
     setStatus("Listo. Elegí una semana y cargá.");
