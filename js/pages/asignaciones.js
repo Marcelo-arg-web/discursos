@@ -113,6 +113,15 @@ function setStatus(msg, isError = false) {
   box.style.color = isError ? "#9f1239" : "#111827";
 }
 
+function toastLite(msg, isError = false) {
+  const host = $("toastHost") || document.body;
+  const el = document.createElement("div");
+  el.className = `toast ${isError ? "err" : ""}`;
+  el.textContent = msg;
+  host.prepend(el);
+  setTimeout(()=>el.remove(), 4000);
+}
+
 function setBusy(btnId, busy, busyLabel = "Procesando…") {
   const b = $(btnId);
   if (!b) return;
@@ -716,7 +725,8 @@ async function guardarMes() {
     setStatus("Mes guardado OK.");
   } catch (e) {
     console.error(e);
-    setStatus("No pude guardar el mes. Revisá permisos de Firestore.", true);
+    setStatus(`No pude guardar el mes.${e?.message ? " " + e.message : ""}`, true);
+    toastLite(`No pude guardar el mes.${e?.message ? " " + e.message : ""}`, true);
   } finally {
     setBusy("btnGuardarMes", false);
   }
@@ -1262,12 +1272,14 @@ async function guardar() {
       console.warn("No pude copiar asignados al jueves anterior:", e);
     }
 
-setStatus("Guardado OK.");
+setStatus("Guardado con éxito.");
+    toastLite("Guardado con éxito.");
     // deja el aviso listo para WhatsApp
     generarAviso();
   } catch (e) {
     console.error(e);
-    setStatus("No pude guardar. Revisá permisos de Firestore.", true);
+    setStatus(`No pude guardar.${e?.message ? " " + e.message : ""}`, true);
+    toastLite(`No pude guardar.${e?.message ? " " + e.message : ""}`, true);
   } finally {
     setBusy("btnGuardar", false);
   }

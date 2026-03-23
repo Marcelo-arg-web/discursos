@@ -11,6 +11,13 @@ function toast(msg, isError=false){
   setTimeout(()=>{ host.innerHTML=""; }, 5000);
 }
 
+function setSaveMsg(msg, isError=false){
+  const box = $("saveMsg");
+  if(!box) return;
+  box.textContent = msg || "";
+  box.style.color = isError ? "#9f1239" : "#166534";
+}
+
 async function getUsuario(uid){
   const snap = await getDoc(doc(db,"usuarios",uid));
   return snap.exists() ? snap.data() : null;
@@ -151,6 +158,7 @@ function render(){
         document.getElementById("p_roles").value = (p.roles||[]).join(", ");
         document.getElementById("p_activo").checked = p.activo !== false;
         document.getElementById("p_id").value = p.id;
+        setSaveMsg("Editando: " + (p.nombre||""));
         toast("Editando: "+(p.nombre||""), false);
       }
 
@@ -172,7 +180,8 @@ async function cargar(){
 }
 
 function limpiar(){
-  document.getElementById("p_id").value = "";
+  const pid = document.getElementById("p_id");
+  if(pid) pid.value = "";
   document.getElementById("p_nombre").value = "";
   document.getElementById("p_tel").value = "";
   document.getElementById("p_roles").value = "";
@@ -189,6 +198,8 @@ async function guardar(){
 
   if(!nombre) return toast("Falta nombre.", true);
 
+  setSaveMsg("Guardando…");
+
   const payload = {
     nombre,
     telefono,
@@ -200,17 +211,21 @@ async function guardar(){
   try{
     if(id){
       await updateDoc(docRef(db,"personas",id), payload);
-      toast("Actualizado.");
+      setSaveMsg("Guardado con éxito.");
+      toast("Guardado con éxito.");
     }else{
       payload.createdAt = serverTimestamp();
       await addDoc(collection(db,"personas"), payload);
-      toast("Guardado.");
+      setSaveMsg("Guardado con éxito.");
+      toast("Guardado con éxito.");
     }
     limpiar();
     await cargar();
   }catch(e){
     console.error(e);
-    toast("No pude guardar. Revisá permisos.", true);
+    const detail = e?.message ? ` ${e.message}` : "";
+    setSaveMsg("No pude guardar." + detail, true);
+    toast("No pude guardar." + detail, true);
   }
 }
 
@@ -219,16 +234,9 @@ async function guardar(){
   const admin = isAdminRole(usuario?.rol);
   IS_ADMIN = admin;
 
-  // hidden id for editing
-  if(!document.getElementById("p_id")){
-    const hid = document.createElement("input");
-    hid.type="hidden"; hid.id="p_id";
-    document.body.appendChild(hid);
-  }
-
-  if(admin){
-    document.getElementById("btnGuardar")?.addEventListener("click", guardar);
-    document.getElementById("btnLimpiar")?.addEventListener("click", ()=>{ limpiar(); toast("Formulario limpio."); });
+    if(admin){
+    document.getElementById("btnGuardar")?.addEventListener("click", (e)=>{ e.preventDefault(); guardar(); });
+    document.getElementById("btnLimpiar")?.addEventListener("click", (e)=>{ e.preventDefault(); limpiar(); setSaveMsg("Formulario limpio."); toast("Formulario limpio."); });
   }else{
     toast("Modo solo lectura: no podés editar Personas.");
     const b1 = document.getElementById("btnGuardar");
@@ -244,6 +252,15 @@ async function guardar(){
   document.getElementById("q")?.addEventListener("input", render);
   document.getElementById("filtroRol")?.addEventListener("change", render);
   document.getElementById("filtroEstado")?.addEventListener("change", render);
+
+  ["p_nombre","p_tel","p_roles"].forEach(id=>{
+    document.getElementById(id)?.addEventListener("keydown", (e)=>{
+      if(e.key === "Enter" && IS_ADMIN){
+        e.preventDefault();
+        guardar();
+      }
+    });
+  });
 
   await cargar();
 })();
