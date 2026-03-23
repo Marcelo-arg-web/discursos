@@ -42,12 +42,7 @@ function renderTopbar(active){
         <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
         <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
-        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
-        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
-        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
-        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
-        <a href="usuarios.html" class="${active==='usuarios'?'active':''}">Usuarios</a>
       </div>
       <div class="actions">
         <button id="btnSalir" class="btn danger sm" type="button">Salir</button>
@@ -107,6 +102,13 @@ function hasRole(p, role){
   return roles.map(r=>String(r).toLowerCase()).includes(String(role).toLowerCase());
 }
 
+function isPersonaActiva(p){
+  const v = p?.activo;
+  if (v === false || v === 0) return false;
+  const n = String(v ?? "").trim().toLowerCase();
+  return !["false","0","no","inactivo","inactive"].includes(n);
+}
+
 function render(){
   const q = (document.getElementById("q")?.value || "").toLowerCase();
   const filtro = (document.getElementById("filtroRol")?.value || "").toLowerCase();
@@ -121,7 +123,7 @@ function render(){
     .filter(p => !filtro || hasRole(p, filtro))
     .filter(p => {
       if(!filtroEstado) return true;
-      const activo = p.activo !== false;
+      const activo = isPersonaActiva(p);
       if(filtroEstado === "activos") return activo;
       if(filtroEstado === "inactivos") return !activo;
       return true;
@@ -156,7 +158,7 @@ function render(){
         document.getElementById("p_nombre").value = p.nombre || "";
         document.getElementById("p_tel").value = p.telefono || "";
         document.getElementById("p_roles").value = (p.roles||[]).join(", ");
-        document.getElementById("p_activo").checked = p.activo !== false;
+        document.getElementById("p_activo").checked = isPersonaActiva(p);
         document.getElementById("p_id").value = p.id;
         setSaveMsg("Editando: " + (p.nombre||""));
         toast("Editando: "+(p.nombre||""), false);

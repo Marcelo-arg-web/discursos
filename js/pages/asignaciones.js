@@ -34,7 +34,63 @@ const $ = (id) => document.getElementById(id);
 const getVal = (id) => ($(id)?.value ?? "");
 const setVal = (id, v) => {
   const el = $(id);
+  if (el) el.value = v ?? "";
+};
 
+function normalizeText(s) {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\.\,\;\:]+$/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function isPersonaActiva(p) {
+  const v = p?.activo;
+  if (v === false || v === 0) return false;
+  const n = normalizeText(v);
+  if (["false", "0", "no", "inactivo", "inactive"].includes(n)) return false;
+  return true;
+}
+
+function personaById(id) {
+  return personas.find((p) => p.id === id) || null;
+}
+
+function personaByName(name) {
+  const target = normalizeText(name);
+  if (!target) return null;
+  return personas.find((p) => normalizeText(p?.nombre) === target) || null;
+}
+
+function resolvePersonaId(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (personaById(raw)) return raw;
+  const byName = personaByName(raw);
+  return byName?.id || raw;
+}
+
+function ensureSelectValue(selectId, rawValue) {
+  const sel = $(selectId);
+  if (!sel || !sel.options) return resolvePersonaId(rawValue);
+  const value = resolvePersonaId(rawValue);
+  if (!value) return "";
+
+  if (Array.from(sel.options).some((o) => o.value === value)) return value;
+
+  const p = personaById(value);
+  if (p) {
+    const suffix = isPersonaActiva(p) ? "" : " (inactivo)";
+    addOpt(sel, p.id, `${displayName(p)}${suffix}`);
+    return value;
+  }
+
+  addOpt(sel, value, String(rawValue));
+  return value;
+}
 
 // ---------------- Semana Jueves/Sábado: copiar asignados automáticamente ----------------
 function isoToDate(iso){
@@ -92,8 +148,6 @@ async function copiarAsignadosAlJuevesSiCorresponde(fechaFinDeSemanaISO, dataAsi
     copiadoDesdeFinDeSemana: fechaFinDeSemanaISO,
   }, { merge: true });
 }
-  if (el) el.value = v ?? "";
-};
 
 function escapeHtml(str){
   return String(str ?? "")
@@ -340,12 +394,7 @@ function renderTopbar(active){
         <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
         <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
-        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
-        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
-        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
-        <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
-        <a href="usuarios.html" class="${active==='usuarios'?'active':''}">Usuarios</a>
       </div>
       <div class="actions">
         <button id="btnSalir" class="btn danger sm" type="button">Salir</button>
@@ -473,7 +522,8 @@ function isoMonthToday() {
 
 function personaNameById(id) {
   if (!id) return "";
-  return personas.find((p) => p.id === id)?.nombre || "";
+  const resolved = resolvePersonaId(id);
+  return personaById(resolved)?.nombre || String(id || "");
 }
 
 function formMesData() {
@@ -501,18 +551,7 @@ function emptyMesData() {
 }
 
 function ensureOptionById(selectId, personaId) {
-  const sel = $(selectId);
-  if (!sel || !personaId) return;
-  // Evita errores si el id apunta a un input (o un elemento que no es <select>)
-  if (!sel.options) return;
-
-  const exists = Array.from(sel.options).some((o) => o.value === personaId);
-  if (exists) return;
-
-  const p = personas.find((x) => x.id === personaId);
-  if (!p) return;
-
-  addOpt(sel, p.id, displayName(p));
+  return ensureSelectValue(selectId, personaId);
 }
 
 function hydrateMesToUI(m) {
@@ -859,12 +898,15 @@ async function cargarPersonas() {
 function fillSelect(id, filterFn) {
   const sel = $(id);
   if (!sel) return;
+  const currentRaw = sel.value || "";
+  const currentResolved = resolvePersonaId(currentRaw);
   sel.innerHTML = "";
   addOpt(sel, "", "— Seleccionar —");
   for (const p of personas) {
-    if (p?.activo === false) continue;
+    if (!isPersonaActiva(p)) continue;
     if (filterFn(p)) addOpt(sel, p.id, displayName(p));
   }
+  if (currentResolved) ensureSelectValue(id, currentResolved);
 }
 
 function poblarSelects() {
@@ -999,8 +1041,11 @@ async function firestoreVisitFor(fechaISO) {
   const fields = [
     { id: "multimedia1", label: "Multimedia 1" },
     { id: "multimedia2", label: "Multimedia 2" },
+    { id: "plataforma", label: "Plataforma" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
     { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
+    { id: "microfonista1", label: "Microfonista 1" },
+    { id: "microfonista2", label: "Microfonista 2" },
   ];
   const exclNames = new Set([normName("Marcelo Palavecino")]);
   const conductorId = getVal("conductorAtalaya");
@@ -1021,7 +1066,7 @@ async function firestoreVisitFor(fechaISO) {
 
   // Ajusta oración inicial si quedó igual al presidente
   autoOracionInicialIfNeeded();
-  autoOracionFinal();
+  autoOracionFinal(false);
 }
 
 function sugerirConductorAtalaya(){
@@ -1099,37 +1144,28 @@ function updateOracionFinalVisitorOptionLabel(){
   }
 }
 
-function autoOracionFinal(){
-  // Regla: Oración final = Orador público/Presidente (sin espacios).
-  // Si no hay orador público, queda Presidente.
-  const o = (getVal("oradorPublico") || "").trim();
-  const pid = (getVal("presidente") || "").trim();
-  const p = (personaNameById(pid) || pid).trim();
-
-  let v = "";
-  if(o && p) v = `${o}/${p}`;
-  else if(p) v = p;
-  else if(o) v = o;
-
-  // Asegura que el <select> tenga esta opción y la seleccione
+function autoOracionFinal(force = false){
   const sel = document.getElementById("oracionFinal");
   if(!sel) return;
 
-  // Si existe la opción exacta, seleccionarla
-  let opt = Array.from(sel.options).find(x => (x.value || "").trim() === v);
-  if(v && !opt){
-    opt = document.createElement("option");
-    opt.value = v;
-    opt.textContent = v;
-    sel.appendChild(opt);
-  }
+  updateOracionFinalVisitorOptionLabel();
 
-  // Si v está vacío, limpiamos selección
-  if(!v){
-    sel.value = "";
+  const actual = String(getVal("oracionFinal") || "").trim();
+  if (actual && !force) return;
+
+  const visitante = (getVal("oradorPublico") || "").trim();
+  const pid = resolvePersonaId(getVal("presidente"));
+
+  if (visitante) {
+    sel.value = "__VISITANTE__";
     return;
   }
-  sel.value = v;
+  if (pid) {
+    ensureSelectValue("oracionFinal", pid);
+    sel.value = pid;
+    return;
+  }
+  sel.value = "";
 }
 
 
@@ -1187,20 +1223,21 @@ async function copiarSemanaAnterior() {
 
 
 function formData() {
+  const oracionFinalRaw = getVal("oracionFinal");
   return {
-    presidenteId: getVal("presidente"),
-    oracionInicialId: getVal("oracionInicial"),
-    oracionFinalId: getVal("oracionFinal"),
-    conductorAtalayaId: getVal("conductorAtalaya"),
-    lectorAtalayaId: getVal("lectorAtalaya"),
-    multimedia1Id: getVal("multimedia1"),
-    multimedia2Id: getVal("multimedia2"),
-    plataformaId: getVal("plataforma"),
-    microfonista1Id: getVal("microfonista1"),
-    microfonista2Id: getVal("microfonista2"),
-    acomodadorEntradaId: getVal("acomodadorEntrada"),
-    acomodadorAuditorio1Id: getVal("acomodadorAuditorio1"),
-    acomodadorAuditorio2Id: USAR_AUDITORIO_2 ? getVal("acomodadorAuditorio2") : "",
+    presidenteId: resolvePersonaId(getVal("presidente")),
+    oracionInicialId: resolvePersonaId(getVal("oracionInicial")),
+    oracionFinalId: oracionFinalRaw === "__VISITANTE__" ? "__VISITANTE__" : resolvePersonaId(oracionFinalRaw),
+    conductorAtalayaId: resolvePersonaId(getVal("conductorAtalaya")),
+    lectorAtalayaId: resolvePersonaId(getVal("lectorAtalaya")),
+    multimedia1Id: resolvePersonaId(getVal("multimedia1")),
+    multimedia2Id: resolvePersonaId(getVal("multimedia2")),
+    plataformaId: resolvePersonaId(getVal("plataforma")),
+    microfonista1Id: resolvePersonaId(getVal("microfonista1")),
+    microfonista2Id: resolvePersonaId(getVal("microfonista2")),
+    acomodadorEntradaId: resolvePersonaId(getVal("acomodadorEntrada")),
+    acomodadorAuditorio1Id: resolvePersonaId(getVal("acomodadorAuditorio1")),
+    acomodadorAuditorio2Id: USAR_AUDITORIO_2 ? resolvePersonaId(getVal("acomodadorAuditorio2")) : "",
 
     cancionNumero: getVal("cancionNumero"),
     oradorPublico: getVal("oradorPublico"),
@@ -1213,43 +1250,48 @@ function formData() {
 function hydrateToUI(a) {
   if (!a) return;
 
-  [
-    ["presidente", a.presidenteId],
-    ["oracionInicial", a.oracionInicialId],
-    ["oracionFinal", a.oracionFinalId],
-    ["conductorAtalaya", a.conductorAtalayaId],
-    ["lectorAtalaya", a.lectorAtalayaId],
-    ["multimedia1", a.multimedia1Id],
-    ["multimedia2", a.multimedia2Id],
-    ["plataforma", a.plataformaId],
-    ["microfonista1", a.microfonista1Id],
-    ["microfonista2", a.microfonista2Id],
-    ["acomodadorEntrada", a.acomodadorEntradaId],
-    // Compatibilidad: antes existía un solo campo "acomodadorAuditorioId".
-    // Ahora usamos Auditorio 1 y Auditorio 2.
-    ["acomodadorAuditorio1", a.acomodadorAuditorio1Id || a.acomodadorAuditorioId],
-    ["acomodadorAuditorio2", a.acomodadorAuditorio2Id],
-  ].forEach(([sid, pid]) => ensureOptionById(sid, pid));
+  const values = {
+    presidente: resolvePersonaId(a.presidenteId),
+    oracionInicial: resolvePersonaId(a.oracionInicialId),
+    oracionFinal: a.oracionFinalId === "__VISITANTE__" ? "__VISITANTE__" : resolvePersonaId(a.oracionFinalId),
+    conductorAtalaya: resolvePersonaId(a.conductorAtalayaId),
+    lectorAtalaya: resolvePersonaId(a.lectorAtalayaId),
+    multimedia1: resolvePersonaId(a.multimedia1Id),
+    multimedia2: resolvePersonaId(a.multimedia2Id),
+    plataforma: resolvePersonaId(a.plataformaId),
+    microfonista1: resolvePersonaId(a.microfonista1Id),
+    microfonista2: resolvePersonaId(a.microfonista2Id),
+    acomodadorEntrada: resolvePersonaId(a.acomodadorEntradaId),
+    acomodadorAuditorio1: resolvePersonaId(a.acomodadorAuditorio1Id || a.acomodadorAuditorioId),
+    acomodadorAuditorio2: resolvePersonaId(a.acomodadorAuditorio2Id),
+  };
 
-  setVal("presidente", a.presidenteId || "");
-  setVal("oracionInicial", a.oracionInicialId || "");
-  setVal("oracionFinal", a.oracionFinalId || "");
-  setVal("conductorAtalaya", a.conductorAtalayaId || "");
-  setVal("lectorAtalaya", a.lectorAtalayaId || "");
-  setVal("multimedia1", a.multimedia1Id || "");
-  setVal("multimedia2", a.multimedia2Id || "");
-  setVal("plataforma", a.plataformaId || "");
-  setVal("microfonista1", a.microfonista1Id || "");
-  setVal("microfonista2", a.microfonista2Id || "");
-  setVal("acomodadorEntrada", a.acomodadorEntradaId || "");
-  setVal("acomodadorAuditorio1", a.acomodadorAuditorio1Id || a.acomodadorAuditorioId || "");
-  setVal("acomodadorAuditorio2", a.acomodadorAuditorio2Id || "");
+  Object.entries(values).forEach(([sid, pid]) => {
+    if (sid === "oracionFinal" && pid === "__VISITANTE__") return;
+    ensureSelectValue(sid, pid);
+  });
+
+  setVal("presidente", values.presidente || "");
+  setVal("oracionInicial", values.oracionInicial || "");
+  setVal("oracionFinal", values.oracionFinal || "");
+  setVal("conductorAtalaya", values.conductorAtalaya || "");
+  setVal("lectorAtalaya", values.lectorAtalaya || "");
+  setVal("multimedia1", values.multimedia1 || "");
+  setVal("multimedia2", values.multimedia2 || "");
+  setVal("plataforma", values.plataforma || "");
+  setVal("microfonista1", values.microfonista1 || "");
+  setVal("microfonista2", values.microfonista2 || "");
+  setVal("acomodadorEntrada", values.acomodadorEntrada || "");
+  setVal("acomodadorAuditorio1", values.acomodadorAuditorio1 || "");
+  setVal("acomodadorAuditorio2", values.acomodadorAuditorio2 || "");
 
   setVal("cancionNumero", a.cancionNumero || "");
   setVal("oradorPublico", a.oradorPublico || "");
   setVal("congregacionVisitante", a.congregacionVisitante || "");
   setVal("tituloDiscurso", a.tituloDiscurso || "");
   setVal("tituloSiguienteSemana", a.tituloSiguienteSemana || "");
+
+  updateOracionFinalVisitorOptionLabel();
 }
 
 
@@ -1278,8 +1320,11 @@ function validateNoDuplicates() {
   const fields = [
     { id: "multimedia1", label: "Multimedia 1" },
     { id: "multimedia2", label: "Multimedia 2" },
+    { id: "plataforma", label: "Plataforma" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
     { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
+    { id: "microfonista1", label: "Microfonista 1" },
+    { id: "microfonista2", label: "Microfonista 2" },
   ];
   const chosen = fields.map((f) => ({ ...f, value: getVal(f.id) })).filter((x) => x.value);
 
@@ -1309,7 +1354,7 @@ async function cargarSemana() {
       hydrateToUI(a);
       await aplicarAutoVisitante(s);
       try{ autoPresidenteIfNeeded(); }catch(_e){}
-      try{ autoOracionFinal(); }catch(_e){}
+      try{ autoOracionFinal(false); }catch(_e){}
       // refresca aviso
       try{ await generarAviso(); }catch(_e){}
       setStatus("Datos cargados.");
@@ -1317,7 +1362,7 @@ async function cargarSemana() {
       setStatus("No hay datos guardados para esta semana. Podés cargar y guardar.");
       await aplicarAutoVisitante(s);
       try{ autoPresidenteIfNeeded(); }catch(_e){}
-      try{ autoOracionFinal(); }catch(_e){}
+      try{ autoOracionFinal(false); }catch(_e){}
       setAvisoText("");
     }
   } catch (e) {
@@ -1330,7 +1375,7 @@ async function guardar() {
   const s = semanaISO();
   if (!s) return setStatus("Elegí una semana (fecha).", true);
 
-  autoOracionFinal();
+  autoOracionFinal(false);
 
   const miss = validateRequired();
   if (miss) return setStatus(miss, true);
@@ -1520,7 +1565,7 @@ function imprimirSemana(){
   // usa la asignación cargada actualmente
   const a = formData();
   // asegúrate de aplicar regla de oración final
-  autoOracionFinal();
+  autoOracionFinal(false);
 
   const host = $("printSemana");
   if(host) host.innerHTML = buildPrintSemanaHTML(s, a);
@@ -1684,8 +1729,8 @@ async function init() {
   $("btnCargar")?.addEventListener("click", cargarSemana);
   $("btnGuardar")?.addEventListener("click", guardar);
   $("btnLimpiar")?.addEventListener("click", limpiar);
-  $("oradorPublico")?.addEventListener("change", ()=>{ try{ autoOracionFinal(); }catch(_e){} });
-  $("presidente")?.addEventListener("change", ()=>{ try{ autoOracionFinal(); }catch(_e){} });
+  $("oradorPublico")?.addEventListener("change", ()=>{ try{ updateOracionFinalVisitorOptionLabel(); autoOracionFinal(false); }catch(_e){} });
+  $("presidente")?.addEventListener("change", ()=>{ try{ updateOracionFinalVisitorOptionLabel(); autoOracionFinal(false); }catch(_e){} });
   $("btnPdfPresidente")?.addEventListener("click", abrirPdfPresidente);
 
   $("btnImprimir")?.addEventListener("click", imprimirSemana);
@@ -1711,7 +1756,7 @@ async function init() {
 
   // Sugerencias / rotación
   $("btnSugerirPresidente")?.addEventListener("click", ()=>{ sugerirPresidente(); });
-  $("btnSugerirConductor")?.addEventListener("click", ()=>{ sugerirConductorAtalaya(); autoOracionFinal(); });
+  $("btnSugerirConductor")?.addEventListener("click", ()=>{ sugerirConductorAtalaya(); autoOracionFinal(false); });
   $("btnSugMultimedia1")?.addEventListener("click", ()=>suggestSelect("multimedia1","multimedia", candidates.multimedia));
   $("btnSugMultimedia2")?.addEventListener("click", ()=>suggestSelect("multimedia2","multimedia", candidates.multimedia));
   $("btnSugPlataforma")?.addEventListener("click", ()=>suggestSelect("plataforma","plataforma", candidates.plataforma));
@@ -1768,11 +1813,11 @@ async function init() {
     aplicarConfiguracionUI();
   // Mantener reglas de oraciones
   const presEl = $("presidente");
-  if (presEl) presEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); autoOracionFinal(); });
+  if (presEl) presEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); autoOracionFinal(false); });
   const oiEl = $("oracionInicial");
   if (oiEl) oiEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); });
   const oradorEl = $("oradorPublico");
-  if (oradorEl) oradorEl.addEventListener("input", () => { autoOracionFinal(); });
+  if (oradorEl) oradorEl.addEventListener("input", () => { autoOracionFinal(false); });
 
     await poblarDatalistOradores();
     setStatus("Listo. Elegí una semana y cargá.");
