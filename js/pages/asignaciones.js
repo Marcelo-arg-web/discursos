@@ -393,12 +393,19 @@ function applyReadOnlyMode(){
   // Botones sugerir
   [
     "btnSugerirPresidente","btnSugerirConductor","btnSugMultimedia1","btnSugMultimedia2","btnSugPlataforma",
+    "btnSugAcomEntrada","btnSugAcomAuditorio1","btnSugAcomAuditorio2","btnSugMicrofonista1","btnSugMicrofonista2"
   ].forEach(id=>{ const b = $(id); if(b) b.disabled = true; });
 }
 
 // ---------------- Asignaciones mensuales (tablero) ----------------
 const COL_MES = "asignaciones_mensuales";
 let lastMesDoc = null; // cache del último doc mensual cargado
+const USAR_AUDITORIO_2 = false;
+
+function aplicarConfiguracionUI(){
+  const wrapAud2 = $("fieldAcomodadorAuditorio2");
+  if (wrapAud2) wrapAud2.style.display = USAR_AUDITORIO_2 ? "" : "none";
+}
 
 function monthParts(mesISO) {
   const [yS, mS] = String(mesISO || "").split("-");
@@ -622,8 +629,8 @@ function monthUsageCounts(m) {
     const entries = [
       ["plataforma", w.plataformaId],
       ["acomodadorEntrada", w.acomodadorEntradaId],
-      ["acomodadorAuditorio1",
-    "acomodadorAuditorio2", w.acomodadorAuditorioId],
+      ["acomodadorAuditorio1", w.acomodadorAuditorio1Id || w.acomodadorAuditorioId],
+      ["acomodadorAuditorio2", w.acomodadorAuditorio2Id],
       ["multimedia", w.multimedia1Id],
       ["multimedia", w.multimedia2Id],
       ["microfonista", w.microfonista1Id],
@@ -683,8 +690,7 @@ function applyMesWeekSuggestion(targetWeekKey) {
   const acomEnt = getVal("mesAcomodadorEntrada") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorEntrada", used);
   used.add(acomEnt);
 
-  const acomAud = getVal("mesAcomodadorAuditorio") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio1",
-    "acomodadorAuditorio2", used);
+  const acomAud = getVal("mesAcomodadorAuditorio") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio1", used);
   used.add(acomAud);
 
   const mm1 = getVal("mesMultimedia1") || pickFairCandidate(candidates.multimedia, counts, "multimedia", used);
@@ -720,8 +726,7 @@ function applyMesWeekSuggestion(targetWeekKey) {
   // Marca uso para el criterio de desempate local
   markLastUsed("plataforma", platforma);
   markLastUsed("acomodadorEntrada", acomEnt);
-  markLastUsed("acomodadorAuditorio1",
-    "acomodadorAuditorio2", acomAud);
+  markLastUsed("acomodadorAuditorio1", acomAud);
   markLastUsed("multimedia", mm1);
   markLastUsed("multimedia", mm2);
   markLastUsed("microfonista", mic1);
@@ -842,8 +847,7 @@ function imprimirMes() {
 }
 
 async function cargarPersonas() {
-  const qy = query(collection(db, "personas"), where("activo", "==", true));
-  const snap = await getDocs(qy);
+  const snap = await getDocs(collection(db, "personas"));
   personas = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((p) => p?.nombre);
@@ -858,6 +862,7 @@ function fillSelect(id, filterFn) {
   sel.innerHTML = "";
   addOpt(sel, "", "— Seleccionar —");
   for (const p of personas) {
+    if (p?.activo === false) continue;
     if (filterFn(p)) addOpt(sel, p.id, displayName(p));
   }
 }
@@ -996,7 +1001,6 @@ async function firestoreVisitFor(fechaISO) {
     { id: "multimedia2", label: "Multimedia 2" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
     { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
-    { id: "acomodadorAuditorio2", label: "Acomodador Auditorio 2" },
   ];
   const exclNames = new Set([normName("Marcelo Palavecino")]);
   const conductorId = getVal("conductorAtalaya");
@@ -1196,7 +1200,7 @@ function formData() {
     microfonista2Id: getVal("microfonista2"),
     acomodadorEntradaId: getVal("acomodadorEntrada"),
     acomodadorAuditorio1Id: getVal("acomodadorAuditorio1"),
-    acomodadorAuditorio2Id: getVal("acomodadorAuditorio2"),
+    acomodadorAuditorio2Id: USAR_AUDITORIO_2 ? getVal("acomodadorAuditorio2") : "",
 
     cancionNumero: getVal("cancionNumero"),
     oradorPublico: getVal("oradorPublico"),
@@ -1255,7 +1259,6 @@ function validateRequired() {
     { id: "plataforma", label: "Plataforma" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
     { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
-    { id: "acomodadorAuditorio2", label: "Acomodador Auditorio 2" },
     { id: "multimedia1", label: "Multimedia 1" },
     { id: "multimedia2", label: "Multimedia 2" },
   ];
@@ -1277,7 +1280,6 @@ function validateNoDuplicates() {
     { id: "multimedia2", label: "Multimedia 2" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
     { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
-    { id: "acomodadorAuditorio2", label: "Acomodador Auditorio 2" },
   ];
   const chosen = fields.map((f) => ({ ...f, value: getVal(f.id) })).filter((x) => x.value);
 
@@ -1715,6 +1717,9 @@ async function init() {
   $("btnSugPlataforma")?.addEventListener("click", ()=>suggestSelect("plataforma","plataforma", candidates.plataforma));
   $("btnSugAcomEntrada")?.addEventListener("click", ()=>suggestSelect("acomodadorEntrada","acomodadores", candidates.acomodadores));
   $("btnSugAcomAuditorio1")?.addEventListener("click", ()=>suggestSelect("acomodadorAuditorio1","acomodadores", candidates.acomodadores));
+  $("btnSugAcomAuditorio2")?.addEventListener("click", ()=>suggestSelect("acomodadorAuditorio2","acomodadores", candidates.acomodadores));
+  $("btnSugMicrofonista1")?.addEventListener("click", ()=>suggestSelect("microfonista1","microfonista", candidates.microfonistas));
+  $("btnSugMicrofonista2")?.addEventListener("click", ()=>suggestSelect("microfonista2","microfonista", candidates.microfonistas));
 
   $("btnCargarMes")?.addEventListener("click", cargarMes);
   $("btnGuardarMes")?.addEventListener("click", guardarMes);
@@ -1760,6 +1765,7 @@ async function init() {
   try {
     await cargarPersonas();
     poblarSelects();
+    aplicarConfiguracionUI();
   // Mantener reglas de oraciones
   const presEl = $("presidente");
   if (presEl) presEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); autoOracionFinal(); });

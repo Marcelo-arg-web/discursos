@@ -150,7 +150,7 @@
     <button class="btn small" id="btnSugAcomAuditorio1" type="button">Sugerir</button>
   </div>
 </div>
-<div class="field">
+<div class="field" id="fieldAcomodadorAuditorio2">
   <div class="label">Acomodador Auditorio 2</div>
   <div class="row">
     <select id="acomodadorAuditorio2" style="flex:1"></select>
@@ -161,8 +161,14 @@
 <div class="field" style="margin-top:10px;">
   <div class="label">Microfonistas</div>
   <div class="grid two">
-    <select id="microfonista1"></select>
-    <select id="microfonista2"></select>
+    <div class="row">
+      <select id="microfonista1" style="flex:1"></select>
+      <button class="btn small" id="btnSugMicrofonista1" type="button">Sugerir</button>
+    </div>
+    <div class="row">
+      <select id="microfonista2" style="flex:1"></select>
+      <button class="btn small" id="btnSugMicrofonista2" type="button">Sugerir</button>
+    </div>
   </div>
 </div>
 <div class="hr"></div>
@@ -227,7 +233,7 @@
     });
   });
 })();
-</script><script src="js/pages/asignaciones.js?v=20260323c" type="module"></script>
+</script><script src="js/pages/asignaciones.js?v=20260323d" type="module"></script>
   <script src="js/nav-mobile.js"></script>
 </body>
 </html>
