@@ -189,7 +189,7 @@ function updateSemanaEspecialUI() {
     "acomodadorEntrada","acomodadorAuditorio1","acomodadorAuditorio2",
     "cancionNumero","oradorPublico","congregacionVisitante","discursoNumero",
     "tituloDiscurso","tituloSiguienteSemana",
-    "btnSugerirPresidente","btnSugerirConductor","btnSugMultimedia1","btnSugMultimedia2",
+    "btnSugerirPresidente","btnSugerirOracionInicial","btnSugerirConductor","btnSugerirLectorAtalaya","btnSugMultimedia1","btnSugMultimedia2",
     "btnSugPlataforma","btnSugAcomEntrada","btnSugAcomAuditorio1","btnSugMicrofonista1","btnSugMicrofonista2"
   ];
   ids.forEach((id) => {
@@ -283,7 +283,237 @@ const candidates = {
   multimedia: [],
   plataforma: [],
   acomodadores: [],
+  microfonistas: [],
 };
+
+const SUPPORT_SELECT_IDS = [
+  "multimedia1",
+  "multimedia2",
+  "acomodadorEntrada",
+  "acomodadorAuditorio1",
+  "acomodadorAuditorio2",
+  "microfonista1",
+  "microfonista2",
+];
+
+const SUPPORT_HISTORY_FIELDS = [
+  "multimedia1Id",
+  "multimedia2Id",
+  "acomodadorEntradaId",
+  "acomodadorAuditorio1Id",
+  "acomodadorAuditorio2Id",
+  "microfonista1Id",
+  "microfonista2Id",
+];
+
+let supportHistoryLoaded = false;
+const supportLastAssigned = new Map();
+
+let roleHistoryLoaded = false;
+const roleHistoryMaps = {
+  presidente: new Map(),
+  oracionInicial: new Map(),
+  conductorAtalaya: new Map(),
+  lectorAtalaya: new Map(),
+  plataforma: new Map(),
+  multimedia: new Map(),
+  acomodadores: new Map(),
+  microfonista: new Map(),
+};
+
+function updateRoleHistory(roleKey, personaId, whenValue) {
+  const map = roleHistoryMaps[roleKey];
+  const id = String(personaId || "").trim();
+  if (!map || !id) return;
+  const when = String(whenValue || "").trim();
+  const prev = map.get(id) || "";
+  if (!prev || (when && prev < when)) {
+    map.set(id, when || prev || "");
+  }
+}
+
+function extractRoleAssignmentsFromData(data, whenValue) {
+  const a = data?.asignaciones || data || {};
+  updateRoleHistory("presidente", a?.presidenteId, whenValue);
+  updateRoleHistory("oracionInicial", a?.oracionInicialId, whenValue);
+  updateRoleHistory("conductorAtalaya", a?.conductorAtalayaId, whenValue);
+  updateRoleHistory("lectorAtalaya", a?.lectorAtalayaId, whenValue);
+  updateRoleHistory("plataforma", a?.plataformaId, whenValue);
+  updateRoleHistory("acomodadores", a?.acomodadorEntradaId, whenValue);
+  updateRoleHistory("acomodadores", a?.acomodadorAuditorio1Id || a?.acomodadorAuditorioId, whenValue);
+  updateRoleHistory("acomodadores", a?.acomodadorAuditorio2Id, whenValue);
+  updateRoleHistory("multimedia", a?.multimedia1Id, whenValue);
+  updateRoleHistory("multimedia", a?.multimedia2Id, whenValue);
+  updateRoleHistory("microfonista", a?.microfonista1Id, whenValue);
+  updateRoleHistory("microfonista", a?.microfonista2Id, whenValue);
+}
+
+async function ensureRoleHistoryLoaded() {
+  if (roleHistoryLoaded) return;
+  roleHistoryLoaded = true;
+  Object.values(roleHistoryMaps).forEach((m) => m.clear());
+
+  try {
+    const weekSnap = await getDocs(collection(db, "asignaciones"));
+    weekSnap.docs.forEach((d) => {
+      extractRoleAssignmentsFromData(d.data() || {}, d.id);
+    });
+  } catch (e) {
+    console.warn("No pude leer historial semanal de asignaciones:", e);
+  }
+
+  try {
+    const monthSnap = await getDocs(collection(db, COL_MES));
+    monthSnap.docs.forEach((d) => {
+      const mesISO = d.id;
+      const data = d.data() || {};
+      const semanas = data?.semanas || {};
+      const sats = saturdaysInMonth(mesISO);
+      Object.entries(semanas).forEach(([weekKey, weekData]) => {
+        const idx = Math.max(0, parseInt(String(weekKey || "1"), 10) - 1);
+        const whenValue = sats[idx] || `${mesISO}-99`;
+        extractRoleAssignmentsFromData(weekData, whenValue);
+      });
+    });
+  } catch (e) {
+    console.warn("No pude leer historial mensual de roles:", e);
+  }
+}
+
+function compareCandidatesByRoleHistory(roleKey, aId, bId) {
+  const map = roleHistoryMaps[roleKey] || new Map();
+  const aWhen = map.get(aId) || "";
+  const bWhen = map.get(bId) || "";
+  if (!aWhen && bWhen) return -1;
+  if (aWhen && !bWhen) return 1;
+  if (aWhen !== bWhen) return aWhen.localeCompare(bWhen);
+  const aName = personaNameById(aId) || "";
+  const bName = personaNameById(bId) || "";
+  return aName.localeCompare(bName, "es", { sensitivity: "base" });
+}
+
+async function suggestByRoleHistory(selectId, roleKey, candidateIds, extraExcludedIds = []) {
+  if (!isAdmin) return;
+  const sel = $(selectId);
+  if (!sel) return;
+
+  await ensureRoleHistoryLoaded();
+
+  const excluded = new Set((extraExcludedIds || []).map((v) => String(v || "").trim()).filter(Boolean));
+  const list = Array.from(new Set((candidateIds || []).filter(Boolean)))
+    .filter((id) => !excluded.has(String(id || "").trim()));
+
+  if (!list.length) return;
+  list.sort((a, b) => compareCandidatesByRoleHistory(roleKey, a, b));
+
+  const chosen = list[0] || "";
+  if (chosen) {
+    sel.value = chosen;
+    updateRoleHistory(roleKey, chosen, semanaISO() || isoToday());
+  }
+}
+
+function getSupportSelectedIds(exceptSelectId = "") {
+  const ids = new Set();
+  SUPPORT_SELECT_IDS.forEach((sid) => {
+    if (sid === exceptSelectId) return;
+    const v = String(getVal(sid) || "").trim();
+    if (v) ids.add(v);
+  });
+  return ids;
+}
+
+function getSupportCandidateIds() {
+  return Array.from(new Set([
+    ...(candidates.multimedia || []),
+    ...(candidates.acomodadores || []),
+    ...(candidates.microfonistas || []),
+  ].filter(Boolean)));
+}
+
+function updateSupportLastAssigned(personaId, whenValue) {
+  const id = String(personaId || "").trim();
+  if (!id) return;
+  const when = String(whenValue || "").trim();
+  const prev = supportLastAssigned.get(id) || "";
+  if (!prev || (when && prev < when)) {
+    supportLastAssigned.set(id, when || prev || "");
+  }
+}
+
+function extractSupportAssignmentsFromData(data, whenValue) {
+  const a = data?.asignaciones || data || {};
+  SUPPORT_HISTORY_FIELDS.forEach((field) => {
+    const pid = String(a?.[field] || "").trim();
+    if (pid) updateSupportLastAssigned(pid, whenValue);
+  });
+  extractRoleAssignmentsFromData(data, whenValue);
+}
+
+async function ensureSupportHistoryLoaded() {
+  if (supportHistoryLoaded) return;
+  supportHistoryLoaded = true;
+  supportLastAssigned.clear();
+
+  try {
+    const weeklySnap = await getDocs(collection(db, "asignaciones"));
+    weeklySnap.docs.forEach((d) => {
+      extractSupportAssignmentsFromData(d.data(), d.id);
+    });
+  } catch (e) {
+    console.warn("No pude leer historial semanal de asignaciones:", e);
+  }
+
+  try {
+    const monthSnap = await getDocs(collection(db, COL_MES));
+    monthSnap.docs.forEach((d) => {
+      const mesISO = d.id;
+      const data = d.data() || {};
+      const semanas = data?.semanas || {};
+      const sats = saturdaysInMonth(mesISO);
+      Object.entries(semanas).forEach(([weekKey, weekData]) => {
+        const idx = Math.max(0, parseInt(String(weekKey || "1"), 10) - 1);
+        const whenValue = sats[idx] || `${mesISO}-99`;
+        extractSupportAssignmentsFromData(weekData, whenValue);
+      });
+    });
+  } catch (e) {
+    console.warn("No pude leer historial mensual de asignaciones:", e);
+  }
+}
+
+function compareSupportCandidatesByHistory(aId, bId) {
+  const aWhen = supportLastAssigned.get(aId) || "";
+  const bWhen = supportLastAssigned.get(bId) || "";
+  if (!aWhen && bWhen) return -1;
+  if (aWhen && !bWhen) return 1;
+  if (aWhen !== bWhen) return aWhen.localeCompare(bWhen);
+  const aName = personaNameById(aId) || "";
+  const bName = personaNameById(bId) || "";
+  return aName.localeCompare(bName, "es", { sensitivity: "base" });
+}
+
+async function suggestSupportSelect(selectId, candidateIds) {
+  if (!isAdmin) return;
+  const sel = $(selectId);
+  if (!sel) return;
+
+  await ensureSupportHistoryLoaded();
+
+  const used = getSupportSelectedIds(selectId);
+  const list = Array.from(new Set((candidateIds || []).filter(Boolean)))
+    .filter((id) => !used.has(id));
+
+  if (!list.length) return;
+
+  list.sort(compareSupportCandidatesByHistory);
+
+  const chosen = list[0] || "";
+  if (chosen) {
+    sel.value = chosen;
+    updateSupportLastAssigned(chosen, semanaISO() || isoToday());
+  }
+}
 
 async function getUsuario(uid){
   try{
@@ -355,14 +585,14 @@ function applyReadOnlyMode(){
     "acomodadorAuditorio2",
     "microfonista1","microfonista2","oracionFinal",
     // mensuales
-    "mes","mesSemana","mesPlataforma","mesAcomodadorEntrada","mesAcomodadorAuditorio",
+    "mes","mesSemana","mesPlataforma","mesAcomodadorEntrada","mesAcomodadorAuditorio1","mesAcomodadorAuditorio2",
     "mesMultimedia1","mesMultimedia2","mesMicrofonista1","mesMicrofonista2"
   ];
   disableIds.forEach(id=>{ const el = $(id); if(el) el.disabled = true; });
 
   // Botones sugerir
   [
-    "btnSugerirPresidente","btnSugerirConductor","btnSugMultimedia1","btnSugMultimedia2","btnSugPlataforma",
+    "btnSugerirPresidente","btnSugerirOracionInicial","btnSugerirConductor","btnSugerirLectorAtalaya","btnSugMultimedia1","btnSugMultimedia2","btnSugPlataforma",
   ].forEach(id=>{ const b = $(id); if(b) b.disabled = true; });
 }
 
@@ -446,7 +676,8 @@ function formMesData() {
   return {
     plataformaId: getVal("mesPlataforma"),
     acomodadorEntradaId: getVal("mesAcomodadorEntrada"),
-    acomodadorAuditorioId: getVal("mesAcomodadorAuditorio"),
+    acomodadorAuditorio1Id: getVal("mesAcomodadorAuditorio1"),
+    acomodadorAuditorio2Id: getVal("mesAcomodadorAuditorio2"),
     multimedia1Id: getVal("mesMultimedia1"),
     multimedia2Id: getVal("mesMultimedia2"),
     microfonista1Id: getVal("mesMicrofonista1"),
@@ -458,7 +689,8 @@ function emptyMesData() {
   return {
     plataformaId: "",
     acomodadorEntradaId: "",
-    acomodadorAuditorioId: "",
+    acomodadorAuditorio1Id: "",
+    acomodadorAuditorio2Id: "",
     multimedia1Id: "",
     multimedia2Id: "",
     microfonista1Id: "",
@@ -490,7 +722,8 @@ function hydrateMesToUI(m) {
   [
     ["mesPlataforma", dataWeek.plataformaId],
     ["mesAcomodadorEntrada", dataWeek.acomodadorEntradaId],
-    ["mesAcomodadorAuditorio", dataWeek.acomodadorAuditorioId],
+    ["mesAcomodadorAuditorio1", dataWeek.acomodadorAuditorio1Id || dataWeek.acomodadorAuditorioId],
+    ["mesAcomodadorAuditorio2", dataWeek.acomodadorAuditorio2Id],
     ["mesMultimedia1", dataWeek.multimedia1Id],
     ["mesMultimedia2", dataWeek.multimedia2Id],
     ["mesMicrofonista1", dataWeek.microfonista1Id],
@@ -499,7 +732,8 @@ function hydrateMesToUI(m) {
 
   setVal("mesPlataforma", dataWeek.plataformaId || "");
   setVal("mesAcomodadorEntrada", dataWeek.acomodadorEntradaId || "");
-  setVal("mesAcomodadorAuditorio", dataWeek.acomodadorAuditorioId || "");
+  setVal("mesAcomodadorAuditorio1", dataWeek.acomodadorAuditorio1Id || dataWeek.acomodadorAuditorioId || "");
+  setVal("mesAcomodadorAuditorio2", dataWeek.acomodadorAuditorio2Id || "");
   setVal("mesMultimedia1", dataWeek.multimedia1Id || "");
   setVal("mesMultimedia2", dataWeek.multimedia2Id || "");
   setVal("mesMicrofonista1", dataWeek.microfonista1Id || "");
@@ -544,7 +778,7 @@ function renderMesPreview(mesISO, docData) {
         <td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">${lbl}</td>
         <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.plataformaId) || "—"}</td>
         <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.acomodadorEntradaId) || "—"}</td>
-        <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.acomodadorAuditorioId) || "—"}</td>
+        <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.acomodadorAuditorio1Id || d.acomodadorAuditorioId) || "—"}</td>
         <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.multimedia1Id) || "—"}</td>
         <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.multimedia2Id) || "—"}</td>
         <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.microfonista1Id) || "—"}</td>
@@ -595,8 +829,8 @@ function monthUsageCounts(m) {
     const entries = [
       ["plataforma", w.plataformaId],
       ["acomodadorEntrada", w.acomodadorEntradaId],
-      ["acomodadorAuditorio1",
-    "acomodadorAuditorio2", w.acomodadorAuditorioId],
+      ["acomodadorAuditorio1", w.acomodadorAuditorio1Id || w.acomodadorAuditorioId],
+      ["acomodadorAuditorio2", w.acomodadorAuditorio2Id],
       ["multimedia", w.multimedia1Id],
       ["multimedia", w.multimedia2Id],
       ["microfonista", w.microfonista1Id],
@@ -656,9 +890,11 @@ function applyMesWeekSuggestion(targetWeekKey) {
   const acomEnt = getVal("mesAcomodadorEntrada") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorEntrada", used);
   used.add(acomEnt);
 
-  const acomAud = getVal("mesAcomodadorAuditorio") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio1",
-    "acomodadorAuditorio2", used);
-  used.add(acomAud);
+  const acomAud1 = getVal("mesAcomodadorAuditorio1") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio1", used);
+  used.add(acomAud1);
+
+  const acomAud2 = getVal("mesAcomodadorAuditorio2") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio2", used);
+  used.add(acomAud2);
 
   const mm1 = getVal("mesMultimedia1") || pickFairCandidate(candidates.multimedia, counts, "multimedia", used);
   used.add(mm1);
@@ -676,7 +912,8 @@ function applyMesWeekSuggestion(targetWeekKey) {
   [
     ["mesPlataforma", platforma],
     ["mesAcomodadorEntrada", acomEnt],
-    ["mesAcomodadorAuditorio", acomAud],
+    ["mesAcomodadorAuditorio1", acomAud1],
+    ["mesAcomodadorAuditorio2", acomAud2],
     ["mesMultimedia1", mm1],
     ["mesMultimedia2", mm2],
     ["mesMicrofonista1", mic1],
@@ -693,8 +930,8 @@ function applyMesWeekSuggestion(targetWeekKey) {
   // Marca uso para el criterio de desempate local
   markLastUsed("plataforma", platforma);
   markLastUsed("acomodadorEntrada", acomEnt);
-  markLastUsed("acomodadorAuditorio1",
-    "acomodadorAuditorio2", acomAud);
+  markLastUsed("acomodadorAuditorio1", acomAud1);
+  markLastUsed("acomodadorAuditorio2", acomAud2);
   markLastUsed("multimedia", mm1);
   markLastUsed("multimedia", mm2);
   markLastUsed("microfonista", mic1);
@@ -820,6 +1057,7 @@ async function cargarPersonas() {
   personas.sort((a, b) =>
     displayName(a).localeCompare(displayName(b), "es", { sensitivity: "base" })
   );
+  window.__personasCache = personas.slice();
 }
 
 function fillSelect(id, filterFn) {
@@ -914,12 +1152,17 @@ function nextFromRotation(key, ids){
 }
 
 function suggestSelect(selectId, key, ids){
+  if (["multimedia1","multimedia2","acomodadorEntrada","acomodadorAuditorio1","acomodadorAuditorio2","microfonista1","microfonista2"].includes(selectId)) {
+    return suggestSupportSelect(selectId, ids);
+  }
+  if (selectId === "plataforma") {
+    return suggestByRoleHistory(selectId, "plataforma", ids);
+  }
   if(!isAdmin) return;
   const sel = $(selectId);
   if(!sel) return;
   const current = sel.value;
   let chosen = nextFromRotation(key, ids);
-  // evita sugerir el mismo si hay más de 1
   if(chosen && chosen === current && (ids||[]).length > 1){
     chosen = nextFromRotation(key, ids);
   }
@@ -929,6 +1172,7 @@ function suggestSelect(selectId, key, ids){
 // ---------------- Autocompletado canción y discurso por número ----------------
 const cancionesMap = new Map(Object.entries(canciones).map(([k, v]) => [Number(k), String(v)]));
 const bosquejosMap = new Map(Object.entries(bosquejos).map(([k, v]) => [Number(k), String(v)]));
+let lastAutoTituloDiscurso = "";
 
 function normNumero(v) {
   const n = parseInt(String(v || "").trim(), 10);
@@ -944,13 +1188,27 @@ function aplicarAutoCancion() {
 function aplicarAutoDiscurso() {
   const elOut = document.getElementById("discursoTituloAuto");
   const num = normNumero(getVal("discursoNumero"));
+  const tituloInput = $("tituloDiscurso");
   if (!num) {
     if (elOut) elOut.textContent = "—";
+    if (tituloInput) {
+      const cur = String(tituloInput.value || "").trim();
+      if (lastAutoTituloDiscurso && cur === lastAutoTituloDiscurso) {
+        tituloInput.value = "";
+      }
+    }
+    lastAutoTituloDiscurso = "";
     return;
   }
-  const t = bosquejosMap.get(num) || "";
-  if (elOut) elOut.textContent = t ? `Bosquejo ${num}: ${t}` : "No encontrado";
-  if (t && !getVal("tituloDiscurso").trim()) setVal("tituloDiscurso", t);
+  const t = String(bosquejosMap.get(num) || "").trim();
+  if (elOut) elOut.textContent = t ? `Bosquejo ${num}: ${t}` : `Bosquejo ${num}: no encontrado`;
+  if (tituloInput) {
+    const cur = String(tituloInput.value || "").trim();
+    if (!cur || cur === lastAutoTituloDiscurso) {
+      tituloInput.value = t;
+    }
+  }
+  lastAutoTituloDiscurso = t;
 }
 
 
@@ -970,81 +1228,90 @@ async function firestoreVisitFor(fechaISO) {
   } catch (_) {
     /* ignore */
   }
-
-  const fields = [
-    { id: "multimedia1", label: "Multimedia 1" },
-    { id: "multimedia2", label: "Multimedia 2" },
-    { id: "acomodadorEntrada", label: "Acomodador Entrada" },
-    { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
-      ];
-  const exclNames = new Set([normName("Marcelo Palavecino")]);
-  const conductorId = getVal("conductorAtalaya");
-  const oracionInicialId = getVal("oracionInicial");
-
-  const candidatos = anc.filter(p=>{
-    if(!p) return false;
-    const n = normName(p.nombre || "");
-    if(!n) return false;
-    if(exclNames.has(n)) return false;
-    if(conductorId && p.id === conductorId) return false;
-    return true;
-  });
-
-  const elegidoId = pickNextFrom(candidatos.map(p=>p.id), "vf_last_presidente_idx");
-  if(elegidoId) setVal("presidente", elegidoId);
-
+  return null;
 }
 
+function pickNextFrom(ids, storageKey) {
+  const list = Array.from(new Set((ids || []).filter(Boolean)));
+  if (!list.length) return "";
+  const idx0 = parseInt(localStorage.getItem(storageKey) || "0", 10);
+  const idx = Number.isFinite(idx0) ? idx0 : 0;
+  const chosen = list[idx % list.length] || "";
+  localStorage.setItem(storageKey, String((idx + 1) % list.length));
+  return chosen;
+}
 
-function sugerirConductorAtalaya(){
+async function sugerirPresidente(){
+  if(!window.__personasCache) return;
+  const ancSiervos = getAncianosOSiervos(window.__personasCache) || [];
+  const exclNames = new Set([normalize("Marcelo Palavecino")]);
+  const excl = [getVal("conductorAtalaya"), getVal("lectorAtalaya")];
+  const candidatos = ancSiervos
+    .filter(p => p && p.id && p.nombre)
+    .filter(p => !exclNames.has(normalize(p.nombre || "")))
+    .map(p => p.id);
+  await suggestByRoleHistory("presidente", "presidente", candidatos, excl);
+}
+
+async function sugerirConductorAtalaya(){
   if(!window.__personasCache) return;
   const anc = getAncianos(window.__personasCache) || [];
-
-  const presidenteId = getVal("presidente");
-  const oracionInicialId = getVal("oracionInicial");
-  const lectorId = getVal("lectorAtalaya");
-
-  const candidatos = anc
-    .filter(p=>p && p.id && p.nombre)
-    .filter(p=>{
-      if(presidenteId && p.id === presidenteId) return false;
-      if(lectorId && p.id === lectorId) return false;
-      return true;
-    });
-
-  const elegidoId = pickNextFrom(candidatos.map(p=>p.id), "vf_last_conductor_atalaya_idx");
-  if(elegidoId) setVal("conductorAtalaya", elegidoId);
+  const candidatos = anc.filter(p=>p && p.id && p.nombre).map(p=>p.id);
+  await suggestByRoleHistory("conductorAtalaya", "conductorAtalaya", candidatos, [getVal("presidente"), getVal("lectorAtalaya")]);
 }
 
-
-
+async function sugerirLectorAtalaya(){
+  if(!window.__personasCache) return;
+  const lectores = getLectoresAtalaya(window.__personasCache) || [];
+  const candidatos = lectores.filter(p=>p && p.id && p.nombre).map(p=>p.id);
+  await suggestByRoleHistory("lectorAtalaya", "lectorAtalaya", candidatos, [getVal("presidente"), getVal("conductorAtalaya")]);
+}
 
 function autoPresidenteIfNeeded(){
   if(getVal("presidente").trim()) return;
   sugerirPresidente();
 }
 
-function sugerirOracionInicial(){
+async function sugerirOracionInicial(){
   if(!window.__personasCache) return;
   const pool = (getAncianosOSiervos(window.__personasCache) || []);
-  const presidenteId = getVal("presidente");
   const candidatos = pool
     .filter(p=>p && p.id && p.nombre)
-    .filter(p=>!presidenteId || p.id !== presidenteId);
-
-  const elegidoId = pickNextFrom(candidatos.map(p=>p.id), "vf_last_oracion_inicial_idx");
-  if(elegidoId) setVal("oracionInicial", elegidoId);
+    .map(p=>p.id);
+  await suggestByRoleHistory("oracionInicial", "oracionInicial", candidatos, [getVal("lectorAtalaya"), getVal("conductorAtalaya")]);
 }
 
 function autoOracionInicialIfNeeded(){
   const oi = getVal("oracionInicial");
-  // Solo sugerimos si está vacía. Si el usuario elige al presidente manualmente,
-  // se respeta esa decisión y no se bloquea.
   if(!oi){
     return sugerirOracionInicial();
   }
 }
 
+async function aplicarAutoVisitante(fechaISO) {
+  const visitante = (await firestoreVisitFor(fechaISO)) || localVisitanteFor(fechaISO);
+  if (!visitante) {
+    updateOracionFinalVisitorOptionLabel();
+    autoOracionFinal(false);
+    return;
+  }
+
+  if (!getVal("oradorPublico").trim() && visitante.nombre) {
+    setVal("oradorPublico", visitante.nombre);
+  }
+  if (!getVal("congregacionVisitante").trim() && visitante.congregacion) {
+    setVal("congregacionVisitante", visitante.congregacion);
+  }
+  if (!getVal("cancionNumero").trim() && visitante.cancion) {
+    setVal("cancionNumero", String(visitante.cancion));
+  }
+  if (!getVal("tituloDiscurso").trim() && visitante.titulo) {
+    setVal("tituloDiscurso", visitante.titulo);
+  }
+
+  updateOracionFinalVisitorOptionLabel();
+  autoOracionFinal(false);
+}
 
 function updateOracionFinalVisitorOptionLabel(){
   const ofSel = $("oracionFinal");
@@ -1177,6 +1444,7 @@ function formData() {
     cancionNumero: getVal("cancionNumero"),
     oradorPublico: getVal("oradorPublico"),
     congregacionVisitante: getVal("congregacionVisitante"),
+    discursoNumero: getVal("discursoNumero"),
     tituloDiscurso: getVal("tituloDiscurso"),
     tituloSiguienteSemana: getVal("tituloSiguienteSemana"),
     tipoSemana: tipo,
@@ -1226,8 +1494,10 @@ function hydrateToUI(a) {
   setVal("cancionNumero", a.cancionNumero || "");
   setVal("oradorPublico", a.oradorPublico || "");
   setVal("congregacionVisitante", a.congregacionVisitante || "");
+  setVal("discursoNumero", a.discursoNumero || "");
   setVal("tituloDiscurso", a.tituloDiscurso || "");
   setVal("tituloSiguienteSemana", a.tituloSiguienteSemana || "");
+  aplicarAutoDiscurso();
 }
 
 
@@ -1254,6 +1524,9 @@ function validateNoDuplicates() {
     { id: "multimedia2", label: "Multimedia 2" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
     { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
+    { id: "acomodadorAuditorio2", label: "Acomodador Auditorio 2" },
+    { id: "microfonista1", label: "Microfonista 1" },
+    { id: "microfonista2", label: "Microfonista 2" },
   ];
   const chosen = fields.map((f) => ({ ...f, value: getVal(f.id) })).filter((x) => x.value);
 
@@ -1364,6 +1637,7 @@ function limpiar() {
     "cancionNumero",
     "oradorPublico",
     "congregacionVisitante",
+    "discursoNumero",
     "tituloDiscurso",
     "tituloSiguienteSemana",
   ].forEach((id) => setVal(id, ""));
@@ -1466,7 +1740,7 @@ function buildPrintSemanaHTML(semanaSatISO, a){
   const mm2 = personaNameById(a?.multimedia2Id) || "—";
   const plat = personaNameById(a?.plataformaId) || "—";
   const ent = personaNameById(a?.acomodadorEntradaId) || "—";
-  const aud = personaNameById(a?.acomodadorAuditorioId) || "—";
+  const aud = personaNameById(a?.acomodadorAuditorio1Id || a?.acomodadorAuditorioId) || "—";
   const mic1 = personaNameById(a?.microfonista1Id) || "—";
   const mic2 = personaNameById(a?.microfonista2Id) || "—";
 
@@ -1543,7 +1817,8 @@ function buildIndividualMessages(semanaSatISO, a){
   const roles = [
     { key: "plataformaId", label: "Plataforma" },
     { key: "acomodadorEntradaId", label: "Acomodador (Entrada)" },
-    { key: "acomodadorAuditorioId", label: "Acomodador (Auditorio)" },
+    { key: "acomodadorAuditorio1Id", label: "Acomodador (Auditorio 1)" },
+    { key: "acomodadorAuditorio2Id", label: "Acomodador (Auditorio 2)" },
     { key: "multimedia1Id", label: "Multimedia" },
     { key: "multimedia2Id", label: "Multimedia" },
   ];
@@ -1707,12 +1982,17 @@ async function init() {
 
   // Sugerencias / rotación
   $("btnSugerirPresidente")?.addEventListener("click", ()=>{ sugerirPresidente(); });
+  $("btnSugerirOracionInicial")?.addEventListener("click", ()=>{ sugerirOracionInicial(); });
   $("btnSugerirConductor")?.addEventListener("click", ()=>{ sugerirConductorAtalaya(); });
+  $("btnSugerirLectorAtalaya")?.addEventListener("click", ()=>{ sugerirLectorAtalaya(); });
   $("btnSugMultimedia1")?.addEventListener("click", ()=>suggestSelect("multimedia1","multimedia", candidates.multimedia));
   $("btnSugMultimedia2")?.addEventListener("click", ()=>suggestSelect("multimedia2","multimedia", candidates.multimedia));
   $("btnSugPlataforma")?.addEventListener("click", ()=>suggestSelect("plataforma","plataforma", candidates.plataforma));
   $("btnSugAcomEntrada")?.addEventListener("click", ()=>suggestSelect("acomodadorEntrada","acomodadores", candidates.acomodadores));
   $("btnSugAcomAuditorio1")?.addEventListener("click", ()=>suggestSelect("acomodadorAuditorio1","acomodadores", candidates.acomodadores));
+  $("btnSugAcomAuditorio2")?.addEventListener("click", ()=>suggestSelect("acomodadorAuditorio2","acomodadores", candidates.acomodadores));
+  $("btnSugMicrofonista1")?.addEventListener("click", ()=>suggestSelect("microfonista1","microfonista", candidates.microfonistas));
+  $("btnSugMicrofonista2")?.addEventListener("click", ()=>suggestSelect("microfonista2","microfonista", candidates.microfonistas));
 
   $("btnCargarMes")?.addEventListener("click", cargarMes);
   $("btnGuardarMes")?.addEventListener("click", guardarMes);
@@ -1735,7 +2015,8 @@ async function init() {
   [
     "mesPlataforma",
     "mesAcomodadorEntrada",
-    "mesAcomodadorAuditorio",
+    "mesAcomodadorAuditorio1",
+    "mesAcomodadorAuditorio2",
     "mesMultimedia1",
     "mesMultimedia2",
     "mesMicrofonista1",
@@ -1754,6 +2035,10 @@ async function init() {
   $("cancionNumero")?.addEventListener("change", aplicarAutoCancion);
   $("discursoNumero")?.addEventListener("input", aplicarAutoDiscurso);
   $("discursoNumero")?.addEventListener("change", aplicarAutoDiscurso);
+  $("tituloDiscurso")?.addEventListener("input", () => {
+    const cur = String(getVal("tituloDiscurso") || "").trim();
+    if (cur !== lastAutoTituloDiscurso) lastAutoTituloDiscurso = cur ? "__MANUAL__" : "";
+  });
 
   try {
     await cargarPersonas();
@@ -1761,11 +2046,14 @@ async function init() {
   // Mantener reglas de oraciones
   const presEl = $("presidente");
   if (presEl) presEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); });
+  const conductorEl = $("conductorAtalaya");
+  if (conductorEl) conductorEl.addEventListener("change", () => { if(!getVal("lectorAtalaya")) sugerirLectorAtalaya(); });
   const oradorEl = $("oradorPublico");
   const oracionFinalEl = $("oracionFinal");
   if (oracionFinalEl) oracionFinalEl.addEventListener("change", () => { oracionFinalEl.dataset.manual = "1"; });
 
     await poblarDatalistOradores();
+    await ensureRoleHistoryLoaded();
     updateSemanaEspecialUI();
     setStatus("Listo. Elegí una semana y cargá.");
   } catch (e) {
