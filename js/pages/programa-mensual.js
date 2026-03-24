@@ -6,7 +6,6 @@ import {
   collection,
   getDocs,
   query,
-  where,
   orderBy,
   startAt,
   endAt,
@@ -104,8 +103,7 @@ function formatMesTitulo(ym){
 let personasMap = new Map();
 async function loadPersonasMap(){
   try{
-    const qy = query(collection(db,"personas"), where("activo","==", true));
-    const snap = await getDocs(qy);
+    const snap = await getDocs(collection(db,"personas"));
     personasMap = new Map(snap.docs.map(d=>[d.id, String(d.data()?.nombre||"")]));
   }catch(e){
     console.warn("No pude cargar personas:", e);

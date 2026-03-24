@@ -34,7 +34,8 @@ const $ = (id) => document.getElementById(id);
 const getVal = (id) => ($(id)?.value ?? "");
 const setVal = (id, v) => {
   const el = $(id);
-
+  if (el) el.value = v ?? "";
+};
 
 // ---------------- Semana Jueves/Sábado: copiar asignados automáticamente ----------------
 function isoToDate(iso){
@@ -92,8 +93,6 @@ async function copiarAsignadosAlJuevesSiCorresponde(fechaFinDeSemanaISO, dataAsi
     copiadoDesdeFinDeSemana: fechaFinDeSemanaISO,
   }, { merge: true });
 }
-  if (el) el.value = v ?? "";
-};
 
 function escapeHtml(str){
   return String(str ?? "")
@@ -293,7 +292,7 @@ function applyReadOnlyMode(){
     "acomodadorAuditorio2",
     "microfonista1","microfonista2","oracionFinal",
     // mensuales
-    "mes","mesSemana","mesPlataforma","mesAcomodadorEntrada","mesAcomodadorAuditorio",
+    "mes","mesSemana","mesPlataforma","mesAcomodadorEntrada","mesAcomodadorAuditorio1","mesAcomodadorAuditorio2",
     "mesMultimedia1","mesMultimedia2","mesMicrofonista1","mesMicrofonista2"
   ];
   disableIds.forEach(id=>{ const el = $(id); if(el) el.disabled = true; });
@@ -380,11 +379,22 @@ function personaNameById(id) {
   return "";
 }
 
+function getAcomodadorAuditorio1Id(asig = {}) {
+  return String(asig?.acomodadorAuditorio1Id || asig?.acomodadorAuditorioId || "").trim();
+}
+
+function getAcomodadorAuditorio2Id(asig = {}) {
+  return String(asig?.acomodadorAuditorio2Id || "").trim();
+}
+
 function formMesData() {
   return {
     plataformaId: getVal("mesPlataforma"),
     acomodadorEntradaId: getVal("mesAcomodadorEntrada"),
-    acomodadorAuditorioId: getVal("mesAcomodadorAuditorio"),
+    acomodadorAuditorio1Id: getVal("mesAcomodadorAuditorio1"),
+    acomodadorAuditorio2Id: getVal("mesAcomodadorAuditorio2"),
+    // compatibilidad con versión anterior
+    acomodadorAuditorioId: getVal("mesAcomodadorAuditorio1"),
     multimedia1Id: getVal("mesMultimedia1"),
     multimedia2Id: getVal("mesMultimedia2"),
     microfonista1Id: getVal("mesMicrofonista1"),
@@ -396,6 +406,8 @@ function emptyMesData() {
   return {
     plataformaId: "",
     acomodadorEntradaId: "",
+    acomodadorAuditorio1Id: "",
+    acomodadorAuditorio2Id: "",
     acomodadorAuditorioId: "",
     multimedia1Id: "",
     multimedia2Id: "",
@@ -428,7 +440,8 @@ function hydrateMesToUI(m) {
   [
     ["mesPlataforma", dataWeek.plataformaId],
     ["mesAcomodadorEntrada", dataWeek.acomodadorEntradaId],
-    ["mesAcomodadorAuditorio", dataWeek.acomodadorAuditorioId],
+    ["mesAcomodadorAuditorio1", dataWeek.acomodadorAuditorio1Id || dataWeek.acomodadorAuditorioId],
+    ["mesAcomodadorAuditorio2", dataWeek.acomodadorAuditorio2Id],
     ["mesMultimedia1", dataWeek.multimedia1Id],
     ["mesMultimedia2", dataWeek.multimedia2Id],
     ["mesMicrofonista1", dataWeek.microfonista1Id],
@@ -437,7 +450,8 @@ function hydrateMesToUI(m) {
 
   setVal("mesPlataforma", dataWeek.plataformaId || "");
   setVal("mesAcomodadorEntrada", dataWeek.acomodadorEntradaId || "");
-  setVal("mesAcomodadorAuditorio", dataWeek.acomodadorAuditorioId || "");
+  setVal("mesAcomodadorAuditorio1", dataWeek.acomodadorAuditorio1Id || dataWeek.acomodadorAuditorioId || "");
+  setVal("mesAcomodadorAuditorio2", dataWeek.acomodadorAuditorio2Id || "");
   setVal("mesMultimedia1", dataWeek.multimedia1Id || "");
   setVal("mesMultimedia2", dataWeek.multimedia2Id || "");
   setVal("mesMicrofonista1", dataWeek.microfonista1Id || "");
@@ -482,7 +496,7 @@ function renderMesPreview(mesISO, docData) {
         <td style="padding:8px; border:1px solid #e5e7eb; font-weight:700;">${lbl}</td>
         <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.plataformaId) || "—"}</td>
         <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.acomodadorEntradaId) || "—"}</td>
-        <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.acomodadorAuditorioId) || "—"}</td>
+        <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.acomodadorAuditorio1Id || d.acomodadorAuditorioId) || "—"}</td>
         <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.multimedia1Id) || "—"}</td>
         <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.multimedia2Id) || "—"}</td>
         <td style="padding:8px; border:1px solid #e5e7eb;">${personaNameById(d.microfonista1Id) || "—"}</td>
@@ -534,7 +548,7 @@ function monthUsageCounts(m) {
       ["plataforma", w.plataformaId],
       ["acomodadorEntrada", w.acomodadorEntradaId],
       ["acomodadorAuditorio1",
-    "acomodadorAuditorio2", w.acomodadorAuditorioId],
+    "acomodadorAuditorio2", w.acomodadorAuditorio2Id],
       ["multimedia", w.multimedia1Id],
       ["multimedia", w.multimedia2Id],
       ["microfonista", w.microfonista1Id],
@@ -577,14 +591,12 @@ function markLastUsed(roleKey, personaId) {
 }
 
 function applyMesWeekSuggestion(targetWeekKey) {
-  // Usa lo ya cargado del mes (lastMesDoc) para mantener equidad, y rellena la semana seleccionada.
   if (!lastMesDoc) lastMesDoc = { semanas: {} };
   if (!lastMesDoc.semanas) lastMesDoc.semanas = {};
 
   const counts = monthUsageCounts(lastMesDoc);
   const used = new Set();
 
-  // Respeta lo ya elegido manualmente: si ya hay valores, se toman como "usados"
   const current = formMesData();
   Object.values(current).forEach((pid) => pid && used.add(pid));
 
@@ -594,9 +606,11 @@ function applyMesWeekSuggestion(targetWeekKey) {
   const acomEnt = getVal("mesAcomodadorEntrada") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorEntrada", used);
   used.add(acomEnt);
 
-  const acomAud = getVal("mesAcomodadorAuditorio") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio1",
-    "acomodadorAuditorio2", used);
-  used.add(acomAud);
+  const acomAud1 = getVal("mesAcomodadorAuditorio1") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio1", used);
+  used.add(acomAud1);
+
+  const acomAud2 = getVal("mesAcomodadorAuditorio2") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio2", used);
+  used.add(acomAud2);
 
   const mm1 = getVal("mesMultimedia1") || pickFairCandidate(candidates.multimedia, counts, "multimedia", used);
   used.add(mm1);
@@ -610,11 +624,11 @@ function applyMesWeekSuggestion(targetWeekKey) {
   const mic2 = getVal("mesMicrofonista2") || pickFairCandidate(candidates.microfonistas, counts, "microfonista", used);
   used.add(mic2);
 
-  // Asigna al UI
   [
     ["mesPlataforma", platforma],
     ["mesAcomodadorEntrada", acomEnt],
-    ["mesAcomodadorAuditorio", acomAud],
+    ["mesAcomodadorAuditorio1", acomAud1],
+    ["mesAcomodadorAuditorio2", acomAud2],
     ["mesMultimedia1", mm1],
     ["mesMultimedia2", mm2],
     ["mesMicrofonista1", mic1],
@@ -624,19 +638,19 @@ function applyMesWeekSuggestion(targetWeekKey) {
     setVal(sid, pid || "");
   });
 
-  // Guarda en memoria (no en Firestore aún)
-  const wk = targetWeekKey || currentMesSemana();
-  lastMesDoc.semanas[wk] = formMesData();
-
-  // Marca uso para el criterio de desempate local
-  markLastUsed("plataforma", platforma);
-  markLastUsed("acomodadorEntrada", acomEnt);
-  markLastUsed("acomodadorAuditorio1",
-    "acomodadorAuditorio2", acomAud);
-  markLastUsed("multimedia", mm1);
-  markLastUsed("multimedia", mm2);
-  markLastUsed("microfonista", mic1);
-  markLastUsed("microfonista", mic2);
+  if (!lastMesDoc.semanas) lastMesDoc.semanas = {};
+  lastMesDoc.semanas[targetWeekKey] = {
+    ...emptyMesData(),
+    plataformaId: platforma || "",
+    acomodadorEntradaId: acomEnt || "",
+    acomodadorAuditorio1Id: acomAud1 || "",
+    acomodadorAuditorio2Id: acomAud2 || "",
+    acomodadorAuditorioId: acomAud1 || "",
+    multimedia1Id: mm1 || "",
+    multimedia2Id: mm2 || "",
+    microfonista1Id: mic1 || "",
+    microfonista2Id: mic2 || "",
+  };
 }
 
 function sugerirSemanaEquitativa() {
@@ -832,11 +846,11 @@ fillSelect("lectorAtalaya", byIds(lectoresAtalaya));
   fillSelect("mesAcomodadorAuditorio1", byIds(acomodadores));
   fillSelect("mesAcomodadorAuditorio2", byIds(acomodadores));
 
-  fillSelect("microfonista1", (p) => p?.activo !== false);
-  fillSelect("microfonista2", (p) => p?.activo !== false);
+  fillSelect("microfonista1", byIds(microfonistas));
+  fillSelect("microfonista2", byIds(microfonistas));
 
-  fillSelect("mesMicrofonista1", (p) => p?.activo !== false);
-  fillSelect("mesMicrofonista2", (p) => p?.activo !== false);
+  fillSelect("mesMicrofonista1", byIds(microfonistas));
+  fillSelect("mesMicrofonista2", byIds(microfonistas));
 }
 
 // ---------------- Rotación / sugerencias ----------------
@@ -1326,7 +1340,7 @@ function buildAvisoSemanal(semanaSatISO, a) {
   const m2 = personaNameById(a?.multimedia2Id) || "—";
   const plat = personaNameById(a?.plataformaId) || "—";
   const ent = personaNameById(a?.acomodadorEntradaId) || "—";
-  const aud = personaNameById(a?.acomodadorAuditorioId) || "—";
+  const aud = personaNameById(getAcomodadorAuditorio1Id(a)) || "—";
   const pres = personaNameById(a?.presidenteId) || "—";
   const visitante = (a?.oradorPublico || "").trim();
 
@@ -1381,7 +1395,7 @@ function buildPrintSemanaHTML(semanaSatISO, a){
   const mm2 = personaNameById(a?.multimedia2Id) || "—";
   const plat = personaNameById(a?.plataformaId) || "—";
   const ent = personaNameById(a?.acomodadorEntradaId) || "—";
-  const aud = personaNameById(a?.acomodadorAuditorioId) || "—";
+  const aud = personaNameById(getAcomodadorAuditorio1Id(a)) || "—";
   const mic1 = personaNameById(a?.microfonista1Id) || "—";
   const mic2 = personaNameById(a?.microfonista2Id) || "—";
 
@@ -1458,7 +1472,8 @@ function buildIndividualMessages(semanaSatISO, a){
   const roles = [
     { key: "plataformaId", label: "Plataforma" },
     { key: "acomodadorEntradaId", label: "Acomodador (Entrada)" },
-    { key: "acomodadorAuditorioId", label: "Acomodador (Auditorio)" },
+    { key: "acomodadorAuditorio1Id", label: "Acomodador (Auditorio 1)" },
+    { key: "acomodadorAuditorio2Id", label: "Acomodador (Auditorio 2)" },
     { key: "multimedia1Id", label: "Multimedia" },
     { key: "multimedia2Id", label: "Multimedia" },
   ];
@@ -1647,7 +1662,8 @@ async function init() {
   [
     "mesPlataforma",
     "mesAcomodadorEntrada",
-    "mesAcomodadorAuditorio",
+    "mesAcomodadorAuditorio1",
+    "mesAcomodadorAuditorio2",
     "mesMultimedia1",
     "mesMultimedia2",
     "mesMicrofonista1",
