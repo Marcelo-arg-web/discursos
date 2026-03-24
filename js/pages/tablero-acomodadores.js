@@ -154,7 +154,6 @@ async function loadPersonasMap(){
 function nombrePorId(id){
   const k = String(id||"").trim();
   if(!k) return "";
-  if(personasActivasMap.has(k) && personasActivasMap.get(k) === false) return "";
   return personasMap.get(k) || "";
 }
 function textoAsignado(v){
@@ -232,7 +231,7 @@ function render(mesISO, pairs){
         <td class="td-center">${p.semana}</td>
         <td>${escapeHtml(p.fechaLabel)}</td>
         <td>${escapeHtml(textoAsignado(p.fin.entrada) || "—")}</td>
-        <td>${escapeHtml(textoAsignado(p.fin.aud1) || "—")}</td>
+        <td>${escapeHtml(textoAsignado(p.fin.auditorio1) || "—")}</td>
       </tr>
     `).join("");
 
