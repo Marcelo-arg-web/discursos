@@ -108,7 +108,9 @@ function setStatus(msg, isError = false) {
   const box = $("status");
   if (!box) return;
   box.textContent = msg;
+  box.style.display = "block";
   box.style.background = isError ? "#fff1f2" : "#f8fafc";
+  box.style.border = `1px solid ${isError ? "#fecdd3" : "#e5e7eb"}`;
   box.style.borderColor = isError ? "#fecdd3" : "#e5e7eb";
   box.style.color = isError ? "#9f1239" : "#111827";
 }
@@ -800,7 +802,7 @@ function poblarSelects() {
 
   fillSelect("presidente", byIds(ancSiervos));
   fillSelect("oracionInicial", byIds(ancSiervos));
-  fillSelect("oracionFinal", byIds(ancSiervos));
+  fillSelect("oracionFinal", (p) => p?.activo !== false);
   // Opción especial: oración final por el orador visitante
   const ofSel = $("oracionFinal");
   if (ofSel && !Array.from(ofSel.options).some(o => o.value === "__VISITANTE__")) {
@@ -932,8 +934,8 @@ async function firestoreVisitFor(fechaISO) {
 
   // Ajusta oración inicial si quedó igual al presidente
   autoOracionInicialIfNeeded();
-  autoOracionFinal();
 }
+
 
 function sugerirConductorAtalaya(){
   if(!window.__personasCache) return;
@@ -1223,7 +1225,6 @@ async function cargarSemana() {
       hydrateToUI(a);
       await aplicarAutoVisitante(s);
       try{ autoPresidenteIfNeeded(); }catch(_e){}
-      try{ autoOracionFinal(false); }catch(_e){}
       // refresca aviso
       try{ await generarAviso(); }catch(_e){}
       setStatus("Datos cargados.");
@@ -1231,7 +1232,6 @@ async function cargarSemana() {
       setStatus("No hay datos guardados para esta semana. Podés cargar y guardar.");
       await aplicarAutoVisitante(s);
       try{ autoPresidenteIfNeeded(); }catch(_e){}
-      try{ autoOracionFinal(false); }catch(_e){}
       setAvisoText("");
     }
   } catch (e) {
@@ -1279,7 +1279,8 @@ setStatus("Guardado con éxito.");
     generarAviso();
   } catch (e) {
     console.error(e);
-    setStatus("No pude guardar. Revisá permisos de Firestore.", true);
+    const detail = e?.message || e?.code || String(e);
+    setStatus(`No pude guardar: ${detail}`, true);
   } finally {
     setBusy("btnGuardar", false);
   }
@@ -1430,8 +1431,6 @@ function imprimirSemana(){
   if(!s) return setStatus("Elegí una semana primero.", true);
   // usa la asignación cargada actualmente
   const a = formData();
-  // asegúrate de aplicar regla de oración final
-  autoOracionFinal();
 
   const host = $("printSemana");
   if(host) host.innerHTML = buildPrintSemanaHTML(s, a);
@@ -1595,8 +1594,6 @@ async function init() {
   $("btnCargar")?.addEventListener("click", cargarSemana);
   $("btnGuardar")?.addEventListener("click", guardar);
   $("btnLimpiar")?.addEventListener("click", limpiar);
-  $("oradorPublico")?.addEventListener("change", ()=>{ try{ autoOracionFinal(false); }catch(_e){} });
-  $("presidente")?.addEventListener("change", ()=>{ try{ autoOracionFinal(false); }catch(_e){} });
   $("btnPdfPresidente")?.addEventListener("click", abrirPdfPresidente);
 
   $("btnImprimir")?.addEventListener("click", imprimirSemana);
@@ -1622,7 +1619,7 @@ async function init() {
 
   // Sugerencias / rotación
   $("btnSugerirPresidente")?.addEventListener("click", ()=>{ sugerirPresidente(); });
-  $("btnSugerirConductor")?.addEventListener("click", ()=>{ sugerirConductorAtalaya(); autoOracionFinal(); });
+  $("btnSugerirConductor")?.addEventListener("click", ()=>{ sugerirConductorAtalaya(); });
   $("btnSugMultimedia1")?.addEventListener("click", ()=>suggestSelect("multimedia1","multimedia", candidates.multimedia));
   $("btnSugMultimedia2")?.addEventListener("click", ()=>suggestSelect("multimedia2","multimedia", candidates.multimedia));
   $("btnSugPlataforma")?.addEventListener("click", ()=>suggestSelect("plataforma","plataforma", candidates.plataforma));
@@ -1675,11 +1672,10 @@ async function init() {
     poblarSelects();
   // Mantener reglas de oraciones
   const presEl = $("presidente");
-  if (presEl) presEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); autoOracionFinal(false); });
+  if (presEl) presEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); });
   const oiEl = $("oracionInicial");
   if (oiEl) oiEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); });
   const oradorEl = $("oradorPublico");
-  if (oradorEl) oradorEl.addEventListener("input", () => { autoOracionFinal(false); });
   const oracionFinalEl = $("oracionFinal");
   if (oracionFinalEl) oracionFinalEl.addEventListener("change", () => { oracionFinalEl.dataset.manual = "1"; });
 

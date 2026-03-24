@@ -134,18 +134,27 @@ function escapeHtml(str){
 }
 
 let personasMap = new Map();
+let personasActivasMap = new Map();
 async function loadPersonasMap(){
   try{
     const snap = await getDocs(collection(db,"personas"));
-    personasMap = new Map(snap.docs.map(d=>[d.id, (d.data()?.nombre||"").toString()]));
+    personasMap = new Map();
+    personasActivasMap = new Map();
+    snap.docs.forEach(d=>{
+      const data = d.data() || {};
+      personasMap.set(d.id, (data?.nombre||"").toString());
+      personasActivasMap.set(d.id, data?.activo !== false);
+    });
   }catch(e){
     console.warn("No pude cargar personas para nombres:", e);
     personasMap = new Map();
+    personasActivasMap = new Map();
   }
 }
 function nombrePorId(id){
   const k = String(id||"").trim();
   if(!k) return "";
+  if(personasActivasMap.has(k) && personasActivasMap.get(k) === false) return "";
   return personasMap.get(k) || "";
 }
 function textoAsignado(v){
@@ -222,8 +231,8 @@ function render(mesISO, pairs){
       <tr>
         <td class="td-center">${p.semana}</td>
         <td>${escapeHtml(p.fechaLabel)}</td>
-        <td>${escapeHtml(pairLabel(p.jueves.entrada, p.fin.entrada))}</td>
-        <td>${escapeHtml(pairLabel(p.jueves.aud1, p.fin.aud1))}</td>
+        <td>${escapeHtml(textoAsignado(p.fin.entrada) || "—")}</td>
+        <td>${escapeHtml(textoAsignado(p.fin.aud1) || "—")}</td>
       </tr>
     `).join("");
 
@@ -231,8 +240,8 @@ function render(mesISO, pairs){
       <tr>
         <td class="td-center">${p.semana}</td>
         <td>${escapeHtml(p.fechaLabel)}</td>
-        <td>${escapeHtml(pairLabel(p.juevesAV.audio, p.finAV.audio))}</td>
-        <td>${escapeHtml(pairLabel(p.juevesAV.video, p.finAV.video))}</td>
+        <td>${escapeHtml(textoAsignado(p.finAV.audio) || "—")}</td>
+        <td>${escapeHtml(textoAsignado(p.finAV.video) || "—")}</td>
       </tr>
     `).join("");
 
@@ -240,8 +249,8 @@ function render(mesISO, pairs){
       <tr>
         <td class="td-center">${p.semana}</td>
         <td>${escapeHtml(p.fechaLabel)}</td>
-        <td>${escapeHtml(pairLabel(p.juevesMic.mic1, p.finMic.mic1))}</td>
-        <td>${escapeHtml(pairLabel(p.juevesMic.mic2, p.finMic.mic2))}</td>
+        <td>${escapeHtml(textoAsignado(p.finMic.mic1) || "—")}</td>
+        <td>${escapeHtml(textoAsignado(p.finMic.mic2) || "—")}</td>
       </tr>
     `).join("");
 
@@ -256,7 +265,7 @@ function render(mesISO, pairs){
       <table class="table board" style="width:100%;">
         <thead>
           <tr><th class="td-center">Sem</th><th>Fecha</th><th>Entrada</th><th>Auditorio 1</th></tr>
-          <tr><th></th><th></th><th>Jue / Sab</th><th>Jue / Sab</th></tr>
+          <tr><th></th><th></th><th>Asignado</th><th>Asignado</th></tr>
         </thead>
         <tbody>${rowsAco || `<tr><td colspan="4" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
@@ -267,7 +276,7 @@ function render(mesISO, pairs){
       <table class="table board" style="width:100%;">
         <thead>
           <tr><th class="td-center">Sem</th><th>Fecha</th><th>Audio</th><th>Video</th></tr>
-          <tr><th></th><th></th><th>Jue / Sab</th><th>Jue / Sab</th></tr>
+          <tr><th></th><th></th><th>Asignado</th><th>Asignado</th></tr>
         </thead>
         <tbody>${rowsAV || `<tr><td colspan="4" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
@@ -278,7 +287,7 @@ function render(mesISO, pairs){
       <table class="table board" style="width:100%;">
         <thead>
           <tr><th class="td-center">Sem</th><th>Fecha</th><th>Mic. 1</th><th>Mic. 2</th></tr>
-          <tr><th></th><th></th><th>Jue / Sab</th><th>Jue / Sab</th></tr>
+          <tr><th></th><th></th><th>Asignado</th><th>Asignado</th></tr>
         </thead>
         <tbody>${rowsMic || `<tr><td colspan="4" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
