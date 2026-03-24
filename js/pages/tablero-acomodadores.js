@@ -77,17 +77,17 @@ function renderTopbar(active){
       <div class="links">
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
-        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acom/AV</a>
         <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
-        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
-        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
+        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acom/AV</a>
         <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
+        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
+        <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
+        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
+        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>
         <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
         <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
         <a href="usuarios.html" class="${active==='usuarios'?'active':''}">Usuarios</a>
-        <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
-        <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>
       </div>
       <div class="actions">
         <button id="btnSalir" class="btn danger sm" type="button">Salir</button>
@@ -148,6 +148,19 @@ function nombrePorId(id){
   if(!k) return "";
   return personasMap.get(k) || "";
 }
+function textoAsignado(v){
+  const s = String(v||"").trim();
+  if(!s) return "";
+  return nombrePorId(s) || s;
+}
+function pairLabel(a,b){
+  const left = textoAsignado(a);
+  const right = textoAsignado(b);
+  if(left && right){
+    return left === right ? left : `${left} / ${right}`;
+  }
+  return left || right || "—";
+}
 
 function isoToDate(iso){
   const [y,m,d] = String(iso||"").split("-").map(n=>parseInt(n,10));
@@ -202,43 +215,35 @@ async function loadDocsInMonth(mesISO){
   });
 }
 
-function joinPair(a, b){
-  const left = String(a || "").trim() || "—";
-  const right = String(b || "").trim() || "—";
-  return `${left} / ${right}`;
-}
-
-function buildHeader(cols){
-  return `<thead><tr><th class="td-center">Sem</th><th>Fecha</th>${cols.map(c=>`<th>${c}</th>`).join("")}</tr><tr><th></th><th></th>${cols.map(()=>`<th>Jue / Sab</th>`).join("")}</tr></thead>`;
-}
-
 function render(mesISO, pairs){
   const host = $("contenido");
 
-  const rowsAco = pairs.map(p => `
-    <tr>
-      <td class="td-center">${p.semana}</td>
-      <td>${escapeHtml(p.fechaLabel)}</td>
-      <td>${escapeHtml(joinPair(p.jueves.entrada, p.fin.entrada))}</td>
-      <td>${escapeHtml(joinPair(p.jueves.auditorio1, p.fin.auditorio1))}</td>
-      <td>${escapeHtml(joinPair(p.jueves.auditorio2, p.fin.auditorio2))}</td>
-    </tr>`).join("");
+  const rowsAco = pairs.map(p=>`
+      <tr>
+        <td class="td-center">${p.semana}</td>
+        <td>${escapeHtml(p.fechaLabel)}</td>
+        <td>${escapeHtml(pairLabel(p.jueves.entrada, p.fin.entrada))}</td>
+        <td>${escapeHtml(pairLabel(p.jueves.aud1, p.fin.aud1))}</td>
+      </tr>
+    `).join("");
 
-  const rowsAV = pairs.map(p => `
-    <tr>
-      <td class="td-center">${p.semana}</td>
-      <td>${escapeHtml(p.fechaLabel)}</td>
-      <td>${escapeHtml(joinPair(p.juevesAV.audio, p.finAV.audio))}</td>
-      <td>${escapeHtml(joinPair(p.juevesAV.video, p.finAV.video))}</td>
-    </tr>`).join("");
+  const rowsAV = pairs.map(p=>`
+      <tr>
+        <td class="td-center">${p.semana}</td>
+        <td>${escapeHtml(p.fechaLabel)}</td>
+        <td>${escapeHtml(pairLabel(p.juevesAV.audio, p.finAV.audio))}</td>
+        <td>${escapeHtml(pairLabel(p.juevesAV.video, p.finAV.video))}</td>
+      </tr>
+    `).join("");
 
-  const rowsMic = pairs.map(p => `
-    <tr>
-      <td class="td-center">${p.semana}</td>
-      <td>${escapeHtml(p.fechaLabel)}</td>
-      <td>${escapeHtml(joinPair(p.juevesMic.mic1, p.finMic.mic1))}</td>
-      <td>${escapeHtml(joinPair(p.juevesMic.mic2, p.finMic.mic2))}</td>
-    </tr>`).join("");
+  const rowsMic = pairs.map(p=>`
+      <tr>
+        <td class="td-center">${p.semana}</td>
+        <td>${escapeHtml(p.fechaLabel)}</td>
+        <td>${escapeHtml(pairLabel(p.juevesMic.mic1, p.finMic.mic1))}</td>
+        <td>${escapeHtml(pairLabel(p.juevesMic.mic2, p.finMic.mic2))}</td>
+      </tr>
+    `).join("");
 
   host.innerHTML = `
     <div class="print-header">
@@ -249,15 +254,21 @@ function render(mesISO, pairs){
     <div class="board-wrap" id="aco" style="margin-top:10px;">
       <div class="board-section-title">Acomodadores</div>
       <table class="table board" style="width:100%;">
-        ${buildHeader(["Entrada","Auditorio 1","Auditorio 2"])}
-        <tbody>${rowsAco || `<tr><td colspan="5" class="muted">Sin datos.</td></tr>`}</tbody>
+        <thead>
+          <tr><th class="td-center">Sem</th><th>Fecha</th><th>Entrada</th><th>Auditorio 1</th></tr>
+          <tr><th></th><th></th><th>Jue / Sab</th><th>Jue / Sab</th></tr>
+        </thead>
+        <tbody>${rowsAco || `<tr><td colspan="4" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
     </div>
 
     <div class="board-wrap" id="av" style="margin-top:14px;">
       <div class="board-section-title">Audio y video</div>
       <table class="table board" style="width:100%;">
-        ${buildHeader(["Audio","Video"])}
+        <thead>
+          <tr><th class="td-center">Sem</th><th>Fecha</th><th>Audio</th><th>Video</th></tr>
+          <tr><th></th><th></th><th>Jue / Sab</th><th>Jue / Sab</th></tr>
+        </thead>
         <tbody>${rowsAV || `<tr><td colspan="4" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
     </div>
@@ -265,7 +276,10 @@ function render(mesISO, pairs){
     <div class="board-wrap" id="mic" style="margin-top:14px;">
       <div class="board-section-title">Microfonistas</div>
       <table class="table board" style="width:100%;">
-        ${buildHeader(["Mic. 1","Mic. 2"])}
+        <thead>
+          <tr><th class="td-center">Sem</th><th>Fecha</th><th>Mic. 1</th><th>Mic. 2</th></tr>
+          <tr><th></th><th></th><th>Jue / Sab</th><th>Jue / Sab</th></tr>
+        </thead>
         <tbody>${rowsMic || `<tr><td colspan="4" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
     </div>
@@ -333,7 +347,7 @@ const mapMic = (asig)=>({
   mic1: resolveNombre(asig, ["microfonista1Id","microfonista1Nombre","microfonista1"]),
   mic2: resolveNombre(asig, ["microfonista2Id","microfonista2Nombre","microfonista2"]),
 });
-const juevesAsig = juevesAsignDoc || finAsign;
+const juevesAsig = juevesAsignDoc || {};
       pairs.push({
         semana: i+1,
         fechaLabel: `${juevesISO ? formatFecha(juevesISO) : "—"} / ${formatFecha(finISO)}`,
