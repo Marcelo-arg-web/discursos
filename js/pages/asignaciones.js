@@ -34,7 +34,8 @@ const $ = (id) => document.getElementById(id);
 const getVal = (id) => ($(id)?.value ?? "");
 const setVal = (id, v) => {
   const el = $(id);
-
+  if (el) el.value = v ?? "";
+};
 
 // ---------------- Semana Jueves/Sábado: copiar asignados automáticamente ----------------
 function isoToDate(iso){
@@ -92,9 +93,6 @@ async function copiarAsignadosAlJuevesSiCorresponde(fechaFinDeSemanaISO, dataAsi
     copiadoDesdeFinDeSemana: fechaFinDeSemanaISO,
   }, { merge: true });
 }
-  if (el) el.value = v ?? "";
-};
-
 function escapeHtml(str){
   return String(str ?? "")
     .replaceAll("&", "&amp;")
@@ -141,6 +139,70 @@ function addDaysISO(iso, days) {
   if (Number.isNaN(d.getTime())) return "";
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+function semanaTipo() {
+  return String(getVal("tipoSemana") || "normal").trim().toLowerCase() || "normal";
+}
+
+function isSemanaEspecialValue(v) {
+  return v === "asamblea" || v === "conmemoracion";
+}
+
+function isSemanaEspecial() {
+  return isSemanaEspecialValue(semanaTipo());
+}
+
+function semanaEspecialLabel(v = semanaTipo()) {
+  return v === "asamblea" ? "Asamblea" : v === "conmemoracion" ? "Conmemoración" : "";
+}
+
+function blankAssignmentsData(extra = {}) {
+  return {
+    presidenteId: "",
+    oracionInicialId: "",
+    oracionFinalId: "",
+    conductorAtalayaId: "",
+    lectorAtalayaId: "",
+    multimedia1Id: "",
+    multimedia2Id: "",
+    plataformaId: "",
+    microfonista1Id: "",
+    microfonista2Id: "",
+    acomodadorEntradaId: "",
+    acomodadorAuditorio1Id: "",
+    acomodadorAuditorio2Id: "",
+    cancionNumero: "",
+    oradorPublico: "",
+    congregacionVisitante: "",
+    tituloDiscurso: "",
+    tituloSiguienteSemana: "",
+    ...extra,
+  };
+}
+
+function updateSemanaEspecialUI() {
+  const especial = isSemanaEspecial();
+  const ids = [
+    "presidente","oracionInicial","oracionFinal","conductorAtalaya","lectorAtalaya",
+    "multimedia1","multimedia2","plataforma","microfonista1","microfonista2",
+    "acomodadorEntrada","acomodadorAuditorio1","acomodadorAuditorio2",
+    "cancionNumero","oradorPublico","congregacionVisitante","discursoNumero",
+    "tituloDiscurso","tituloSiguienteSemana",
+    "btnSugerirPresidente","btnSugerirConductor","btnSugMultimedia1","btnSugMultimedia2",
+    "btnSugPlataforma","btnSugAcomEntrada","btnSugAcomAuditorio1","btnSugMicrofonista1","btnSugMicrofonista2"
+  ];
+  ids.forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.disabled = especial;
+  });
+  const note = $("semanaEspecialHelp");
+  if (note) {
+    note.textContent = especial
+      ? `${semanaEspecialLabel()}: no hay reuniones ni asignados en esa semana.`
+      : "Normal: se cargan los asignados de la semana.";
+  }
 }
 
 function fmtAR(iso) {
@@ -1093,6 +1155,10 @@ async function copiarSemanaAnterior() {
 
 
 function formData() {
+  const tipo = semanaTipo();
+  if (isSemanaEspecialValue(tipo)) {
+    return blankAssignmentsData({ tipoSemana: tipo });
+  }
   return {
     presidenteId: getVal("presidente"),
     oracionInicialId: getVal("oracionInicial"),
@@ -1113,11 +1179,15 @@ function formData() {
     congregacionVisitante: getVal("congregacionVisitante"),
     tituloDiscurso: getVal("tituloDiscurso"),
     tituloSiguienteSemana: getVal("tituloSiguienteSemana"),
+    tipoSemana: tipo,
   };
 }
 
 function hydrateToUI(a) {
   if (!a) return;
+
+  setVal("tipoSemana", a.tipoSemana || "normal");
+  updateSemanaEspecialUI();
 
   [
     ["presidente", a.presidenteId],
@@ -1162,6 +1232,7 @@ function hydrateToUI(a) {
 
 
 function validateRequired() {
+  if (isSemanaEspecial()) return "";
   const required = [
     { id: "plataforma", label: "Plataforma" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
@@ -1177,6 +1248,7 @@ function validateRequired() {
 }
 
 function validateNoDuplicates() {
+  if (isSemanaEspecial()) return null;
   const fields = [
     { id: "multimedia1", label: "Multimedia 1" },
     { id: "multimedia2", label: "Multimedia 2" },
@@ -1215,6 +1287,8 @@ async function cargarSemana() {
       try{ await generarAviso(); }catch(_e){}
       setStatus("Datos cargados.");
     } else {
+      setVal("tipoSemana", "normal");
+      updateSemanaEspecialUI();
       setStatus("No hay datos guardados para esta semana. Podés cargar y guardar.");
       await aplicarAutoVisitante(s);
       try{ autoPresidenteIfNeeded(); }catch(_e){}
@@ -1293,6 +1367,8 @@ function limpiar() {
     "tituloDiscurso",
     "tituloSiguienteSemana",
   ].forEach((id) => setVal(id, ""));
+  setVal("tipoSemana", "normal");
+  updateSemanaEspecialUI();
   setStatus("Formulario limpio.");
 }
 
@@ -1308,11 +1384,20 @@ function buildAvisoSemanal(semanaSatISO, a) {
   const sab = semanaSatISO;
   const jue = addDaysISO(semanaSatISO, -2);
 
+  if (isSemanaEspecialValue(a?.tipoSemana)) {
+    const tipo = semanaEspecialLabel(a?.tipoSemana);
+    return [
+      `*${tipo}*`,
+      `Semana: Jueves ${fmtAR(jue)} · Sábado ${fmtAR(sab)}`,
+      `No hay reuniones ni asignados esta semana.`
+    ].join("\n");
+  }
+
   const m1 = personaNameById(a?.multimedia1Id) || "—";
   const m2 = personaNameById(a?.multimedia2Id) || "—";
   const plat = personaNameById(a?.plataformaId) || "—";
   const ent = personaNameById(a?.acomodadorEntradaId) || "—";
-  const aud = personaNameById(a?.acomodadorAuditorioId) || "—";
+  const aud = personaNameById(a?.acomodadorAuditorio1Id || a?.acomodadorAuditorioId) || "—";
   const pres = personaNameById(a?.presidenteId) || "—";
   const visitante = (a?.oradorPublico || "").trim();
 
@@ -1346,6 +1431,20 @@ function oracionFinalTexto(a){
 function buildPrintSemanaHTML(semanaSatISO, a){
   const sab = semanaSatISO;
   const jue = addDaysISO(semanaSatISO, -2);
+
+  if (isSemanaEspecialValue(a?.tipoSemana)) {
+    const tipo = semanaEspecialLabel(a?.tipoSemana);
+    return `
+      <div class="print-grid">
+        <div class="p-card" style="grid-column:1 / -1;">
+          <div class="p-h">Asignados Villa Fiad</div>
+          <div class="p-sub">Semana: Jueves ${fmtAR(jue)} (20:00) · Sábado ${fmtAR(sab)} (19:30)</div>
+          <div class="p-row"><span class="k">Semana especial</span><span class="v">${escapeHtml(tipo)}</span></div>
+          <div class="p-row"><span class="k">Estado</span><span class="v">No hay reuniones ni asignados</span></div>
+        </div>
+      </div>
+    `;
+  }
 
   const pres = personaNameById(a?.presidenteId) || "—";
   const oi = personaNameById(a?.oracionInicialId) || "—";
@@ -1597,6 +1696,9 @@ async function init() {
     await goToSemana(shiftWeekISO(s, 1));
   });
   $("btnCopiarAnterior")?.addEventListener("click", copiarSemanaAnterior);
+  $("tipoSemana")?.addEventListener("change", () => {
+    updateSemanaEspecialUI();
+  });
 
 
   $("btnGenerarAviso")?.addEventListener("click", generarAviso);
@@ -1664,6 +1766,7 @@ async function init() {
   if (oracionFinalEl) oracionFinalEl.addEventListener("change", () => { oracionFinalEl.dataset.manual = "1"; });
 
     await poblarDatalistOradores();
+    updateSemanaEspecialUI();
     setStatus("Listo. Elegí una semana y cargá.");
   } catch (e) {
     console.error(e);
