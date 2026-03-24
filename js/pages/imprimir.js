@@ -4,6 +4,30 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-
 
 const $ = (id) => document.getElementById(id);
 
+const MESES_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+function monthTitleLabel(ym){
+  const s = String(ym || "").trim();
+  if(!/^\d{4}-\d{2}$/.test(s)) return "";
+  const [y,m] = s.split('-').map(Number);
+  const mes = MESES_ES[(m||0)-1];
+  if(!mes || !y) return "";
+  return `${mes} ${y}`;
+}
+
+function buildPdfTitle(ym){
+  const month = monthTitleLabel(ym);
+  return month ? `Asignados Villa Fiad - ${month}` : "Asignados Villa Fiad";
+}
+
+function syncPrintTitle(){
+  const ym = (document.getElementById("mes")?.value || "").trim();
+  const title = buildPdfTitle(ym);
+  document.title = title;
+  const h1 = document.querySelector('.section-title .h1');
+  if(h1) h1.textContent = title;
+}
+
 function toast(msg, isError=false){
   const host = $("toastHost");
   if(!host) return alert(msg);
@@ -143,8 +167,15 @@ function renderItems(items){
   const cont = document.getElementById("contenido");
   if(!cont) return;
 
+  const ym = (document.getElementById("mes")?.value || "").trim();
+  const pdfTitle = buildPdfTitle(ym);
+
   if(!items.length){
-    cont.innerHTML = `<div class="muted">No hay asignaciones para ese mes.</div>`;
+    cont.innerHTML = `
+      <div class="print-header" style="margin-bottom:12px;">
+        <div class="print-title">${pdfTitle}</div>
+      </div>
+      <div class="muted">No hay asignaciones para ese mes.</div>`;
     return;
   }
 
@@ -187,7 +218,11 @@ function renderItems(items){
   }).join("");
 
   cont.innerHTML = `
-    <div class="small muted" style="margin-bottom:10px;">
+    <div class="print-header" style="margin-bottom:12px;">
+      <div class="print-title">${pdfTitle}</div>
+      <div class="small muted">Tomado del programa seleccionado.</div>
+    </div>
+    <div class="small muted no-print" style="margin-bottom:10px;">
       Tip: imprimí con orientación horizontal y escala “ajustar”.
     </div>
     <table class="table">
@@ -222,6 +257,7 @@ async function cargarMes(){
     const prefix = monthPrefix(ym);
     if(!prefix) return toast("Escribí el mes como YYYY-MM.", true);
 
+    syncPrintTitle();
     await loadPersonasMap();
 
     const q = query(
@@ -245,7 +281,10 @@ async function cargarMes(){
   // mes por defecto = mes actual
   const now = new Date();
   document.getElementById("mes").value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-  document.getElementById("btnPrint")?.addEventListener("click", ()=>window.print());
+  document.getElementById("btnPrint")?.addEventListener("click", ()=>{
+    syncPrintTitle();
+    window.print();
+  });
   document.getElementById("btnRecargar")?.addEventListener("click", cargarMes);
   document.getElementById("btnTabAcom")?.addEventListener("click", ()=>{ window.location.href = "tablero-acomodadores.html"; });
   document.getElementById("btnTabMM")?.addEventListener("click", ()=>{ window.location.href = "tablero-acomodadores.html#av"; });
