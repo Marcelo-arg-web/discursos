@@ -1747,7 +1747,7 @@ function buildPrintSemanaHTML(semanaSatISO, a){
   return `
     <div class="print-grid">
       <div class="p-card">
-        <div class="p-h">Congregación Villa Fiad</div>
+        <div class="p-h">Asignados Villa Fiad</div>
         <div class="p-sub">Semana: Jueves ${fmtAR(jue)} (20:00) · Sábado ${fmtAR(sab)} (19:30)</div>
 
         <div class="p-row"><span class="k">Presidente</span><span class="v">${escapeHtml(pres)}</span></div>

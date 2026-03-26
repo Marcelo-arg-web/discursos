@@ -256,7 +256,7 @@ function render(mesISO, pairs){
   host.innerHTML = `
     <div class="print-header">
       <div class="h2">Congregación Villa Fiad</div>
-      <div class="muted">Acom/AV · Mes ${escapeHtml(mesISO)}</div>
+      <div class="muted">Asignaciones Villa Fiad - ${escapeHtml((()=>{ const [y,m]=String(mesISO||"").split("-"); const meses=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]; const idx=(parseInt(m,10)||0)-1; return (meses[idx] && y) ? `${meses[idx]} ${y}` : `Mes ${mesISO}`; })())}</div>
     </div>
 
     <div class="board-wrap" id="aco" style="margin-top:10px;">
