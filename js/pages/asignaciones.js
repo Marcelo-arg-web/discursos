@@ -317,8 +317,15 @@ const roleHistoryMaps = {
   lectorAtalaya: new Map(),
   plataforma: new Map(),
   multimedia: new Map(),
+  multimedia1: new Map(),
+  multimedia2: new Map(),
   acomodadores: new Map(),
+  acomodadorEntrada: new Map(),
+  acomodadorAuditorio1: new Map(),
+  acomodadorAuditorio2: new Map(),
   microfonista: new Map(),
+  microfonista1: new Map(),
+  microfonista2: new Map(),
 };
 
 function updateRoleHistory(roleKey, personaId, whenValue) {
@@ -340,12 +347,19 @@ function extractRoleAssignmentsFromData(data, whenValue) {
   updateRoleHistory("lectorAtalaya", a?.lectorAtalayaId, whenValue);
   updateRoleHistory("plataforma", a?.plataformaId, whenValue);
   updateRoleHistory("acomodadores", a?.acomodadorEntradaId, whenValue);
+  updateRoleHistory("acomodadorEntrada", a?.acomodadorEntradaId, whenValue);
   updateRoleHistory("acomodadores", a?.acomodadorAuditorio1Id || a?.acomodadorAuditorioId, whenValue);
+  updateRoleHistory("acomodadorAuditorio1", a?.acomodadorAuditorio1Id || a?.acomodadorAuditorioId, whenValue);
   updateRoleHistory("acomodadores", a?.acomodadorAuditorio2Id, whenValue);
+  updateRoleHistory("acomodadorAuditorio2", a?.acomodadorAuditorio2Id, whenValue);
   updateRoleHistory("multimedia", a?.multimedia1Id, whenValue);
+  updateRoleHistory("multimedia1", a?.multimedia1Id, whenValue);
   updateRoleHistory("multimedia", a?.multimedia2Id, whenValue);
+  updateRoleHistory("multimedia2", a?.multimedia2Id, whenValue);
   updateRoleHistory("microfonista", a?.microfonista1Id, whenValue);
+  updateRoleHistory("microfonista1", a?.microfonista1Id, whenValue);
   updateRoleHistory("microfonista", a?.microfonista2Id, whenValue);
+  updateRoleHistory("microfonista2", a?.microfonista2Id, whenValue);
 }
 
 async function ensureRoleHistoryLoaded() {
@@ -493,12 +507,25 @@ function compareSupportCandidatesByHistory(aId, bId) {
   return aName.localeCompare(bName, "es", { sensitivity: "base" });
 }
 
+function supportRoleKeyForSelectId(selectId) {
+  return ({
+    multimedia1: "multimedia1",
+    multimedia2: "multimedia2",
+    acomodadorEntrada: "acomodadorEntrada",
+    acomodadorAuditorio1: "acomodadorAuditorio1",
+    acomodadorAuditorio2: "acomodadorAuditorio2",
+    microfonista1: "microfonista1",
+    microfonista2: "microfonista2",
+  })[String(selectId || "").trim()] || "";
+}
+
 async function suggestSupportSelect(selectId, candidateIds) {
   if (!isAdmin) return;
   const sel = $(selectId);
   if (!sel) return;
 
   await ensureSupportHistoryLoaded();
+  await ensureRoleHistoryLoaded();
 
   const used = getSupportSelectedIds(selectId);
   const list = Array.from(new Set((candidateIds || []).filter(Boolean)))
@@ -506,12 +533,18 @@ async function suggestSupportSelect(selectId, candidateIds) {
 
   if (!list.length) return;
 
-  list.sort(compareSupportCandidatesByHistory);
+  const roleKey = supportRoleKeyForSelectId(selectId);
+  if (roleKey && roleHistoryMaps[roleKey]) {
+    list.sort((a, b) => compareCandidatesByRoleHistory(roleKey, a, b));
+  } else {
+    list.sort(compareSupportCandidatesByHistory);
+  }
 
   const chosen = list[0] || "";
   if (chosen) {
     sel.value = chosen;
     updateSupportLastAssigned(chosen, semanaISO() || isoToday());
+    if (roleKey) updateRoleHistory(roleKey, chosen, semanaISO() || isoToday());
   }
 }
 
@@ -1288,6 +1321,30 @@ function autoOracionInicialIfNeeded(){
   }
 }
 
+async function precargarAsignacionesAutomaticas(opts = {}) {
+  if (!isAdmin) return;
+  const soloVacios = opts?.soloVacios !== false;
+
+  const completarSiVacio = async (fieldId, fn) => {
+    if (!$(fieldId)) return;
+    if (soloVacios && getVal(fieldId)) return;
+    await fn();
+  };
+
+  await completarSiVacio("presidente", () => sugerirPresidente());
+  await completarSiVacio("oracionInicial", () => sugerirOracionInicial());
+  await completarSiVacio("conductorAtalaya", () => sugerirConductorAtalaya());
+  await completarSiVacio("lectorAtalaya", () => sugerirLectorAtalaya());
+  await completarSiVacio("multimedia1", () => suggestSelect("multimedia1", "multimedia", candidates.multimedia));
+  await completarSiVacio("multimedia2", () => suggestSelect("multimedia2", "multimedia", candidates.multimedia));
+  await completarSiVacio("plataforma", () => suggestSelect("plataforma", "plataforma", candidates.plataforma));
+  await completarSiVacio("acomodadorEntrada", () => suggestSelect("acomodadorEntrada", "acomodadores", candidates.acomodadores));
+  await completarSiVacio("acomodadorAuditorio1", () => suggestSelect("acomodadorAuditorio1", "acomodadores", candidates.acomodadores));
+  await completarSiVacio("acomodadorAuditorio2", () => suggestSelect("acomodadorAuditorio2", "acomodadores", candidates.acomodadores));
+  await completarSiVacio("microfonista1", () => suggestSelect("microfonista1", "microfonista", candidates.microfonistas));
+  await completarSiVacio("microfonista2", () => suggestSelect("microfonista2", "microfonista", candidates.microfonistas));
+}
+
 async function aplicarAutoVisitante(fechaISO) {
   const visitante = (await firestoreVisitFor(fechaISO)) || localVisitanteFor(fechaISO);
   if (!visitante) {
@@ -1555,6 +1612,7 @@ async function cargarSemana() {
       const a = data.asignaciones || data;
       hydrateToUI(a);
       await aplicarAutoVisitante(s);
+      try{ await precargarAsignacionesAutomaticas({ soloVacios: true }); }catch(_e){}
       try{ autoPresidenteIfNeeded(); }catch(_e){}
       // refresca aviso
       try{ await generarAviso(); }catch(_e){}
@@ -1562,8 +1620,9 @@ async function cargarSemana() {
     } else {
       setVal("tipoSemana", "normal");
       updateSemanaEspecialUI();
-      setStatus("No hay datos guardados para esta semana. Podés cargar y guardar.");
+      setStatus("No hay datos guardados para esta semana. Hice una precarga automática. Revisá y guardá.");
       await aplicarAutoVisitante(s);
+      try{ await precargarAsignacionesAutomaticas({ soloVacios: true }); }catch(_e){}
       try{ autoPresidenteIfNeeded(); }catch(_e){}
       setAvisoText("");
     }

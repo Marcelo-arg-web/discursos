@@ -180,15 +180,31 @@ function clearForm(){
 }
 
 function applyAuto(){
-  const b = normNum($("bosquejo").value);
-  if(b && !$("titulo").value.trim()){
-    const t = bosquejosMap.get(b);
-    if(t) $("titulo").value = t;
+  const bosquejoEl = $("bosquejo");
+  const tituloEl = $("titulo");
+  const b = normNum(bosquejoEl?.value);
+  if (tituloEl) {
+    const current = String(tituloEl.value || "").trim();
+    const lastAuto = tituloEl.dataset.autoTitulo || "";
+    if (b) {
+      const t = String(bosquejosMap.get(b) || "").trim();
+      if (t && (!current || current === lastAuto)) {
+        tituloEl.value = t;
+        tituloEl.dataset.autoTitulo = t;
+      } else if (!current) {
+        tituloEl.dataset.autoTitulo = "";
+      }
+    } else if (!current || current === lastAuto) {
+      tituloEl.value = "";
+      tituloEl.dataset.autoTitulo = "";
+    }
   }
-  const c = normNum($("cancion").value);
-  if(c && !$("cancion").value.trim()){
+
+  const cancionEl = $("cancion");
+  const c = normNum(cancionEl?.value);
+  if(c && !String(cancionEl?.value || "").trim()){
     const t = cancionesMap.get(c);
-    if(t) $("cancion").value = String(c);
+    if(t && cancionEl) cancionEl.value = String(c);
   }
 }
 
@@ -584,7 +600,16 @@ async function borrar(){
     }
   }
 
+  $("bosquejo")?.addEventListener("input", applyAuto);
+  $("bosquejo")?.addEventListener("change", applyAuto);
   $("bosquejo")?.addEventListener("blur", applyAuto);
+  $("titulo")?.addEventListener("input", () => {
+    const tituloEl = $("titulo");
+    if (!tituloEl) return;
+    const current = String(tituloEl.value || "").trim();
+    const lastAuto = tituloEl.dataset.autoTitulo || "";
+    if (current !== lastAuto) tituloEl.dataset.autoTitulo = current ? "__MANUAL__" : "";
+  });
   $("btnNuevo")?.addEventListener("click", clearForm);
   $("btnRefrescar")?.addEventListener("click", load);
   $("chkHistorial")?.addEventListener("change", load);
