@@ -34,7 +34,7 @@ function renderTopbar(active){
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
         <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
-        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acom/AV</a>
+        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Asignaciones Villa Fiad</a>
         <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
         <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
@@ -261,14 +261,14 @@ async function cargar(){
     await loadPersonasMap();
     const docs = await loadDocsInMonth(mesISO);
 
-    // Reuniones de congregación: jueves (4) y sábado (6)
+    // Reuniones de fin de semana: solo sábado (6)
     const items = docs
       .map(d=>({ id:d.id, data:d.data }))
       .filter(d=>{
         const dt = isoToDate(d.id);
         if(!dt) return false;
         const dow = dt.getDay();
-        return dow === 4 || dow === 6;
+        return dow === 6;
       })
       .sort((a,b)=>a.id.localeCompare(b.id));
 

@@ -30,6 +30,7 @@ export const ACOMODADORES = [
   "Sergio Saldaña",
   "Sergio Lazarte",
   "Roberto Lazarte",
+  "Rodolfo Santucho",
 ];
 
 export const PLATAFORMA = [
@@ -87,6 +88,7 @@ export const MICROFONISTAS = [
   "Sergio Lazarte",
   "José Lazarte",
   "Jose Lazarte",
+  "Rodolfo Santucho",
 ];
 
 export const LECTORES_ATALAYA_EXTRA = [

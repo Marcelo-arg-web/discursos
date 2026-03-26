@@ -52,7 +52,7 @@ function renderPublicTopbar(active){
       <div class="brand">Villa Fiad</div>
       <div class="links">
         <a href="public-home.html" class="${active==='public'?'active':''}">Inicio</a>
-        <a href="tablero-acomodadores.html" class="${active==='tablero'?'active':''}">Acom/AV</a>
+        <a href="tablero-acomodadores.html" class="${active==='tablero'?'active':''}">Asignaciones Villa Fiad</a>
         <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
       </div>
@@ -78,7 +78,7 @@ function renderTopbar(active){
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
         <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>
-        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Acom/AV</a>
+        <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Asignaciones Villa Fiad</a>
         <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
         <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
@@ -256,7 +256,7 @@ function render(mesISO, pairs){
   host.innerHTML = `
     <div class="print-header">
       <div class="h2">Congregación Villa Fiad</div>
-      <div class="muted">Asignaciones Villa Fiad - ${escapeHtml((()=>{ const [y,m]=String(mesISO||"").split("-"); const meses=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]; const idx=(parseInt(m,10)||0)-1; return (meses[idx] && y) ? `${meses[idx]} ${y}` : `Mes ${mesISO}`; })())}</div>
+      <div class="muted">Asignaciones Villa Fiad - ${escapeHtml((new Date(mesISO+"-01")).toLocaleDateString("es-AR", {month:"long", year:"numeric"}).replace(/^./, c=>c.toUpperCase()))}</div>
     </div>
 
     <div class="board-wrap" id="aco" style="margin-top:10px;">
