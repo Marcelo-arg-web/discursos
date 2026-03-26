@@ -256,7 +256,7 @@ function render(mesISO, pairs){
   host.innerHTML = `
     <div class="print-header">
       <div class="h2">Congregación Villa Fiad</div>
-      <div class="muted">Asignaciones Villa Fiad - ${escapeHtml((new Date(mesISO+"-01")).toLocaleDateString("es-AR", {month:"long", year:"numeric"}).replace(/^./, c=>c.toUpperCase()))}</div>
+      <div class="muted">Asignaciones Villa Fiad - ${escapeHtml((()=>{ const [y,m]=String(mesISO||"").split("-").map(n=>parseInt(n,10)); const dt=(y&&m)?new Date(y, m-1, 1):new Date(); return dt.toLocaleDateString("es-AR", {month:"long", year:"numeric"}).replace(/^./, c=>c.toUpperCase()); })())}</div>
     </div>
 
     <div class="board-wrap" id="aco" style="margin-top:10px;">
