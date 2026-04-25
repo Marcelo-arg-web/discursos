@@ -1,0 +1,36 @@
+[debug] [2026-04-25T20:44:11.719Z] ----------------------------------------------------------------------
+[debug] [2026-04-25T20:44:11.721Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Allso\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js use --add
+[debug] [2026-04-25T20:44:11.722Z] CLI Version:   15.12.0
+[debug] [2026-04-25T20:44:11.722Z] Platform:      win32
+[debug] [2026-04-25T20:44:11.722Z] Node Version:  v24.14.0
+[debug] [2026-04-25T20:44:11.722Z] Time:          Sat Apr 25 2026 17:44:11 GMT-0300 (hora estándar de Argentina)
+[debug] [2026-04-25T20:44:11.722Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-25T20:44:11.724Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-04-25T20:44:11.883Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-25T20:44:11.884Z] > authorizing via signed-in user (groupmy2025@gmail.com)
+[debug] [2026-04-25T20:44:11.884Z] Checked if tokens are valid: false, expires at: 1774994150954
+[debug] [2026-04-25T20:44:11.884Z] Checked if tokens are valid: false, expires at: 1774994150954
+[debug] [2026-04-25T20:44:11.885Z] > refreshing access token with scopes: []
+[debug] [2026-04-25T20:44:11.885Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-04-25T20:44:11.885Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-04-25T20:44:12.064Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-04-25T20:44:12.065Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-04-25T20:44:12.073Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2026-04-25T20:44:12.321Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-04-25T20:44:12.321Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-04-25T20:44:12.912Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2026-04-25T20:44:12.912Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[debug] [2026-04-25T20:45:02.560Z] ExitPromptError: User force closed the prompt with SIGINT
+    at Interface.sigint (C:\Users\Allso\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\@inquirer\core\dist\commonjs\lib\create-prompt.js:101:37)
+    at Interface.emit (node:events:508:28)
+    at [_ttyWrite] [as _ttyWrite] (node:internal/readline/interface:1327:18)
+    at ReadStream.onkeypress (node:internal/readline/interface:284:20)
+    at ReadStream.emit (node:events:520:35)
+    at emitKeys (node:internal/readline/utils:371:14)
+    at emitKeys.next (<anonymous>)
+    at ReadStream.onData (node:internal/readline/emitKeypressEvents:64:36)
+    at ReadStream.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+[error] 
+[error] Error: An unexpected error has occurred.

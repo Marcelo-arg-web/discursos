@@ -16,27 +16,28 @@ service cloud.firestore {
       return activeUser() ? (userDoc().data.rol) : "none";
     }
 
+    // Acepta roles antiguos/nuevos y mayúsculas por si algún usuario quedó cargado como Admin/Superadmin.
     function isEditor() {
-      return role() in ["editor","admin","superadmin"];
+      return role() in ["editor","Editor","EDITOR","admin","Admin","ADMIN","superadmin","Superadmin","SUPERADMIN"];
     }
 
     function isAdmin() {
-      return role() in ["admin","superadmin"];
+      return role() in ["admin","Admin","ADMIN","superadmin","Superadmin","SUPERADMIN"];
     }
 
     function isSuperadmin() {
-      return role() == "superadmin";
+      return role() in ["superadmin","Superadmin","SUPERADMIN"];
     }
 
-    // Usuarios: cada uno puede leer su doc; admins pueden leer y editar; superadmin todo
+    // Usuarios: cada uno puede leer su doc; admins pueden leer y editar; superadmin todo.
     match /usuarios/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if signedIn() && request.auth.uid == uid; // registro crea su doc
+      allow create: if signedIn() && request.auth.uid == uid;
       allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow delete: if isSuperadmin();
     }
 
-    // Personas, asignaciones, visitas: lectura para usuarios activos; escritura para editores
+    // Personas, asignaciones, visitas: lectura para usuarios activos; escritura para editores/admins.
     match /personas/{id} {
       allow read: if activeUser();
       allow write: if isEditor();
@@ -47,9 +48,8 @@ service cloud.firestore {
       allow write: if isEditor();
     }
 
-    // Asignaciones mensuales para tablero
+    // Asignaciones mensuales para tablero.
     match /asignaciones_mensuales/{id} {
-      // Lectura pública (solo ver) para el grupo
       allow read: if activeUser() || request.auth == null;
       allow write: if isEditor();
     }
@@ -59,7 +59,18 @@ service cloud.firestore {
       allow write: if isEditor();
     }
 
-    // Hospitalidad: config de rotación y excepciones por fecha
+    // Conferenciantes locales y turnos internos de suplencia.
+    match /conferenciantesLocales/{id} {
+      allow read: if activeUser();
+      allow write: if isEditor();
+    }
+
+    match /suplenciasDiscursantes/{id} {
+      allow read: if activeUser();
+      allow write: if isEditor();
+    }
+
+    // Hospitalidad: config de rotación y excepciones por fecha.
     match /hospitalidad_config/{id} {
       allow read: if activeUser();
       allow write: if isEditor();
@@ -70,14 +81,12 @@ service cloud.firestore {
       allow write: if isEditor();
     }
 
-
     match /salientes/{id} {
-      // Lectura pública (solo ver) para el grupo
       allow read: if activeUser() || request.auth == null;
       allow write: if isEditor();
     }
 
-    // Catálogos: solo lectura a activos; escritura admin
+    // Catálogos: solo lectura a activos; escritura admin.
     match /discursos/{id} {
       allow read: if activeUser();
       allow write: if isAdmin();

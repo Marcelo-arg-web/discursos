@@ -154,6 +154,49 @@
 <hr class="sep"/>
 <div class="h2">Mensaje (locales)</div>
 <textarea class="input" id="msgLocales" placeholder="Acá se genera el mensaje de locales…" readonly=""></textarea>
+
+<div class="card pad" style="margin-top:14px;">
+  <div class="section-title">
+    <div>
+      <h3 class="h2" style="margin:0;">Turnos de suplencia mensual</h3>
+      <div class="muted small">Control interno: un discursante local cubre las suplencias de conferenciantes invitados durante el mes.</div>
+    </div>
+    <span class="pill">Rotación mensual</span>
+  </div>
+  <hr class="sep"/>
+  <div class="row">
+    <div class="col" style="max-width:190px;">
+      <label>Mes</label>
+      <input class="input" id="s_mes" type="month"/>
+    </div>
+    <div class="col">
+      <label>Discursante local de turno</label>
+      <select class="input" id="s_local">
+        <option value="">Cargando locales…</option>
+      </select>
+    </div>
+  </div>
+  <label>Notas internas</label>
+  <textarea class="input" id="s_notas" placeholder="Ej: cubre invitado que no pueda venir; revisar disponibilidad antes de confirmar."></textarea>
+  <div class="row" style="margin-top:12px;">
+    <button class="btn" id="btnSugerirSuplencia" type="button">Sugerir siguiente</button>
+    <button class="btn primary" id="btnGuardarSuplencia" type="button">Guardar turno</button>
+    <button class="btn" id="btnLimpiarSuplencia" type="button">Limpiar</button>
+  </div>
+  <hr class="sep"/>
+  <table class="table" id="tblSuplencias">
+    <thead>
+      <tr>
+        <th>Mes</th>
+        <th>Discursante</th>
+        <th>Notas</th>
+        <th class="no-print">Acciones</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
 </div>
 </div>
 </div>
@@ -189,7 +232,7 @@
   });
 })();
 </script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="js/pages/discursantes.js?v=20260302" type="module"></script>
+<script src="js/pages/discursantes.js?v=20260425_suplencias_permisos" type="module"></script>
   <script src="js/nav-mobile.js"></script>
 </body>
 </html>
