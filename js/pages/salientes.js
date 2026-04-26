@@ -152,6 +152,123 @@ function normNum(v){
 }
 const bosquejosMap = new Map(Object.entries(bosquejos).map(([k,v])=>[Number(k), String(v)]));
 
+const LS_KEY_LOCALES = "vf_conferenciantesLocales_local";
+let oradoresLocalesElegibles = [];
+let oradoresLocalesCargados = false;
+
+function normalKey(s){
+  return String(s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function parseBosquejosLista(v){
+  if(Array.isArray(v)) return v.map(x=>String(x||"").trim()).filter(Boolean);
+  const raw = String(v||"").trim();
+  if(!raw) return [];
+  return raw.split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
+}
+
+function tieneBosquejosLocales(l){
+  return parseBosquejosLista(l?.bosquejos).length > 0;
+}
+
+function readLocalesLocal(){
+  try{
+    const raw = localStorage.getItem(LS_KEY_LOCALES);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch(_){ return []; }
+}
+
+function mergeLocalesPorNombre(base, extra){
+  const out = Array.isArray(base) ? base.slice() : [];
+  (extra || []).forEach((x)=>{
+    const key = normalKey(x?.nombre);
+    if(!key) return;
+    const i = out.findIndex(y => normalKey(y?.nombre) === key || (x.id && y.id === x.id));
+    if(i >= 0) out[i] = { ...x, ...out[i] };
+    else out.push(x);
+  });
+  return out;
+}
+
+async function leerLocalesDesdePersonas(){
+  const snap = await getDocs(query(collection(db, "personas"), orderBy("nombre", "asc")));
+  return snap.docs.map(d => ({ id:d.id, ...d.data() }))
+    .filter(p => p && p.activo !== false)
+    .filter(p => Array.isArray(p.roles) && p.roles.map(r=>String(r).toLowerCase()).includes("discursante"))
+    .map(p => ({
+      id: p.id,
+      nombre: p.nombre || "",
+      telefono: p.telefono || "",
+      bosquejos: Array.isArray(p.bosquejos) ? p.bosquejos : [],
+      activo: p.activo !== false,
+      origenPersonas: true
+    }));
+}
+
+function actualizarOpcionesOrador(){
+  const sel = $("orador");
+  if(!sel) return;
+  const prev = sel.value || "";
+  const rows = (oradoresLocalesElegibles || [])
+    .filter(l => l && l.activo !== false && String(l.nombre||"").trim() && tieneBosquejosLocales(l))
+    .sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"", "es"));
+
+  sel.innerHTML = `<option value="">Elegir conferenciante local…</option>` + rows.map(l=>{
+    const nombre = escapeHtml(l.nombre || "");
+    const bosq = escapeHtml(parseBosquejosLista(l.bosquejos).join(", "));
+    return `<option value="${nombre}" data-bosquejos="${bosq}">${nombre}${bosq ? ` — Bosquejos: ${bosq}` : ""}</option>`;
+  }).join("");
+
+  if(prev && Array.from(sel.options).some(o => normalKey(o.value) === normalKey(prev))){
+    const opt = Array.from(sel.options).find(o => normalKey(o.value) === normalKey(prev));
+    sel.value = opt?.value || "";
+  }
+  sel.disabled = !rows.length;
+}
+
+function autocompletarBosquejoDesdeOrador(){
+  const sel = $("orador");
+  const bInput = $("bosquejo");
+  if(!sel || !bInput) return;
+  if(String(bInput.value||"").trim()) return;
+  const bosq = String(sel.selectedOptions?.[0]?.dataset?.bosquejos || "").split(/[,;\n]/).map(x=>x.trim()).filter(Boolean);
+  if(bosq.length === 1){
+    bInput.value = bosq[0];
+    updateBosquejoTitulo();
+  }
+}
+
+function esOradorLocalElegible(nombre){
+  const key = normalKey(nombre);
+  if(!key) return false;
+  return (oradoresLocalesElegibles || []).some(l =>
+    l && l.activo !== false && tieneBosquejosLocales(l) && normalKey(l.nombre) === key
+  );
+}
+
+async function cargarOradoresLocalesElegibles(){
+  try{
+    const snap = await getDocs(query(collection(db, "conferenciantesLocales"), orderBy("nombre", "asc")));
+    const dedicados = snap.docs.map(d => ({ id:d.id, ...d.data(), origenLocales:true }));
+    let desdePersonas = [];
+    try{ desdePersonas = await leerLocalesDesdePersonas(); }catch(e){ console.warn("No pude sumar locales desde Personas.", e); }
+    const desdeLocal = readLocalesLocal();
+    oradoresLocalesElegibles = mergeLocalesPorNombre(mergeLocalesPorNombre(dedicados, desdePersonas), desdeLocal)
+      .filter(l => l && l.activo !== false && tieneBosquejosLocales(l));
+    oradoresLocalesCargados = true;
+    actualizarOpcionesOrador();
+  }catch(e){
+    console.warn("No pude leer conferenciantesLocales; uso respaldo local si existe.", e);
+    oradoresLocalesElegibles = readLocalesLocal().filter(l => l && l.activo !== false && tieneBosquejosLocales(l));
+    oradoresLocalesCargados = true;
+    actualizarOpcionesOrador();
+    if(!oradoresLocalesElegibles.length){
+      toast("No pude cargar conferenciantes locales con bosquejos. Revisá permisos o cargalos en Discursantes.", true);
+    }
+  }
+}
+
 function updateBosquejoTitulo(){
   const el = document.getElementById('bosquejoTitulo');
   if(!el) return;
@@ -238,10 +355,13 @@ function clearForm(){
 
 function renderTable(){
   const q = ($("filtro").value||"").trim().toLowerCase();
-  const rows = cache.filter(r=>{
-    if(!q) return true;
-    return String(r.orador||"").toLowerCase().includes(q) || String(r.destino||"").toLowerCase().includes(q) || String(r.detalle||"").toLowerCase().includes(q) || String(r.notas||"").toLowerCase().includes(q);
-  });
+  const ocultosNoLocales = cache.filter(r => String(r.orador||"").trim() && !esOradorLocalElegible(r.orador)).length;
+  const rows = cache
+    .filter(r => esOradorLocalElegible(r.orador))
+    .filter(r=>{
+      if(!q) return true;
+      return String(r.orador||"").toLowerCase().includes(q) || String(r.destino||"").toLowerCase().includes(q) || String(r.detalle||"").toLowerCase().includes(q) || String(r.notas||"").toLowerCase().includes(q);
+    });
 
   // Mostrar por defecto desde la próxima fecha futura más cercana (si no hay filtro).
   if(!q){
@@ -252,7 +372,10 @@ function renderTable(){
 
   const tbody = $("tbody");
   if(!rows.length){
-    tbody.innerHTML = `<tr><td colspan="5" class="muted">Sin registros.</td></tr>`;
+    const msg = oradoresLocalesCargados && !oradoresLocalesElegibles.length
+      ? "No hay conferenciantes locales activos con bosquejos cargados."
+      : (ocultosNoLocales ? `Sin registros visibles. Se ocultaron ${ocultosNoLocales} registro(s) que no corresponden a conferenciantes locales con bosquejos.` : "Sin registros.");
+    tbody.innerHTML = `<tr><td colspan="5" class="muted">${escapeHtml(msg)}</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(r=>`
@@ -304,6 +427,8 @@ async function save(){
   if(!fecha) return toast("Fecha inválida. Usá DD/MM/AAAA o YYYY-MM-DD.", true);
   const orador = ($("orador").value||"").trim();
   const destino = ($("destino").value||"").trim();
+  if(!orador) return toast("Elegí un conferenciante local.", true);
+  if(!esOradorLocalElegible(orador)) return toast("Ese orador no está habilitado como conferenciante local con bosquejos cargados.", true);
 
   const tipo = ($("tipo")?.value||"normal").trim();
   const detalle = ($("detalle")?.value||"").trim();
@@ -354,6 +479,7 @@ async function borrar(){
 
 (async function(){
   const { usuario } = await requireActiveUser();
+  await cargarOradoresLocalesElegibles();
   await seedIfEmpty(usuario);
 
   $("btnNuevo")?.addEventListener("click", clearForm);
@@ -363,6 +489,7 @@ async function borrar(){
   $("form")?.addEventListener("submit", (ev)=>{ ev.preventDefault(); save(); });
 
   $("bosquejo")?.addEventListener("input", updateBosquejoTitulo);
+  $("orador")?.addEventListener("change", autocompletarBosquejoDesdeOrador);
   updateBosquejoTitulo();
 
   // ayuda: autocompletar título en placeholder si existe

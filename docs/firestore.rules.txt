@@ -8,25 +8,43 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid));
     }
 
+    // Acepta activo como booleano o como texto, porque algunos usuarios antiguos
+    // pueden haber quedado guardados como "true", "si", "sí", "activo", etc.
+    function activeValue() {
+      return signedIn() ? userDoc().data.activo : false;
+    }
+
     function activeUser() {
-      return signedIn() && userDoc().data.activo == true;
+      return signedIn() && (
+        activeValue() == true ||
+        activeValue() in ["true", "True", "TRUE", "si", "Si", "SI", "sí", "Sí", "SÍ", "activo", "Activo", "ACTIVO", "1"]
+      );
     }
 
     function role() {
       return activeUser() ? (userDoc().data.rol) : "none";
     }
 
-    // Acepta roles antiguos/nuevos y mayúsculas por si algún usuario quedó cargado como Admin/Superadmin.
+    // Acepta roles antiguos/nuevos y variantes en español.
     function isEditor() {
-      return role() in ["editor","Editor","EDITOR","admin","Admin","ADMIN","superadmin","Superadmin","SUPERADMIN"];
+      return role() in [
+        "editor", "Editor", "EDITOR",
+        "admin", "Admin", "ADMIN",
+        "administrador", "Administrador", "ADMINISTRADOR",
+        "superadmin", "Superadmin", "SUPERADMIN"
+      ];
     }
 
     function isAdmin() {
-      return role() in ["admin","Admin","ADMIN","superadmin","Superadmin","SUPERADMIN"];
+      return role() in [
+        "admin", "Admin", "ADMIN",
+        "administrador", "Administrador", "ADMINISTRADOR",
+        "superadmin", "Superadmin", "SUPERADMIN"
+      ];
     }
 
     function isSuperadmin() {
-      return role() in ["superadmin","Superadmin","SUPERADMIN"];
+      return role() in ["superadmin", "Superadmin", "SUPERADMIN"];
     }
 
     // Usuarios: cada uno puede leer su doc; admins pueden leer y editar; superadmin todo.

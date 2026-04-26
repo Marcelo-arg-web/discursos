@@ -23,8 +23,10 @@
 </div>
 <div style="grid-column: span 2;">
 <label class="lbl">Discursante</label>
-<input class="inp" id="orador" placeholder="Marcelo Palavecino"/>
-<div class="small muted">Los 5 actuales: Marcelo Palavecino, Sergio Saldaña, Leonardo Araya, Luis Navarro, Marcelo Rodríguez (pero se puede agregar/quitar).</div>
+<select class="inp" id="orador">
+<option value="">Cargando conferenciantes locales…</option>
+</select>
+<div class="small muted">Solo aparecen conferenciantes locales activos que tengan bosquejos/arreglos cargados en Discursantes.</div>
 </div>
 
 <div style="grid-column: span 2;">
@@ -120,7 +122,7 @@
     });
   });
 })();
-</script><script src="js/pages/salientes.js?v=20260302" type="module"></script>
+</script><script src="js/pages/salientes.js?v=20260425b" type="module"></script>
   <script src="js/nav-mobile.js"></script>
 </body>
 </html>
