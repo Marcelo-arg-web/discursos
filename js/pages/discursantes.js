@@ -103,14 +103,16 @@ function normalKey(s){
 const LOCALES_FIJOS_VILLA_FIAD = [
   { id: "marcelo-palavecino", nombre: "Marcelo Palavecino", telefono: "", bosquejos: [181, 28, 88, 180, 51], activo: true, fijoVillaFiad: true },
   { id: "sergio-saldana", nombre: "Sergio Saldaña", telefono: "", bosquejos: [55, 77], activo: true, fijoVillaFiad: true },
-  { id: "luis-navarro", nombre: "Luis Navarro", telefono: "", bosquejos: [146, 10, 165, 68, 7], activo: true, fijoVillaFiad: true },
-  { id: "leonardo-araya", nombre: "Leonardo Araya", telefono: "", bosquejos: [135, 100, 181, 189], activo: true, fijoVillaFiad: true },
+  { id: "luis-navarro", nombre: "Luis Navarro", telefono: "", bosquejos: [87, 146, 10, 165, 68, 7], activo: true, fijoVillaFiad: true },
+  { id: "leonardo-araya", nombre: "Leonardo Araya", telefono: "", bosquejos: [135, 100, 57, 181, 189], activo: true, fijoVillaFiad: true },
   { id: "marcelo-rodriguez", nombre: "Marcelo Rodríguez", telefono: "", bosquejos: [15], activo: true, fijoVillaFiad: true }
 ];
 
 function canonicalLocalName(nombre){
   const k = normalKey(nombre);
   if(k === "marcelo rodriguez" || k === "marcelo rodrigez") return "Marcelo Rodríguez";
+  if(k === "marcelo palevecino") return "Marcelo Palavecino";
+  if(k === "lis navarro") return "Luis Navarro";
   if(k === "lionardo araya") return "Leonardo Araya";
   const found = LOCALES_FIJOS_VILLA_FIAD.find(l => normalKey(l.nombre) === k);
   return found ? found.nombre : String(nombre||"").trim();
@@ -391,7 +393,8 @@ function mergeLocalesPorNombre(base, extra){
     const i = out.findIndex(y => normalKey(canonicalLocalName(y.nombre)) === key || (x.id && y.id === x.id));
     if(i >= 0){
       const bosq = Array.from(new Set([...(Array.isArray(x.bosquejos)?x.bosquejos:[]), ...(Array.isArray(out[i].bosquejos)?out[i].bosquejos:[])]));
-      out[i] = { ...x, ...out[i], nombre: canonicalLocalName(out[i].nombre || x.nombre), bosquejos: bosq, origenPersonas: out[i].origenPersonas && !out[i].createdAt ? true : out[i].origenPersonas };
+      const fijo = LOCALES_FIJOS_VILLA_FIAD.find(f => normalKey(f.nombre) === key);
+      out[i] = { ...x, ...out[i], nombre: canonicalLocalName(out[i].nombre || x.nombre), activo: fijo ? true : (out[i].activo ?? x.activo), fijoVillaFiad: Boolean(out[i].fijoVillaFiad || x.fijoVillaFiad || fijo), bosquejos: bosq, origenPersonas: out[i].origenPersonas && !out[i].createdAt ? true : out[i].origenPersonas };
     }
     else out.push(x);
   });
@@ -426,7 +429,10 @@ async function cargarLocales() {
       const key = normalKey(x.nombre);
       if(!key) return;
       const i = cacheLoc.findIndex((y)=>normalKey(y.nombre)===key);
-      if(i>=0) cacheLoc[i] = { ...cacheLoc[i], ...x };
+      if(i>=0){
+        const bosq = Array.from(new Set([...(Array.isArray(cacheLoc[i].bosquejos)?cacheLoc[i].bosquejos:[]), ...(Array.isArray(x.bosquejos)?x.bosquejos:[])]));
+        cacheLoc[i] = { ...cacheLoc[i], ...x, nombre: canonicalLocalName(cacheLoc[i].nombre || x.nombre), activo: cacheLoc[i].fijoVillaFiad ? true : (x.activo ?? cacheLoc[i].activo), bosquejos: bosq };
+      }
       else cacheLoc.push(x);
     });
     cacheLoc.sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"", "es"));

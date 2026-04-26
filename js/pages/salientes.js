@@ -163,8 +163,8 @@ function normalKey(s){
 const LOCALES_FIJOS_VILLA_FIAD = [
   { nombre: "Marcelo Palavecino", bosquejos: [181, 28, 88, 180, 51] },
   { nombre: "Sergio Saldaña", bosquejos: [55, 77] },
-  { nombre: "Luis Navarro", bosquejos: [146, 10, 165, 68, 7] },
-  { nombre: "Leonardo Araya", bosquejos: [135, 100, 181, 189] },
+  { nombre: "Luis Navarro", bosquejos: [87, 146, 10, 165, 68, 7] },
+  { nombre: "Leonardo Araya", bosquejos: [135, 100, 57, 181, 189] },
   { nombre: "Marcelo Rodríguez", bosquejos: [15] }
 ];
 
@@ -223,14 +223,46 @@ function readLocalesLocal(){
   }catch(_){ return []; }
 }
 
+function unionBosquejos(...listas){
+  const out = [];
+  listas.forEach(lista => {
+    parseBosquejosLista(lista).forEach(b => {
+      const v = String(b || "").trim();
+      if(v && !out.map(String).includes(v)) out.push(v);
+    });
+  });
+  return out.sort((a,b)=>Number(a)-Number(b));
+}
+
 function mergeLocalesPorNombre(base, extra){
-  const out = Array.isArray(base) ? base.slice() : [];
-  (extra || []).forEach((x)=>{
+  const out = (Array.isArray(base) ? base : []).map(raw => ({
+    ...raw,
+    nombre: canonicalLocalName(raw?.nombre),
+    bosquejos: parseBosquejosLista(raw?.bosquejos)
+  }));
+  (extra || []).forEach((raw)=>{
+    const x = { ...raw, nombre: canonicalLocalName(raw?.nombre), bosquejos: parseBosquejosLista(raw?.bosquejos) };
     const key = normalKey(x?.nombre);
     if(!key) return;
-    const i = out.findIndex(y => normalKey(y?.nombre) === key || (x.id && y.id === x.id));
-    if(i >= 0) out[i] = { ...x, ...out[i] };
-    else out.push(x);
+    const i = out.findIndex(y => normalKey(canonicalLocalName(y?.nombre)) === key || (x.id && y.id === x.id));
+    const fijo = LOCALES_FIJOS_VILLA_FIAD.find(l => normalKey(l.nombre) === key);
+    if(i >= 0){
+      const anterior = out[i];
+      out[i] = {
+        ...anterior,
+        ...x,
+        nombre: canonicalLocalName(anterior.nombre || x.nombre),
+        activo: fijo ? true : (x.activo ?? anterior.activo),
+        fijoVillaFiad: Boolean(anterior.fijoVillaFiad || x.fijoVillaFiad || fijo),
+        bosquejos: unionBosquejos(anterior.bosquejos, x.bosquejos, fijo?.bosquejos || [])
+      };
+    }
+    else out.push({
+      ...x,
+      activo: fijo ? true : x.activo,
+      fijoVillaFiad: Boolean(x.fijoVillaFiad || fijo),
+      bosquejos: unionBosquejos(x.bosquejos, fijo?.bosquejos || [])
+    });
   });
   return out;
 }
@@ -255,7 +287,7 @@ function actualizarOpcionesOrador(){
   if(!sel) return;
   const prev = sel.value || "";
   const rows = (oradoresLocalesElegibles || [])
-    .filter(l => l && l.activo !== false && String(l.nombre||"").trim() && esLocalFijoVillaFiad(l.nombre) && tieneBosquejosLocales(l))
+    .filter(l => l && l.activo !== false && String(l.nombre||"").trim() && tieneBosquejosLocales(l))
     .map(l => ({ ...l, nombre: canonicalLocalName(l.nombre) }))
     .sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"", "es"));
 
@@ -288,7 +320,8 @@ function esOradorLocalElegible(nombre){
   const canon = canonicalLocalName(nombre);
   const key = normalKey(canon);
   if(!key) return false;
-  if(!esLocalFijoVillaFiad(canon)) return false;
+  const fijo = LOCALES_FIJOS_VILLA_FIAD.find(l => normalKey(l.nombre) === key);
+  if(fijo && parseBosquejosLista(fijo.bosquejos).length) return true;
   return (oradoresLocalesElegibles || []).some(l =>
     l && l.activo !== false && tieneBosquejosLocales(l) && normalKey(canonicalLocalName(l.nombre)) === key
   );
@@ -302,14 +335,14 @@ async function cargarOradoresLocalesElegibles(){
     try{ desdePersonas = await leerLocalesDesdePersonas(); }catch(e){ console.warn("No pude sumar locales desde Personas.", e); }
     const desdeLocal = readLocalesLocal();
     const fijos = localesFijosConHistorial();
-    oradoresLocalesElegibles = mergeLocalesPorNombre(mergeLocalesPorNombre(mergeLocalesPorNombre(dedicados, desdePersonas), desdeLocal), fijos)
-      .filter(l => l && l.activo !== false && esLocalFijoVillaFiad(l.nombre) && tieneBosquejosLocales(l));
+    oradoresLocalesElegibles = mergeLocalesPorNombre(mergeLocalesPorNombre(mergeLocalesPorNombre(fijos, dedicados), desdePersonas), desdeLocal)
+      .filter(l => l && l.activo !== false && String(l.nombre||"").trim() && tieneBosquejosLocales(l));
     oradoresLocalesCargados = true;
     actualizarOpcionesOrador();
   }catch(e){
     console.warn("No pude leer conferenciantesLocales; uso respaldo local si existe.", e);
-    oradoresLocalesElegibles = mergeLocalesPorNombre(readLocalesLocal(), localesFijosConHistorial())
-      .filter(l => l && l.activo !== false && esLocalFijoVillaFiad(l.nombre) && tieneBosquejosLocales(l));
+    oradoresLocalesElegibles = mergeLocalesPorNombre(localesFijosConHistorial(), readLocalesLocal())
+      .filter(l => l && l.activo !== false && String(l.nombre||"").trim() && tieneBosquejosLocales(l));
     oradoresLocalesCargados = true;
     actualizarOpcionesOrador();
     if(!oradoresLocalesElegibles.length){
@@ -473,12 +506,9 @@ function mismoDestino(a,b){
 function salidaCoincideExistente(existente, objetivo){
   const mismaFecha = String(existente?.fecha || "") === String(objetivo?.fecha || "");
   if(!mismaFecha) return false;
-  const destinoExistente = String(existente?.destino || existente?.congregacionDestino || "").trim();
-  const destinoObjetivo = String(objetivo?.destino || "").trim();
-  if(destinoExistente && destinoObjetivo && mismoDestino(destinoExistente, destinoObjetivo)) return true;
-  // Si había un registro anterior incompleto para esa fecha, lo actualizamos en vez de duplicar.
-  if(!destinoExistente || !String(existente?.orador || "").trim() || !String(existente?.bosquejo ?? "").trim()) return true;
-  return false;
+  // Para salientes confirmados de 2026 usamos la fecha como clave práctica:
+  // corrige destinos/nombres incompletos o mal escritos sin duplicar.
+  return true;
 }
 
 function salidaNecesitaActualizacion(existente, objetivo){
