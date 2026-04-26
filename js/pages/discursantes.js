@@ -100,6 +100,23 @@ function normalKey(s){
   return String(s||"").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
+const LOCALES_FIJOS_VILLA_FIAD = [
+  { id: "marcelo-palavecino", nombre: "Marcelo Palavecino", telefono: "", bosquejos: [181, 28, 88, 180, 51], activo: true, fijoVillaFiad: true },
+  { id: "sergio-saldana", nombre: "Sergio Saldaña", telefono: "", bosquejos: [55, 77], activo: true, fijoVillaFiad: true },
+  { id: "luis-navarro", nombre: "Luis Navarro", telefono: "", bosquejos: [146, 10, 165, 68, 7], activo: true, fijoVillaFiad: true },
+  { id: "leonardo-araya", nombre: "Leonardo Araya", telefono: "", bosquejos: [135, 100, 181, 189], activo: true, fijoVillaFiad: true },
+  { id: "marcelo-rodriguez", nombre: "Marcelo Rodríguez", telefono: "", bosquejos: [15], activo: true, fijoVillaFiad: true }
+];
+
+function canonicalLocalName(nombre){
+  const k = normalKey(nombre);
+  if(k === "marcelo rodriguez" || k === "marcelo rodrigez") return "Marcelo Rodríguez";
+  if(k === "lionardo araya") return "Leonardo Araya";
+  const found = LOCALES_FIJOS_VILLA_FIAD.find(l => normalKey(l.nombre) === k);
+  return found ? found.nombre : String(nombre||"").trim();
+}
+
+
 function localKey(l){
   return String(l?.id || normalKey(l?.nombre) || "");
 }
@@ -326,7 +343,7 @@ function locFromForm() {
     : [];
 
   return {
-    nombre: (document.getElementById("l_nombre")?.value || "").trim(),
+    nombre: canonicalLocalName((document.getElementById("l_nombre")?.value || "").trim()),
     telefono: (document.getElementById("l_tel")?.value || "").trim(),
     bosquejos,
     proximo: Boolean(document.getElementById("l_proximo")?.checked),
@@ -366,12 +383,16 @@ async function leerLocalesDesdePersonas(){
 }
 
 function mergeLocalesPorNombre(base, extra){
-  const out = Array.isArray(base) ? base.slice() : [];
-  (extra || []).forEach((x)=>{
+  const out = (Array.isArray(base) ? base.slice() : []).map(x => ({ ...x, nombre: canonicalLocalName(x?.nombre) }));
+  (extra || []).forEach((raw)=>{
+    const x = { ...raw, nombre: canonicalLocalName(raw?.nombre) };
     const key = normalKey(x.nombre);
     if(!key) return;
-    const i = out.findIndex(y => normalKey(y.nombre) === key || (x.id && y.id === x.id));
-    if(i >= 0) out[i] = { ...x, ...out[i], origenPersonas: out[i].origenPersonas && !out[i].createdAt ? true : out[i].origenPersonas };
+    const i = out.findIndex(y => normalKey(canonicalLocalName(y.nombre)) === key || (x.id && y.id === x.id));
+    if(i >= 0){
+      const bosq = Array.from(new Set([...(Array.isArray(x.bosquejos)?x.bosquejos:[]), ...(Array.isArray(out[i].bosquejos)?out[i].bosquejos:[])]));
+      out[i] = { ...x, ...out[i], nombre: canonicalLocalName(out[i].nombre || x.nombre), bosquejos: bosq, origenPersonas: out[i].origenPersonas && !out[i].createdAt ? true : out[i].origenPersonas };
+    }
     else out.push(x);
   });
   return out;
@@ -386,7 +407,7 @@ async function cargarLocales() {
     const dedicados = snap.docs.map((d) => ({ id: d.id, ...d.data(), origenPersonas:false }));
     let desdePersonas = [];
     try { desdePersonas = await leerLocalesDesdePersonas(); } catch(ePersonas) { console.warn("No pude sumar locales desde Personas.", ePersonas); }
-    cacheLoc = mergeLocalesPorNombre(dedicados, desdePersonas)
+    cacheLoc = mergeLocalesPorNombre(mergeLocalesPorNombre(LOCALES_FIJOS_VILLA_FIAD, dedicados), desdePersonas)
       .filter((l) => l.activo !== false)
       .sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"", "es"));
     renderLocales();
@@ -399,7 +420,7 @@ async function cargarLocales() {
 
   // Respaldo: usar Personas (roles contiene "discursante") + localStorage.
   try {
-    cacheLoc = await leerLocalesDesdePersonas();
+    cacheLoc = mergeLocalesPorNombre(LOCALES_FIJOS_VILLA_FIAD, await leerLocalesDesdePersonas());
     const localExtra = readLocalesLocal();
     localExtra.forEach((x)=>{
       const key = normalKey(x.nombre);
@@ -440,7 +461,7 @@ function renderLocales() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>
-        <div><b>${l.nombre || ""}</b> ${tags.length ? `<span class="pill">${tags.join(" · ")}</span>` : ""}</div>
+        <div><b>${canonicalLocalName(l.nombre) || ""}</b> ${tags.length ? `<span class="pill">${tags.join(" · ")}</span>` : ""}</div>
         <div class="small muted">${l.telefono || ""}</div>
         <div class="small">${Array.isArray(l.bosquejos) && l.bosquejos.length ? `Bosquejos: ${l.bosquejos.join(", ")}` : "Bosquejos: —"}</div>
       </td>
@@ -533,7 +554,7 @@ function generarMensajeLocales() {
     const tel = l.telefono ? ` · ${l.telefono}` : "";
     const tags = [l.provisorio ? "provisorio" : "", l.proximo ? "próximo" : ""].filter(Boolean);
     const tagStr = tags.length ? ` [${tags.join(" · ")}]` : "";
-    return `• ${l.nombre}${tagStr}${tel}${bosq}`;
+    return `• ${canonicalLocalName(l.nombre)}${tagStr}${tel}${bosq}`;
   });
 
   const msg = `*Conferenciantes locales (Villa Fiad)*\n\n${lines.join("\n")}`;

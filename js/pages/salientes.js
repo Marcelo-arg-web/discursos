@@ -160,6 +160,48 @@ function normalKey(s){
   return String(s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
+const LOCALES_FIJOS_VILLA_FIAD = [
+  { nombre: "Marcelo Palavecino", bosquejos: [181, 28, 88, 180, 51] },
+  { nombre: "Sergio Saldaña", bosquejos: [55, 77] },
+  { nombre: "Luis Navarro", bosquejos: [146, 10, 165, 68, 7] },
+  { nombre: "Leonardo Araya", bosquejos: [135, 100, 181, 189] },
+  { nombre: "Marcelo Rodríguez", bosquejos: [15] }
+];
+
+function canonicalLocalName(nombre){
+  const k = normalKey(nombre);
+  if(!k) return "";
+  if(k === "marcelo rodriguez" || k === "marcelo rodrigez") return "Marcelo Rodríguez";
+  if(k === "lionardo araya") return "Leonardo Araya";
+  const found = LOCALES_FIJOS_VILLA_FIAD.find(l => normalKey(l.nombre) === k);
+  return found ? found.nombre : String(nombre||"").trim();
+}
+
+function esLocalFijoVillaFiad(nombre){
+  const c = canonicalLocalName(nombre);
+  return LOCALES_FIJOS_VILLA_FIAD.some(l => normalKey(l.nombre) === normalKey(c));
+}
+
+function localesFijosConHistorial(){
+  const map = new Map();
+  LOCALES_FIJOS_VILLA_FIAD.forEach(l => {
+    map.set(normalKey(l.nombre), { ...l, id: normalKey(l.nombre), activo: true, fijoVillaFiad: true, bosquejos: parseBosquejosLista(l.bosquejos) });
+  });
+  const fuentes = []
+    .concat(Array.isArray(INITIAL_SALIENTES) ? INITIAL_SALIENTES : [])
+    .concat(Array.isArray(cache) ? cache : []);
+  fuentes.forEach(r => {
+    const nombre = canonicalLocalName(r?.orador || r?.oradorNombre || "");
+    if(!esLocalFijoVillaFiad(nombre)) return;
+    const key = normalKey(nombre);
+    const item = map.get(key) || { nombre, id:key, activo:true, fijoVillaFiad:true, bosquejos: [] };
+    const b = normNum(r?.bosquejo);
+    if(b !== "" && !item.bosquejos.map(String).includes(String(b))) item.bosquejos.push(String(b));
+    map.set(key, item);
+  });
+  return Array.from(map.values());
+}
+
 function parseBosquejosLista(v){
   if(Array.isArray(v)) return v.map(x=>String(x||"").trim()).filter(Boolean);
   const raw = String(v||"").trim();
@@ -211,7 +253,8 @@ function actualizarOpcionesOrador(){
   if(!sel) return;
   const prev = sel.value || "";
   const rows = (oradoresLocalesElegibles || [])
-    .filter(l => l && l.activo !== false && String(l.nombre||"").trim() && tieneBosquejosLocales(l))
+    .filter(l => l && l.activo !== false && String(l.nombre||"").trim() && esLocalFijoVillaFiad(l.nombre) && tieneBosquejosLocales(l))
+    .map(l => ({ ...l, nombre: canonicalLocalName(l.nombre) }))
     .sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"", "es"));
 
   sel.innerHTML = `<option value="">Elegir conferenciante local…</option>` + rows.map(l=>{
@@ -240,10 +283,12 @@ function autocompletarBosquejoDesdeOrador(){
 }
 
 function esOradorLocalElegible(nombre){
-  const key = normalKey(nombre);
+  const canon = canonicalLocalName(nombre);
+  const key = normalKey(canon);
   if(!key) return false;
+  if(!esLocalFijoVillaFiad(canon)) return false;
   return (oradoresLocalesElegibles || []).some(l =>
-    l && l.activo !== false && tieneBosquejosLocales(l) && normalKey(l.nombre) === key
+    l && l.activo !== false && tieneBosquejosLocales(l) && normalKey(canonicalLocalName(l.nombre)) === key
   );
 }
 
@@ -254,17 +299,19 @@ async function cargarOradoresLocalesElegibles(){
     let desdePersonas = [];
     try{ desdePersonas = await leerLocalesDesdePersonas(); }catch(e){ console.warn("No pude sumar locales desde Personas.", e); }
     const desdeLocal = readLocalesLocal();
-    oradoresLocalesElegibles = mergeLocalesPorNombre(mergeLocalesPorNombre(dedicados, desdePersonas), desdeLocal)
-      .filter(l => l && l.activo !== false && tieneBosquejosLocales(l));
+    const fijos = localesFijosConHistorial();
+    oradoresLocalesElegibles = mergeLocalesPorNombre(mergeLocalesPorNombre(mergeLocalesPorNombre(dedicados, desdePersonas), desdeLocal), fijos)
+      .filter(l => l && l.activo !== false && esLocalFijoVillaFiad(l.nombre) && tieneBosquejosLocales(l));
     oradoresLocalesCargados = true;
     actualizarOpcionesOrador();
   }catch(e){
     console.warn("No pude leer conferenciantesLocales; uso respaldo local si existe.", e);
-    oradoresLocalesElegibles = readLocalesLocal().filter(l => l && l.activo !== false && tieneBosquejosLocales(l));
+    oradoresLocalesElegibles = mergeLocalesPorNombre(readLocalesLocal(), localesFijosConHistorial())
+      .filter(l => l && l.activo !== false && esLocalFijoVillaFiad(l.nombre) && tieneBosquejosLocales(l));
     oradoresLocalesCargados = true;
     actualizarOpcionesOrador();
     if(!oradoresLocalesElegibles.length){
-      toast("No pude cargar conferenciantes locales con bosquejos. Revisá permisos o cargalos en Discursantes.", true);
+      toast("No pude cargar conferenciantes locales desde Firestore; usé la lista local de Villa Fiad si está disponible.", false);
     }
   }
 }
@@ -329,7 +376,7 @@ const tipoLabel = (t)=>({normal:"Salida",asamblea:"Asamblea / No se sale",especi
 function fillFromDoc(id, d){
   $("editId").value = id;
   $("fecha").value = toDMY(d.fecha || "");
-  $("orador").value = d.orador || d.oradorNombre || "";
+  $("orador").value = canonicalLocalName(d.orador || d.oradorNombre || "");
   $("tipo") && ($("tipo").value = d.tipo || "normal");
   $("detalle") && ($("detalle").value = d.detalle || "");
   $("bosquejo").value = d.bosquejo ?? "";
@@ -373,7 +420,7 @@ function renderTable(){
   const tbody = $("tbody");
   if(!rows.length){
     const msg = oradoresLocalesCargados && !oradoresLocalesElegibles.length
-      ? "No hay conferenciantes locales activos con bosquejos cargados."
+      ? "No hay conferenciantes locales de Villa Fiad con bosquejos/arreglos cargados."
       : (ocultosNoLocales ? `Sin registros visibles. Se ocultaron ${ocultosNoLocales} registro(s) que no corresponden a conferenciantes locales con bosquejos.` : "Sin registros.");
     tbody.innerHTML = `<tr><td colspan="5" class="muted">${escapeHtml(msg)}</td></tr>`;
     return;
@@ -381,7 +428,7 @@ function renderTable(){
   tbody.innerHTML = rows.map(r=>`
     <tr data-id="${r.id}">
       <td>${escapeHtml(toDMY(r.fecha||""))}</td>
-      <td>${escapeHtml(r.orador||"")}</td>
+      <td>${escapeHtml(canonicalLocalName(r.orador||""))}</td>
       <td>${(r.bosquejo!=="" && r.bosquejo!=null) ? (r.bosquejo + " — " + escapeHtml(bosquejosMap.get(Number(r.bosquejo))||"")) : ( (r.tipo && r.tipo!=="normal") ? (escapeHtml(tipoLabel(r.tipo)) + (r.detalle?(" — "+escapeHtml(r.detalle)):"")) : (r.detalle?escapeHtml(r.detalle):"") )}</td>
       <td>${escapeHtml(r.destino||"")}</td>
       <td>${escapeHtml(r.notas||"")}</td>
@@ -425,7 +472,7 @@ async function load(){
 async function save(){
   const fecha = toISOFromInput($("fecha").value);
   if(!fecha) return toast("Fecha inválida. Usá DD/MM/AAAA o YYYY-MM-DD.", true);
-  const orador = ($("orador").value||"").trim();
+  const orador = canonicalLocalName(($("orador").value||"").trim());
   const destino = ($("destino").value||"").trim();
   if(!orador) return toast("Elegí un conferenciante local.", true);
   if(!esOradorLocalElegible(orador)) return toast("Ese orador no está habilitado como conferenciante local con bosquejos cargados.", true);
