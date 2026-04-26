@@ -172,6 +172,8 @@ function canonicalLocalName(nombre){
   const k = normalKey(nombre);
   if(!k) return "";
   if(k === "marcelo rodriguez" || k === "marcelo rodrigez") return "Marcelo Rodríguez";
+  if(k === "marcelo palevecino") return "Marcelo Palavecino";
+  if(k === "lis navarro") return "Luis Navarro";
   if(k === "lionardo araya") return "Leonardo Araya";
   const found = LOCALES_FIJOS_VILLA_FIAD.find(l => normalKey(l.nombre) === k);
   return found ? found.nombre : String(nombre||"").trim();
@@ -325,44 +327,46 @@ function updateBosquejoTitulo(){
 }
 
 let cache=[];
-const INITIAL_SALIENTES = [
-  { fecha:"2025-11-15", orador:"Marcelo Palavecino", bosquejo:181, destino:"Ranchillos", notas:"" },
-  { fecha:"2025-12-06", orador:"Daniel Galarzo", bosquejo:15, destino:"Oeste, Tucum\u00e1n", notas:"" },
-  { fecha:"2025-12-13", orador:"Marcelo Palavecino", bosquejo:28, destino:"Oeste, Tucum\u00e1n", notas:"" },
-  { fecha:"2025-12-20", orador:"Sergio Salda\u00f1a", bosquejo:55, destino:"Oeste, Tucum\u00e1n", notas:"" },
-  { fecha:"2026-02-07", orador:"Sergio Salda\u00f1a", bosquejo:55, destino:"El Cha\u00f1ar", notas:"" },
-  { fecha:"2026-02-14", orador:"Marcelo Palavecino", bosquejo:28, destino:"El Cha\u00f1ar", notas:"" },
-  { fecha:"2026-02-21", orador:"Leonardo Araya", bosquejo:135, destino:"El Cha\u00f1ar", notas:"" },
-  { fecha:"2026-02-28", orador:"Juan Calos Fresia", bosquejo:183, destino:"El Cha\u00f1ar", notas:"" },
-  { fecha:"2026-03-01", orador:"Luis Navarro", bosquejo:146, destino:"Este, Tucum\u00e1n", notas:"" },
-  { fecha:"2026-03-15", orador:"Juan Calos Fresia", bosquejo:103, destino:"Este, Tucum\u00e1n", notas:"" },
-  { fecha:"2026-03-21", orador:"Marcelo Palavecino", bosquejo:88, destino:"Echeverria", notas:"" },
-  { fecha:"2026-03-28", orador:"", bosquejo:"", destino:"", notas:"" },
-  { fecha:"2026-04-05", orador:"Marcelo Palavecino", bosquejo:180, destino:"Este, Tucum\u00e1n", notas:"" },
-  { fecha:"2026-04-12", orador:"", bosquejo:"", destino:"", notas:"" },
-  { fecha:"2026-04-19", orador:"Leonardo Araya", bosquejo:100, destino:"Este, Tucum\u00e1n", notas:"" },
-  { fecha:"2026-04-25", orador:"", bosquejo:"", destino:"", notas:"" },
-  { fecha:"2026-05-02", orador:"", bosquejo:"", destino:"", notas:"" },
-  { fecha:"2026-05-09", orador:"", bosquejo:"", destino:"", notas:"" },
-  { fecha:"2026-05-16", orador:"", bosquejo:"", destino:"", notas:"" },
-  { fecha:"2026-05-23", orador:"", bosquejo:"", destino:"", notas:"" },
+const SALIENTES_2026_CONFIRMADOS = [
+  { fecha:"2026-04-26", orador:"Leonardo Araya", bosquejo:100, destino:"Este Tucumán", notas:"" },
+  { fecha:"2026-05-03", orador:"Luis Navarro", bosquejo:87, destino:"Alderetes", notas:"" },
+  { fecha:"2026-05-10", orador:"Marcelo Palavecino", bosquejo:28, destino:"Alderetes", notas:"" },
+  { fecha:"2026-05-17", orador:"Leonardo Araya", bosquejo:57, destino:"Alderetes", notas:"" },
+  { fecha:"2026-05-24", orador:"Marcelo Rodríguez", bosquejo:15, destino:"Alderetes", notas:"" },
   { fecha:"2026-05-31", orador:"Leonardo Araya", bosquejo:181, destino:"Los Ralos", notas:"" },
-  { fecha:"2026-06-06", orador:"Luis Navarro", bosquejo:10, destino:"Banda del R\u00edo Sal\u00ed", notas:"" },
-  { fecha:"2026-06-13", orador:"Marcelo Palavecino", bosquejo:"", destino:"Banda del R\u00edo Sal\u00ed", notas:"" },
-  { fecha:"2026-06-20", orador:"Sergio Salda\u00f1a", bosquejo:55, destino:"Banda del R\u00edo Sal\u00ed", notas:"" },
-  { fecha:"2026-06-27", orador:"Leonardo Araya", bosquejo:189, destino:"Banda del R\u00edo Sal\u00ed", notas:"" },
+  { fecha:"2026-06-06", orador:"Luis Navarro", bosquejo:10, destino:"Banda del Río Salí", notas:"" },
+  { fecha:"2026-06-13", orador:"Marcelo Rodríguez", bosquejo:15, destino:"Banda del Río Salí", notas:"" },
+  { fecha:"2026-06-20", orador:"Sergio Saldaña", bosquejo:55, destino:"Banda del Río Salí", notas:"" },
+  { fecha:"2026-06-27", orador:"Leonardo Araya", bosquejo:189, destino:"Banda del Río Salí", notas:"" },
   { fecha:"2026-07-18", orador:"Leonardo Araya", bosquejo:181, destino:"Colombres", notas:"" },
-  { fecha:"2026-07-25", orador:"Sergio Salda\u00f1a", bosquejo:77, destino:"Colombres", notas:"" },
+  { fecha:"2026-07-25", orador:"Sergio Saldaña", bosquejo:77, destino:"Colombres", notas:"" },
   { fecha:"2026-08-01", orador:"Marcelo Palavecino", bosquejo:88, destino:"Colombres", notas:"" },
   { fecha:"2026-08-08", orador:"Luis Navarro", bosquejo:165, destino:"Colombres", notas:"" },
-  { fecha:"2026-09-05", orador:"Leonardo Araya", bosquejo:100, destino:"Lules espa\u00f1ol", notas:"" },
-  { fecha:"2026-09-12", orador:"Sergio Salda\u00f1a", bosquejo:77, destino:"Lules espa\u00f1ol", notas:"" },
-  { fecha:"2026-09-19", orador:"Marcelo Palavecino", bosquejo:51, destino:"Lules espa\u00f1ol", notas:"" },
-  { fecha:"2026-09-26", orador:"Luis Navarro", bosquejo:68, destino:"Lules espa\u00f1ol", notas:"" },
-  { fecha:"2026-10-04", orador:"Sergio Salda\u00f1a", bosquejo:55, destino:"Los Ralos", notas:"" },
+  { fecha:"2026-09-05", orador:"Leonardo Araya", bosquejo:100, destino:"Lules español", notas:"" },
+  { fecha:"2026-09-12", orador:"Sergio Saldaña", bosquejo:77, destino:"Lules español", notas:"" },
+  { fecha:"2026-09-19", orador:"Marcelo Palavecino", bosquejo:51, destino:"Lules español", notas:"" },
+  { fecha:"2026-09-26", orador:"Luis Navarro", bosquejo:68, destino:"Lules español", notas:"" },
+  { fecha:"2026-10-04", orador:"Sergio Saldaña", bosquejo:55, destino:"Los Ralos", notas:"" },
   { fecha:"2026-10-11", orador:"Marcelo Palavecino", bosquejo:28, destino:"Los Ralos", notas:"" },
-  { fecha:"2026-10-18", orador:"Luis Navarro", bosquejo:7, destino:"Los Ralos", notas:"" },
-  { fecha:"2026-10-25", orador:"Marcelo Rodrigez", bosquejo:15, destino:"Los Ralos", notas:"" }
+  { fecha:"2026-10-18", orador:"Luis Navarro", bosquejo:68, destino:"Los Ralos", notas:"" },
+  { fecha:"2026-10-25", orador:"Marcelo Rodríguez", bosquejo:15, destino:"Los Ralos", notas:"" },
+  { fecha:"2026-11-07", orador:"Leonardo Araya", bosquejo:100, destino:"Echeverria", notas:"" },
+  { fecha:"2026-11-14", orador:"Luis Navarro", bosquejo:146, destino:"Echeverria", notas:"" },
+  { fecha:"2026-11-21", orador:"Marcelo Rodríguez", bosquejo:15, destino:"Echeverria", notas:"" }
+];
+
+const INITIAL_SALIENTES = [
+  { fecha:"2025-11-15", orador:"Marcelo Palavecino", bosquejo:181, destino:"Ranchillos", notas:"" },
+  { fecha:"2025-12-13", orador:"Marcelo Palavecino", bosquejo:28, destino:"Oeste, Tucumán", notas:"" },
+  { fecha:"2025-12-20", orador:"Sergio Saldaña", bosquejo:55, destino:"Oeste, Tucumán", notas:"" },
+  { fecha:"2026-02-07", orador:"Sergio Saldaña", bosquejo:55, destino:"El Chañar", notas:"" },
+  { fecha:"2026-02-14", orador:"Marcelo Palavecino", bosquejo:28, destino:"El Chañar", notas:"" },
+  { fecha:"2026-02-21", orador:"Leonardo Araya", bosquejo:135, destino:"El Chañar", notas:"" },
+  { fecha:"2026-03-01", orador:"Luis Navarro", bosquejo:146, destino:"Este, Tucumán", notas:"" },
+  { fecha:"2026-03-21", orador:"Marcelo Palavecino", bosquejo:88, destino:"Echeverria", notas:"" },
+  { fecha:"2026-04-05", orador:"Marcelo Palavecino", bosquejo:180, destino:"Este, Tucumán", notas:"" },
+  { fecha:"2026-04-19", orador:"Leonardo Araya", bosquejo:100, destino:"Este, Tucumán", notas:"" },
+  ...SALIENTES_2026_CONFIRMADOS
 ];
 
 
@@ -462,6 +466,76 @@ async function seedIfEmpty(usuario){
   }
 }
 
+function mismoDestino(a,b){
+  return normalKey(a).replace(/,/g, "") === normalKey(b).replace(/,/g, "");
+}
+
+function salidaCoincideExistente(existente, objetivo){
+  const mismaFecha = String(existente?.fecha || "") === String(objetivo?.fecha || "");
+  if(!mismaFecha) return false;
+  const destinoExistente = String(existente?.destino || existente?.congregacionDestino || "").trim();
+  const destinoObjetivo = String(objetivo?.destino || "").trim();
+  if(destinoExistente && destinoObjetivo && mismoDestino(destinoExistente, destinoObjetivo)) return true;
+  // Si había un registro anterior incompleto para esa fecha, lo actualizamos en vez de duplicar.
+  if(!destinoExistente || !String(existente?.orador || "").trim() || !String(existente?.bosquejo ?? "").trim()) return true;
+  return false;
+}
+
+function salidaNecesitaActualizacion(existente, objetivo){
+  if(canonicalLocalName(existente?.orador || "") !== canonicalLocalName(objetivo.orador || "")) return true;
+  if(String(normNum(existente?.bosquejo)) !== String(normNum(objetivo.bosquejo))) return true;
+  if(!mismoDestino(existente?.destino || "", objetivo.destino || "")) return true;
+  return false;
+}
+
+async function revisarYCargarSalientes2026(usuario, mostrarMensaje=false){
+  if(!isAdminRole(usuario?.rol)) return { agregados:0, corregidos:0 };
+  let agregados = 0;
+  let corregidos = 0;
+  try{
+    const s = await getDocs(query(collection(db,"salientes"), orderBy("fecha","asc")));
+    const existentes = s.docs.map(d=>({ id:d.id, ...d.data() }));
+    for(const objetivoBase of SALIENTES_2026_CONFIRMADOS){
+      const objetivo = {
+        ...objetivoBase,
+        orador: canonicalLocalName(objetivoBase.orador),
+        tipo: "normal",
+        detalle: "",
+        bosquejo: normNum(objetivoBase.bosquejo),
+        updatedAt: new Date().toISOString()
+      };
+      const encontrado = existentes.find(r => salidaCoincideExistente(r, objetivo));
+      if(encontrado){
+        if(salidaNecesitaActualizacion(encontrado, objetivo)){
+          await updateDoc(doc(db,"salientes", encontrado.id), {
+            fecha: objetivo.fecha,
+            orador: objetivo.orador,
+            tipo: "normal",
+            detalle: "",
+            bosquejo: objetivo.bosquejo,
+            destino: objetivo.destino,
+            updatedAt: objetivo.updatedAt
+          });
+          Object.assign(encontrado, objetivo);
+          corregidos++;
+        }
+      }else{
+        await addDoc(collection(db,"salientes"), { ...objetivo, notas: objetivo.notas || "" });
+        existentes.push({ ...objetivo });
+        agregados++;
+      }
+    }
+    if(agregados || corregidos || mostrarMensaje){
+      toast(`Salientes 2026 revisados. Agregados: ${agregados}. Corregidos: ${corregidos}.`);
+    }
+    return { agregados, corregidos };
+  }catch(e){
+    console.error(e);
+    if(mostrarMensaje) toast("No pude revisar/cargar los salientes 2026. Revisá permisos.", true);
+    return { agregados:0, corregidos:0, error:e };
+  }
+}
+
 async function load(){
   const s = await getDocs(query(collection(db,"salientes"), orderBy("fecha","asc")));
   cache = s.docs.map(d=>({ id:d.id, ...d.data() }));
@@ -528,9 +602,14 @@ async function borrar(){
   const { usuario } = await requireActiveUser();
   await cargarOradoresLocalesElegibles();
   await seedIfEmpty(usuario);
+  await revisarYCargarSalientes2026(usuario, false);
 
   $("btnNuevo")?.addEventListener("click", clearForm);
   $("btnRefrescar")?.addEventListener("click", load);
+  $("btnRevisarSalientes2026")?.addEventListener("click", async ()=>{
+    await revisarYCargarSalientes2026(usuario, true);
+    await load();
+  });
   $("filtro")?.addEventListener("input", renderTable);
   $("btnBorrar")?.addEventListener("click", borrar);
   $("form")?.addEventListener("submit", (ev)=>{ ev.preventDefault(); save(); });
