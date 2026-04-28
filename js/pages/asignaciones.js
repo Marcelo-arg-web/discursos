@@ -175,6 +175,7 @@ function blankAssignmentsData(extra = {}) {
     cancionNumero: "",
     oradorPublico: "",
     congregacionVisitante: "",
+    discursoNumero: "",
     tituloDiscurso: "",
     tituloSiguienteSemana: "",
     ...extra,
@@ -1382,20 +1383,71 @@ function aplicarAutoDiscurso() {
 
 
 // ---------------- Visitantes (Firestore + fallback local) ----------------
+function cleanText(v) {
+  return String(v ?? "").replace(/\s+/g, " ").trim();
+}
+
+function firstNonEmpty(...values) {
+  for (const v of values) {
+    const t = cleanText(v);
+    if (t) return t;
+  }
+  return "";
+}
+
+function firstNumberLike(...values) {
+  for (const v of values) {
+    const t = cleanText(v);
+    if (!t) continue;
+    const n = parseInt(t, 10);
+    if (Number.isFinite(n)) return n;
+  }
+  return "";
+}
+
+function normalizarVisitante(raw, id = "") {
+  if (!raw) return null;
+  const tipo = cleanText(raw.tipo || raw.clase).toLowerCase();
+  if (tipo === "evento") return null;
+
+  const v = {
+    id: id || raw.id || raw.fecha || "",
+    fecha: raw.fecha || id || "",
+    nombre: firstNonEmpty(raw.nombre, raw.orador, raw.oradorPublico, raw.conferenciante, raw.hermano),
+    congregacion: firstNonEmpty(raw.congregacion, raw.congregacionVisitante, raw["congregación"], raw.origen, raw.deDondeViene),
+    bosquejo: firstNumberLike(raw.bosquejo, raw.discursoNumero, raw.numeroDiscurso, raw.numero, raw.nroBosquejo, raw.nro),
+    cancion: firstNumberLike(raw.cancion, raw.cancionNumero, raw["cántico"], raw.cantico),
+    titulo: firstNonEmpty(raw.titulo, raw.tituloDiscurso, raw["título"], raw.tema, raw.nombreDiscurso),
+    observaciones: firstNonEmpty(raw.observaciones, raw.notas),
+    hospitalidad: firstNonEmpty(raw.hospitalidad, raw.hospedaje),
+  };
+
+  return (v.nombre || v.congregacion || v.bosquejo || v.titulo) ? v : null;
+}
+
+function fechasCompatiblesVisitante(fechaISO) {
+  return [fechaISO, addDaysISO(fechaISO, 1), addDaysISO(fechaISO, -1)].filter(Boolean);
+}
+
 function localVisitanteFor(fechaISO) {
-  const v = visitantesLocal[fechaISO];
-  if (v) return v;
-  const plus = addDaysISO(fechaISO, 1);
-  const minus = addDaysISO(fechaISO, -1);
-  return visitantesLocal[plus] || visitantesLocal[minus] || null;
+  for (const f of fechasCompatiblesVisitante(fechaISO)) {
+    const v = normalizarVisitante(visitantesLocal[f], f);
+    if (v) return v;
+  }
+  return null;
 }
 
 async function firestoreVisitFor(fechaISO) {
-  try {
-    const snap = await getDoc(doc(db, "visitas", fechaISO));
-    if (snap.exists()) return { id: snap.id, ...snap.data() };
-  } catch (_) {
-    /* ignore */
+  for (const f of fechasCompatiblesVisitante(fechaISO)) {
+    try {
+      const snap = await getDoc(doc(db, "visitas", f));
+      if (snap.exists()) {
+        const v = normalizarVisitante({ id: snap.id, ...snap.data() }, snap.id);
+        if (v) return v;
+      }
+    } catch (_) {
+      /* ignore */
+    }
   }
   return null;
 }
@@ -1527,29 +1579,36 @@ async function precargarAsignacionesAutomaticas(opts = {}) {
   await completarSiVacio("microfonista2", () => suggestSelect("microfonista2", "microfonista", candidates.microfonistas));
 }
 
-async function aplicarAutoVisitante(fechaISO) {
+async function aplicarAutoVisitante(fechaISO, opts = {}) {
+  const force = opts?.force !== false; // por defecto sincroniza con la solapa Visitantes.
   const visitante = (await firestoreVisitFor(fechaISO)) || localVisitanteFor(fechaISO);
   if (!visitante) {
     updateOracionFinalVisitorOptionLabel();
     autoOracionFinal(false);
-    return;
+    return null;
   }
 
-  if (!getVal("oradorPublico").trim() && visitante.nombre) {
-    setVal("oradorPublico", visitante.nombre);
+  const setFromVisitor = (fieldId, value) => {
+    const val = cleanText(value);
+    if (!val) return;
+    if (force || !getVal(fieldId).trim()) setVal(fieldId, val);
+  };
+
+  setFromVisitor("oradorPublico", visitante.nombre);
+  setFromVisitor("congregacionVisitante", visitante.congregacion);
+  if (visitante.cancion) setFromVisitor("cancionNumero", String(visitante.cancion));
+  if (visitante.bosquejo) {
+    setFromVisitor("discursoNumero", String(visitante.bosquejo));
+    aplicarAutoDiscurso();
   }
-  if (!getVal("congregacionVisitante").trim() && visitante.congregacion) {
-    setVal("congregacionVisitante", visitante.congregacion);
-  }
-  if (!getVal("cancionNumero").trim() && visitante.cancion) {
-    setVal("cancionNumero", String(visitante.cancion));
-  }
-  if (!getVal("tituloDiscurso").trim() && visitante.titulo) {
-    setVal("tituloDiscurso", visitante.titulo);
+  if (visitante.titulo) {
+    setFromVisitor("tituloDiscurso", visitante.titulo);
+    lastAutoTituloDiscurso = visitante.titulo;
   }
 
   updateOracionFinalVisitorOptionLabel();
   autoOracionFinal(false);
+  return visitante;
 }
 
 function updateOracionFinalVisitorOptionLabel(){
@@ -1650,7 +1709,7 @@ async function copiarSemanaAnterior() {
     const data = snap.data();
     const a = data.asignaciones || data;
     hydrateToUI(a);
-    await aplicarAutoVisitante(s);
+    await aplicarAutoVisitante(s, { force: true });
     setStatus("Listo: copié la semana anterior. Revisá y Guardá.");
     generarAviso();
   } catch (e) {
@@ -1793,17 +1852,17 @@ async function cargarSemana() {
       const data = snap.data();
       const a = data.asignaciones || data;
       hydrateToUI(a);
-      await aplicarAutoVisitante(s);
+      await aplicarAutoVisitante(s, { force: true });
       try{ await precargarAsignacionesAutomaticas({ soloVacios: true }); }catch(_e){}
       try{ autoPresidenteIfNeeded(); }catch(_e){}
       // refresca aviso
       try{ await generarAviso(); }catch(_e){}
       setStatus("Datos cargados.");
     } else {
-      setVal("tipoSemana", "normal");
+      hydrateToUI(blankAssignmentsData({ tipoSemana: "normal" }));
       updateSemanaEspecialUI();
       setStatus("No hay datos guardados para esta semana. Hice una precarga automática. Revisá y guardá.");
-      await aplicarAutoVisitante(s);
+      await aplicarAutoVisitante(s, { force: true });
       try{ await precargarAsignacionesAutomaticas({ soloVacios: true }); }catch(_e){}
       try{ autoPresidenteIfNeeded(); }catch(_e){}
       setAvisoText("");
@@ -2212,6 +2271,13 @@ async function init() {
     await goToSemana(shiftWeekISO(s, 1));
   });
   $("btnCopiarAnterior")?.addEventListener("click", copiarSemanaAnterior);
+  $("btnActualizarVisitante")?.addEventListener("click", async () => {
+    const s = semanaISO();
+    if (!s) return setStatus("Elegí una semana para cotejar visitantes.", true);
+    const v = await aplicarAutoVisitante(s, { force: true });
+    if (v) setStatus(`Visitante actualizado desde Visitantes: ${v.nombre || "sin nombre"}${v.congregacion ? " — " + v.congregacion : ""}.`);
+    else setStatus("No encontré visitante cargado para esa fecha en Visitantes.", true);
+  });
   $("tipoSemana")?.addEventListener("change", () => {
     updateSemanaEspecialUI();
   });
