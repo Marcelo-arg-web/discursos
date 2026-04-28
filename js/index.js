@@ -109,7 +109,7 @@ function friendlyAuthError(e){
     return "No hay conexión con Firebase. Revisá internet y volvé a intentar.";
   }
   if(code.includes("permission-denied")){
-    return "La clave fue aceptada, pero Firestore no permitió revisar el usuario. Subí esta versión corregida y probá otra vez.";
+    return "La clave fue aceptada, pero no se pudo verificar el permiso. Probá de nuevo en unos segundos.";
   }
   return "No pude iniciar sesión. Revisá correo/contraseña o conexión.";
 }
@@ -159,10 +159,10 @@ async function registrar(){
       updatedAt: serverTimestamp()
     }, { merge:true });
     await signOut(auth);
-    toast("Registrado. Un admin debe activarte (activo=false).");
+    toast("Solicitud creada. Un administrador debe habilitar el acceso.");
   }catch(e){
     console.error(e);
-    toast("No pude registrar. Tal vez el correo ya existe o la contraseña es corta.", true);
+    toast("No pude crear el acceso. Revisá el correo o usá otra contraseña.", true);
   }
 }
 
@@ -171,7 +171,7 @@ async function reset(){
   if(!email) return toast("Escribí tu correo primero.", true);
   try{
     await sendPasswordResetEmail(auth, email);
-    toast("Te envié un correo para restablecer la contraseña.");
+    toast("Te envié un correo para recuperar la contraseña.");
   }catch(e){
     console.error(e);
     toast("No pude enviar el correo de restablecimiento. Revisá que el correo esté bien escrito.", true);

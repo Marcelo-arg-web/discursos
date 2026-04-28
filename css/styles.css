@@ -889,3 +889,116 @@ body.pro-online code{
   body.pro-online .container{padding:0 !important; max-width:none !important;}
   body.pro-online .card{box-shadow:none !important; border-color:#ddd !important;}
 }
+
+/* Login profesional */
+body.login-page{
+  background:
+    radial-gradient(900px 500px at 50% -10%, rgba(37,99,235,.18), transparent 65%),
+    linear-gradient(135deg, #eef6ff 0%, #f8fbff 48%, #e8f3ff 100%);
+}
+.login-shell{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:28px;
+}
+.login-card{
+  width:min(430px, 100%);
+  background:rgba(255,255,255,.94);
+  border:1px solid rgba(203,213,225,.9);
+  border-radius:24px;
+  box-shadow:0 28px 70px rgba(15,23,42,.13);
+  padding:28px;
+}
+.login-brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:24px;
+}
+.login-brand .brand-dot{
+  width:16px;
+  height:16px;
+}
+.login-brand strong{
+  display:block;
+  font-size:17px;
+  letter-spacing:.1px;
+}
+.login-brand span:not(.brand-dot){
+  display:block;
+  color:var(--muted);
+  font-size:13px;
+  margin-top:2px;
+}
+.login-header{
+  margin-bottom:18px;
+}
+.login-header h1{
+  margin:0;
+  font-size:30px;
+  line-height:1.1;
+}
+.login-header p{
+  margin:8px 0 0;
+  color:var(--muted);
+  font-size:15px;
+}
+.login-form label{
+  color:#334155;
+  font-weight:700;
+  margin-top:13px;
+}
+.login-form .input{
+  min-height:46px;
+  border-radius:14px;
+  background:#f8fafc;
+}
+.login-form .input:focus{
+  background:white;
+}
+.login-submit{
+  width:100%;
+  min-height:48px;
+  margin-top:18px;
+  font-weight:800;
+  border-radius:14px;
+}
+.login-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:12px;
+}
+.btn.ghost{
+  background:#fff;
+  color:#1e293b;
+}
+.login-public{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  min-height:44px;
+  margin-top:12px;
+  border:1px solid #dbeafe;
+  background:#eff6ff;
+  border-radius:14px;
+  font-weight:800;
+  color:#1d4ed8;
+  text-decoration:none;
+}
+.login-public:hover{
+  text-decoration:none;
+  background:#dbeafe;
+}
+.login-toast .toast{
+  margin:0 0 12px;
+  border-radius:14px;
+}
+@media (max-width: 480px){
+  .login-shell{padding:18px; align-items:flex-start; padding-top:54px;}
+  .login-card{padding:22px; border-radius:20px;}
+  .login-actions{grid-template-columns:1fr;}
+}
