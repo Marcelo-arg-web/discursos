@@ -16,9 +16,9 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// Network-first para HTML/JS/CSS (siempre traer lo último).
+// Network-first para HTML/JS/CSS - build 32 (siempre traer lo último).
 // Para imágenes y otros assets: cache-first (opcional).
-const ASSET_CACHE = "assets-v30-pro-online";
+const ASSET_CACHE = "assets-v32-login-fix";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -70,3 +70,5 @@ self.addEventListener("fetch", (event) => {
 
   // Default: passthrough
 });
+
+// build 32: fix login/autorecuperacion admin
