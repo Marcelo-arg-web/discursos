@@ -18,7 +18,7 @@ self.addEventListener("message", (event) => {
 
 // Network-first para HTML/JS/CSS (siempre traer lo último).
 // Para imágenes y otros assets: cache-first (opcional).
-const ASSET_CACHE = "assets-v2";
+const ASSET_CACHE = "assets-v30-pro-online";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
