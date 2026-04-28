@@ -306,6 +306,38 @@ const SUPPORT_HISTORY_FIELDS = [
   "microfonista2Id",
 ];
 
+// Campos con personas asignadas en la semana. Se usan para que el botón "Sugerir"
+// no cargue siempre a los mismos ni repita una persona en la misma semana si hay alternativas.
+const WEEK_PERSON_SELECT_IDS = [
+  "presidente",
+  "oracionInicial",
+  "conductorAtalaya",
+  "lectorAtalaya",
+  "multimedia1",
+  "multimedia2",
+  "plataforma",
+  "acomodadorEntrada",
+  "acomodadorAuditorio1",
+  "acomodadorAuditorio2",
+  "microfonista1",
+  "microfonista2",
+];
+
+const MARCELO_CONDUCTOR_NOMBRE = "Marcelo Palavecino";
+const MARCELO_SALIENTES_FALLBACK = [
+  // Respaldo local por si la colección salientes todavía no fue leída/cargada.
+  { fecha: "2026-02-14", orador: "Marcelo Palavecino" },
+  { fecha: "2026-03-21", orador: "Marcelo Palavecino" },
+  { fecha: "2026-04-05", orador: "Marcelo Palavecino" },
+  { fecha: "2026-05-10", orador: "Marcelo Palavecino" },
+  { fecha: "2026-08-01", orador: "Marcelo Palavecino" },
+  { fecha: "2026-09-19", orador: "Marcelo Palavecino" },
+  { fecha: "2026-10-11", orador: "Marcelo Palavecino" },
+];
+
+let salientesHistoryLoaded = false;
+let salientesHistory = [];
+
 let supportHistoryLoaded = false;
 const supportLastAssigned = new Map();
 
@@ -327,16 +359,111 @@ const roleHistoryMaps = {
   microfonista1: new Map(),
   microfonista2: new Map(),
 };
+const roleCountMaps = Object.fromEntries(Object.keys(roleHistoryMaps).map((k) => [k, new Map()]));
 
 function updateRoleHistory(roleKey, personaId, whenValue) {
   const map = roleHistoryMaps[roleKey];
+  const countMap = roleCountMaps[roleKey];
   const id = String(personaId || "").trim();
   if (!map || !id) return;
+  if (countMap) countMap.set(id, (countMap.get(id) || 0) + 1);
   const when = String(whenValue || "").trim();
   const prev = map.get(id) || "";
   if (!prev || (when && prev < when)) {
     map.set(id, when || prev || "");
   }
+}
+
+function markSuggestedLocal(roleKey, personaId) {
+  const id = String(personaId || "").trim();
+  if (!roleKey || !id) return;
+  try { localStorage.setItem(`lastSuggested_${roleKey}_${id}`, String(Date.now())); } catch (_) {}
+}
+
+function getLastSuggestedLocal(roleKey, personaId) {
+  try {
+    const n = parseInt(localStorage.getItem(`lastSuggested_${roleKey}_${personaId}`) || "0", 10);
+    return Number.isFinite(n) ? n : 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+function selectedIdsThisWeek(exceptSelectId = "") {
+  const ids = new Set();
+  WEEK_PERSON_SELECT_IDS.forEach((sid) => {
+    if (sid === exceptSelectId) return;
+    const v = String(getVal(sid) || "").trim();
+    // Oración final puede contener texto como "Visitante/Presidente"; solo tomamos IDs reales.
+    if (v && personaNameById(v)) ids.add(v);
+  });
+  return ids;
+}
+
+function buildCandidateList(candidateIds, selectId, softExcludedIds = [], hardExcludedIds = []) {
+  const hard = new Set((hardExcludedIds || []).map((v) => String(v || "").trim()).filter(Boolean));
+  const soft = new Set([
+    ...Array.from(selectedIdsThisWeek(selectId)),
+    ...(softExcludedIds || []).map((v) => String(v || "").trim()).filter(Boolean),
+  ]);
+  const base = Array.from(new Set((candidateIds || []).map((v) => String(v || "").trim()).filter(Boolean)))
+    .filter((id) => !hard.has(id));
+  if (!base.length) return [];
+
+  // Primero: no repetir a nadie ya usado en la misma semana.
+  const noRepeat = base.filter((id) => !soft.has(id));
+  if (noRepeat.length) return noRepeat;
+
+  // Si no queda alternativa, permitimos repetir antes que dejar vacío.
+  return base;
+}
+
+function personaByName(nombre) {
+  const target = normalize(nombre);
+  return personas.find((p) => p && p.activo !== false && normalize(p.nombre || "") === target) || null;
+}
+
+function isMarceloPalavecinoId(personaId) {
+  const name = personaNameById(personaId);
+  return normalize(name) === normalize(MARCELO_CONDUCTOR_NOMBRE);
+}
+
+function salienteNombre(r) {
+  return r?.orador || r?.oradorNombre || r?.nombre || "";
+}
+
+async function ensureSalientesHistoryLoaded() {
+  if (salientesHistoryLoaded) return;
+  salientesHistoryLoaded = true;
+  salientesHistory = MARCELO_SALIENTES_FALLBACK.slice();
+  try {
+    const snap = await getDocs(collection(db, "salientes"));
+    const fromDb = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    salientesHistory = salientesHistory.concat(fromDb);
+  } catch (e) {
+    console.warn("No pude leer salientes para validar conductor de La Atalaya; uso respaldo local.", e);
+  }
+}
+
+function isISODate(v) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(v || "").trim());
+}
+
+function salidaEnFinDeSemanaDeAtalaya(salidaISO, semanaISOValue) {
+  if (!isISODate(salidaISO) || !isISODate(semanaISOValue)) return false;
+  const d = new Date(semanaISOValue + "T00:00:00");
+  const sabado = d.getDay() === 0 ? addDaysISO(semanaISOValue, -1) : semanaISOValue;
+  const domingo = addDaysISO(sabado, 1);
+  return salidaISO === sabado || salidaISO === domingo;
+}
+
+async function marceloTieneSalidaFinDeSemana(semanaSatISO) {
+  await ensureSalientesHistoryLoaded();
+  const s = String(semanaSatISO || "").trim();
+  return salientesHistory.some((r) =>
+    normalize(salienteNombre(r)) === normalize(MARCELO_CONDUCTOR_NOMBRE) &&
+    salidaEnFinDeSemanaDeAtalaya(String(r?.fecha || "").trim(), s)
+  );
 }
 
 function extractRoleAssignmentsFromData(data, whenValue) {
@@ -366,6 +493,7 @@ async function ensureRoleHistoryLoaded() {
   if (roleHistoryLoaded) return;
   roleHistoryLoaded = true;
   Object.values(roleHistoryMaps).forEach((m) => m.clear());
+  Object.values(roleCountMaps).forEach((m) => m.clear());
 
   try {
     const weekSnap = await getDocs(collection(db, "asignaciones"));
@@ -396,45 +524,52 @@ async function ensureRoleHistoryLoaded() {
 
 function compareCandidatesByRoleHistory(roleKey, aId, bId) {
   const map = roleHistoryMaps[roleKey] || new Map();
+  const countMap = roleCountMaps[roleKey] || new Map();
+
+  // 1) Menos veces en esa asignación.
+  const aCount = countMap.get(aId) || 0;
+  const bCount = countMap.get(bId) || 0;
+  if (aCount !== bCount) return aCount - bCount;
+
+  // 2) Más tiempo sin servir en esa asignación.
   const aWhen = map.get(aId) || "";
   const bWhen = map.get(bId) || "";
   if (!aWhen && bWhen) return -1;
   if (aWhen && !bWhen) return 1;
   if (aWhen !== bWhen) return aWhen.localeCompare(bWhen);
+
+  // 3) Desempate local para que no gane siempre el primero alfabéticamente.
+  const aLocal = getLastSuggestedLocal(roleKey, aId);
+  const bLocal = getLastSuggestedLocal(roleKey, bId);
+  if (aLocal !== bLocal) return aLocal - bLocal;
+
   const aName = personaNameById(aId) || "";
   const bName = personaNameById(bId) || "";
   return aName.localeCompare(bName, "es", { sensitivity: "base" });
 }
 
-async function suggestByRoleHistory(selectId, roleKey, candidateIds, extraExcludedIds = []) {
-  if (!isAdmin) return;
+async function suggestByRoleHistory(selectId, roleKey, candidateIds, extraExcludedIds = [], hardExcludedIds = []) {
+  if (!isAdmin) return "";
   const sel = $(selectId);
-  if (!sel) return;
+  if (!sel) return "";
 
   await ensureRoleHistoryLoaded();
 
-  const excluded = new Set((extraExcludedIds || []).map((v) => String(v || "").trim()).filter(Boolean));
-  const list = Array.from(new Set((candidateIds || []).filter(Boolean)))
-    .filter((id) => !excluded.has(String(id || "").trim()));
-
-  if (!list.length) return;
+  const list = buildCandidateList(candidateIds, selectId, extraExcludedIds, hardExcludedIds);
+  if (!list.length) return "";
   list.sort((a, b) => compareCandidatesByRoleHistory(roleKey, a, b));
 
   const chosen = list[0] || "";
   if (chosen) {
     sel.value = chosen;
     updateRoleHistory(roleKey, chosen, semanaISO() || isoToday());
+    markSuggestedLocal(roleKey, chosen);
   }
+  return chosen;
 }
 
 function getSupportSelectedIds(exceptSelectId = "") {
-  const ids = new Set();
-  SUPPORT_SELECT_IDS.forEach((sid) => {
-    if (sid === exceptSelectId) return;
-    const v = String(getVal(sid) || "").trim();
-    if (v) ids.add(v);
-  });
-  return ids;
+  return selectedIdsThisWeek(exceptSelectId);
 }
 
 function getSupportCandidateIds() {
@@ -527,10 +662,7 @@ async function suggestSupportSelect(selectId, candidateIds) {
   await ensureSupportHistoryLoaded();
   await ensureRoleHistoryLoaded();
 
-  const used = getSupportSelectedIds(selectId);
-  const list = Array.from(new Set((candidateIds || []).filter(Boolean)))
-    .filter((id) => !used.has(id));
-
+  const list = buildCandidateList(candidateIds, selectId);
   if (!list.length) return;
 
   const roleKey = supportRoleKeyForSelectId(selectId);
@@ -544,8 +676,12 @@ async function suggestSupportSelect(selectId, candidateIds) {
   if (chosen) {
     sel.value = chosen;
     updateSupportLastAssigned(chosen, semanaISO() || isoToday());
-    if (roleKey) updateRoleHistory(roleKey, chosen, semanaISO() || isoToday());
+    if (roleKey) {
+      updateRoleHistory(roleKey, chosen, semanaISO() || isoToday());
+      markSuggestedLocal(roleKey, chosen);
+    }
   }
+  return chosen;
 }
 
 async function getUsuario(uid){
@@ -1275,29 +1411,66 @@ function pickNextFrom(ids, storageKey) {
 }
 
 async function sugerirPresidente(){
-  if(!window.__personasCache) return;
+  if(!window.__personasCache) return "";
   const ancSiervos = getAncianosOSiervos(window.__personasCache) || [];
-  const exclNames = new Set([normalize("Marcelo Palavecino")]);
+  const exclNames = new Set([normalize(MARCELO_CONDUCTOR_NOMBRE)]);
   const excl = [getVal("conductorAtalaya"), getVal("lectorAtalaya")];
   const candidatos = ancSiervos
     .filter(p => p && p.id && p.nombre)
+    // Marcelo se reserva para conducir La Atalaya, salvo asignación manual del usuario.
     .filter(p => !exclNames.has(normalize(p.nombre || "")))
     .map(p => p.id);
-  await suggestByRoleHistory("presidente", "presidente", candidatos, excl);
+  return await suggestByRoleHistory("presidente", "presidente", candidatos, excl);
 }
 
 async function sugerirConductorAtalaya(){
-  if(!window.__personasCache) return;
+  if(!window.__personasCache) return "";
   const anc = getAncianos(window.__personasCache) || [];
   const candidatos = anc.filter(p=>p && p.id && p.nombre).map(p=>p.id);
-  await suggestByRoleHistory("conductorAtalaya", "conductorAtalaya", candidatos, [getVal("presidente"), getVal("lectorAtalaya")]);
+  const marcelo = anc.find(p => normalize(p?.nombre || "") === normalize(MARCELO_CONDUCTOR_NOMBRE));
+  const salidaMarcelo = marcelo ? await marceloTieneSalidaFinDeSemana(semanaISO() || upcomingSaturdayISO()) : false;
+  const marceloUsadoEnOtraAsignacion = marcelo ? selectedIdsThisWeek("conductorAtalaya").has(marcelo.id) : false;
+
+  // Regla fija: Conductor de La Atalaya = Marcelo Palavecino.
+  // Excepción: si ese fin de semana Marcelo tiene salida para dar discurso, se sugiere otro anciano.
+  if (marcelo?.id && !salidaMarcelo && !marceloUsadoEnOtraAsignacion) {
+    const sel = $("conductorAtalaya");
+    if (sel) {
+      sel.value = marcelo.id;
+      updateRoleHistory("conductorAtalaya", marcelo.id, semanaISO() || isoToday());
+      markSuggestedLocal("conductorAtalaya", marcelo.id);
+      return marcelo.id;
+    }
+  }
+
+  const hardExcluded = salidaMarcelo && marcelo?.id ? [marcelo.id] : [];
+  const chosen = await suggestByRoleHistory(
+    "conductorAtalaya",
+    "conductorAtalaya",
+    candidatos,
+    [getVal("presidente"), getVal("lectorAtalaya")],
+    hardExcluded
+  );
+
+  if (salidaMarcelo && !chosen) {
+    setStatus("Marcelo Palavecino tiene salida ese fin de semana y no encontré otro anciano disponible para conducir La Atalaya.", true);
+  }
+  return chosen;
 }
 
 async function sugerirLectorAtalaya(){
-  if(!window.__personasCache) return;
+  if(!window.__personasCache) return "";
   const lectores = getLectoresAtalaya(window.__personasCache) || [];
   const candidatos = lectores.filter(p=>p && p.id && p.nombre).map(p=>p.id);
-  await suggestByRoleHistory("lectorAtalaya", "lectorAtalaya", candidatos, [getVal("presidente"), getVal("conductorAtalaya")]);
+  const marcelo = personaByName(MARCELO_CONDUCTOR_NOMBRE);
+  const salidaMarcelo = marcelo ? await marceloTieneSalidaFinDeSemana(semanaISO() || upcomingSaturdayISO()) : false;
+  return await suggestByRoleHistory(
+    "lectorAtalaya",
+    "lectorAtalaya",
+    candidatos,
+    [getVal("presidente"), getVal("conductorAtalaya")],
+    salidaMarcelo && marcelo?.id ? [marcelo.id] : []
+  );
 }
 
 function autoPresidenteIfNeeded(){
@@ -1306,12 +1479,20 @@ function autoPresidenteIfNeeded(){
 }
 
 async function sugerirOracionInicial(){
-  if(!window.__personasCache) return;
+  if(!window.__personasCache) return "";
   const pool = (getAncianosOSiervos(window.__personasCache) || []);
   const candidatos = pool
     .filter(p=>p && p.id && p.nombre)
     .map(p=>p.id);
-  await suggestByRoleHistory("oracionInicial", "oracionInicial", candidatos, [getVal("lectorAtalaya"), getVal("conductorAtalaya")]);
+  const marcelo = personaByName(MARCELO_CONDUCTOR_NOMBRE);
+  const salidaMarcelo = marcelo ? await marceloTieneSalidaFinDeSemana(semanaISO() || upcomingSaturdayISO()) : false;
+  return await suggestByRoleHistory(
+    "oracionInicial",
+    "oracionInicial",
+    candidatos,
+    [getVal("lectorAtalaya"), getVal("conductorAtalaya")],
+    salidaMarcelo && marcelo?.id ? [marcelo.id] : []
+  );
 }
 
 function autoOracionInicialIfNeeded(){
@@ -1332,8 +1513,9 @@ async function precargarAsignacionesAutomaticas(opts = {}) {
   };
 
   await completarSiVacio("presidente", () => sugerirPresidente());
-  await completarSiVacio("oracionInicial", () => sugerirOracionInicial());
+  // Reservamos a Marcelo Palavecino para conductor de La Atalaya antes de sugerir otros campos.
   await completarSiVacio("conductorAtalaya", () => sugerirConductorAtalaya());
+  await completarSiVacio("oracionInicial", () => sugerirOracionInicial());
   await completarSiVacio("lectorAtalaya", () => sugerirLectorAtalaya());
   await completarSiVacio("multimedia1", () => suggestSelect("multimedia1", "multimedia", candidates.multimedia));
   await completarSiVacio("multimedia2", () => suggestSelect("multimedia2", "multimedia", candidates.multimedia));
