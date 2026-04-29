@@ -4,13 +4,14 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const VIEWER_ALLOWED = new Set([
-  "resultados.html",
-  "documentos.html",
+  "resultados.html"
+]);
+const VIEWER_EMBED_ALLOWED = new Set([
   "programa-mensual.html",
   "tablero-acomodadores.html",
   "doc-presi.html",
-  "imprimir.html",
-  "perfil.html",
+  "presidente.html",
+  "imprimir.html"
 ]);
 
 let viewerMode = false;
@@ -39,18 +40,17 @@ function logout(){
 function renderViewerTopbar(){
   const topbar = document.getElementById("topbar");
   if(!topbar) return;
-  const stamp = pageName() + "|viewer-resultados-perfil";
-  if(lastTopbarStamp === stamp && topbar.dataset.viewerNav === "resultados-perfil") return;
+  const stamp = pageName() + "|viewer-resultados-only";
+  if(lastTopbarStamp === stamp && topbar.dataset.viewerNav === "resultados-only") return;
   lastTopbarStamp = stamp;
-  topbar.dataset.viewerNav = "resultados-perfil";
+  topbar.dataset.viewerNav = "resultados-only";
   document.body.classList.add("viewer-result-mode");
   const name = currentUserDoc?.nombre || currentUserDoc?.email || (hasPublicAccess() ? "Modo consulta" : "Usuario");
   topbar.innerHTML = `
     <div class="topbar viewer-topbar resultados-only">
       <div class="brand"><span class="brand-dot"></span><span>Villa Fiad</span></div>
       <div class="links viewer-links">
-        <a href="resultados.html" class="${pageName()==='resultados.html'?'active':''}">Resultados</a>
-        <a href="perfil.html" class="${pageName()==='perfil.html'?'active':''}">Mi perfil</a>
+        <a href="resultados.html" class="active">Resultados</a>
       </div>
       <div class="actions">
         <span class="badge">Solo lectura</span>
@@ -63,6 +63,8 @@ function renderViewerTopbar(){
 }
 function redirectIfNeeded(){
   if(!viewerMode) return;
+  const isEmbedded = new URLSearchParams(location.search).get("embed") === "1";
+  if(isEmbedded && VIEWER_EMBED_ALLOWED.has(pageName())) return;
   if(!VIEWER_ALLOWED.has(pageName())) location.replace("resultados.html");
 }
 function apply(){

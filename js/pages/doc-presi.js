@@ -75,6 +75,44 @@ function monthRange(ym){
   return { start, end };
 }
 
+
+
+const LOCALES_FIJOS_VILLA_FIAD = [
+  "Marcelo Palavecino",
+  "Sergio Saldaña",
+  "Luis Navarro",
+  "Leonardo Araya",
+  "Marcelo Rodríguez",
+  "Marcelo Rodriguez"
+];
+function normalKey(s){
+  return String(s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function canonicalLocalName(nombre){
+  const k = normalKey(nombre);
+  if(!k) return "";
+  if(k === "marcelo rodriguez" || k === "marcelo rodrigez") return "Marcelo Rodríguez";
+  if(k === "marcelo palevecino") return "Marcelo Palavecino";
+  if(k === "lis navarro") return "Luis Navarro";
+  if(k === "lionardo araya") return "Leonardo Araya";
+  const found = LOCALES_FIJOS_VILLA_FIAD.find(n => normalKey(n) === k);
+  return found || String(nombre||"").trim();
+}
+function esSalienteLocalVillaFiad(row){
+  const nombre = canonicalLocalName(row?.orador || row?.oradorNombre || row?.hermano || row?.nombre || "");
+  if(!nombre) return false;
+  return LOCALES_FIJOS_VILLA_FIAD.some(n => normalKey(n) === normalKey(nombre));
+}
+function salienteFecha(row){
+  return String(row?.fecha || row?.id || row?.date || "").slice(0,10);
+}
+function salienteBosquejo(row){
+  return row?.bosquejo ?? row?.discurso ?? row?.numero ?? "";
+}
+function salienteDestino(row){
+  return row?.destino || row?.congregacionDestino || row?.congregacion || row?.lugar || "";
+}
+
 async function loadForMonth(ym){
   const rng = monthRange(ym);
   if(!rng) return { visitas:[], salientes:[] };
@@ -90,8 +128,9 @@ async function loadForMonth(ym){
   const salSnap = await getDocs(query(collection(db,"salientes"), orderBy("fecha","asc")));
   const salientes = salSnap.docs
     .map(d=>({ id:d.id, ...d.data() }))
-    .filter(s=>(s.fecha||"") >= rng.start && (s.fecha||"") <= rng.end)
-    .sort((a,b)=>String(a.fecha||"").localeCompare(String(b.fecha||"")));
+    .filter(esSalienteLocalVillaFiad)
+    .filter(s=>salienteFecha(s) >= rng.start && salienteFecha(s) <= rng.end)
+    .sort((a,b)=>salienteFecha(a).localeCompare(salienteFecha(b)));
 
   return { visitas, salientes, rng };
 }
@@ -143,13 +182,14 @@ function renderDoc(ym, visitas, salientes, rng){
       </thead>
       <tbody>
         ${salientes.map(s=>{
-          const b = Number(s.bosquejo);
-          const titulo = Number.isFinite(b) ? (bosquejosMap.get(b)||"") : "";
+          const bRaw = salienteBosquejo(s);
+          const b = Number(bRaw);
+          const titulo = s.titulo || (Number.isFinite(b) ? (bosquejosMap.get(b)||"") : "");
           return `<tr>
-            <td>${escapeHtml(s.fecha||"")}</td>
-            <td>${escapeHtml(s.orador||"")}</td>
-            <td>${escapeHtml(s.destino||"")}</td>
-            <td>${escapeHtml(s.bosquejo ?? "")}</td>
+            <td>${escapeHtml(salienteFecha(s))}</td>
+            <td>${escapeHtml(canonicalLocalName(s.orador || s.oradorNombre || s.hermano || s.nombre || ""))}</td>
+            <td>${escapeHtml(salienteDestino(s))}</td>
+            <td>${escapeHtml(bRaw ?? "")}</td>
             <td>${escapeHtml(titulo)}</td>
             <td>${escapeHtml(s.notas||"")}</td>
           </tr>`;
@@ -162,7 +202,7 @@ function renderDoc(ym, visitas, salientes, rng){
     <div class="row" style="justify-content:space-between; align-items:baseline;">
       <div>
         <div class="h1" style="margin:0;">Villa Fiad</div>
-        <div class="muted">Documento del Presidente · ${escapeHtml(monthTitle)}</div>
+        <div class="muted">Documento del Presidente · Visitantes y salientes locales · ${escapeHtml(monthTitle)}</div>
       </div>
       <div class="small muted">Rango: ${escapeHtml(rng.start)} a ${escapeHtml(rng.end)}</div>
     </div>

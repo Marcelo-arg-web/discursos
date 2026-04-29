@@ -49,7 +49,7 @@ function isAdminRole(rol){
   return r === "admin" || r === "superadmin";
 }
 function homeForRole(rol){
-  return isAdminRole(rol) ? "panel.html" : "resultados.html";
+  return isAdminRole(rol) ? "preparar-semana.html" : "resultados.html";
 }
 
 async function repairAdminUserDoc(user){

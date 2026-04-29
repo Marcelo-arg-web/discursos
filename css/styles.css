@@ -1221,3 +1221,11 @@ body.embedded-doc.pro-online.has-topbar{
     grid-template-columns: 96px minmax(0, 1fr) !important;
   }
 }
+
+/* build 45 - página Preparar semana y documentos dentro de Resultados */
+.grid.four{grid-template-columns: repeat(4, minmax(0,1fr));}
+.step-card{display:block; text-decoration:none; color:inherit; border:1px solid var(--line); transition:transform .12s ease, box-shadow .12s ease;}
+.step-card:hover{transform:translateY(-1px); box-shadow:0 12px 30px rgba(15, 23, 42, .10);}
+.step-card span{display:block; margin-top:6px;}
+.resultados-doc-frame{min-height:72vh;}
+@media (max-width: 900px){.grid.four{grid-template-columns:1fr}.resultados-doc-frame{min-height:60vh}}

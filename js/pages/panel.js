@@ -32,6 +32,7 @@ function renderTopbar(active){
     <div class="topbar">
       <div class="brand"><span class="brand-dot"></span>Villa Fiad</div>
       <div class="links">
+        <a href="preparar-semana.html" class="${active==='preparar'?'active':''}">Preparar semana</a>
         <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
         <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
         <a href="programa-mensual.html" class="${active==='programa'?'active':''}">Programa mensual</a>

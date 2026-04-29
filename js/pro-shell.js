@@ -26,12 +26,15 @@
     'discursantes pdf': '📄',
     'documentos': '📄',
     'documentos/pdf': '📄',
+    'preparar semana': '🧭',
+    'preparar': '🧭',
     'doc presidente': '☰'
   };
 
   function keyFor(a){
     const txt = (a.textContent || '').trim().toLowerCase();
     const href = (a.getAttribute('href') || '').toLowerCase();
+    if(href.includes('preparar-semana')) return 'preparar semana';
     if(href.includes('panel') || href.includes('inicio')) return 'panel';
     if(href.includes('asignaciones.html')) return 'asignaciones';
     if(href.includes('documentos')) return 'documentos/pdf';
@@ -101,7 +104,15 @@
     }
 
     const linkContainer = topbar.querySelector('.links, .nav');
-    if(linkContainer && !linkContainer.querySelector('a[href="funciones.html"]')){
+    const isViewerNav = topbar.classList.contains('viewer-topbar') || topbar.classList.contains('resultados-only') || document.body.classList.contains('viewer-result-mode');
+    if(isViewerNav && linkContainer){
+      Array.from(linkContainer.querySelectorAll('a')).forEach(a=>{
+        const href = (a.getAttribute('href') || '').toLowerCase();
+        if(!href.includes('resultados.html')) a.remove();
+        else { a.href = 'resultados.html'; a.textContent = 'Resultados'; a.className = 'active'; }
+      });
+    }
+    if(linkContainer && !isViewerNav && !linkContainer.querySelector('a[href="funciones.html"]')){
       const personasLink = linkContainer.querySelector('a[href="personas.html"]');
       if(personasLink){
         const a = document.createElement('a');
@@ -112,7 +123,7 @@
       }
     }
 
-    if(linkContainer && !linkContainer.querySelector('a[href="directorio-discursos.html"]')){
+    if(linkContainer && !isViewerNav && !linkContainer.querySelector('a[href="directorio-discursos.html"]')){
       const usuariosLink = linkContainer.querySelector('a[href="usuarios.html"]');
       if(usuariosLink){
         const a = document.createElement('a');
@@ -123,7 +134,7 @@
       }
     }
 
-    if(linkContainer && !linkContainer.querySelector('a[href="perfil.html"]')){
+    if(linkContainer && !isViewerNav && !linkContainer.querySelector('a[href="perfil.html"]')){
       const a = document.createElement('a');
       a.href = 'perfil.html';
       a.textContent = 'Mi perfil';
@@ -131,7 +142,7 @@
       linkContainer.appendChild(a);
     }
 
-    consolidateDocumentLinks(linkContainer);
+    if(!isViewerNav) consolidateDocumentLinks(linkContainer);
 
     const links = topbar.querySelectorAll('.links a, .nav a');
     links.forEach(a=>{

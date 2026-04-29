@@ -16,9 +16,9 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// Network-first para HTML/JS/CSS - build 44 (siempre traer lo último).
+// Network-first para HTML/JS/CSS - build 45 (siempre traer lo último).
 // Para imágenes y otros assets: cache-first (opcional).
-const ASSET_CACHE = "assets-v44-perfil-bosquejo-simple";
+const ASSET_CACHE = "assets-v45-preparar-resultados-salientes-locales";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -92,3 +92,5 @@ self.addEventListener("fetch", (event) => {
 // build 43: Documentos/PDF unificado con selector y menos páginas repetidas en el menú.
 
 // build 44: perfil simplificado; número de bosquejo compacto, título más largo y sin canciones/listas extra.
+
+// build 45: modo Preparar semana, usuarios limitados a Resultados y salientes filtrados solo a locales Villa Fiad.

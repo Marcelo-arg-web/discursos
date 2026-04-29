@@ -2384,6 +2384,11 @@ async function init() {
     generarAviso();
   });
 
+  const params = new URLSearchParams(location.search);
+  const semanaParam = params.get("semana");
+  if (semanaParam && /^\d{4}-\d{2}-\d{2}$/.test(semanaParam)) {
+    setSemanaISO(semanaParam);
+  }
   let s0 = semanaISO();
   if (!s0) {
     s0 = upcomingSaturdayISO();

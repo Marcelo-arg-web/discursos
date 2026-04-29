@@ -27,10 +27,8 @@
       </div>
       <div class="field">
         <div class="label">Documentos del mes</div>
-        <div class="row results-actions">
-          <a class="btn primary" id="linkDocumentos" href="documentos.html">Abrir selector de documentos/PDF</a>
-        </div>
-        <div class="help">Desde una sola página podés elegir Programa mensual, Asignaciones Villa Fiad, Presidente o Resumen para imprimir/guardar PDF.</div>
+        <div class="help">Más abajo tenés el selector para ver, imprimir o guardar PDF sin salir de Resultados.</div>
+        <a class="btn" id="linkDocumentos" href="documentos.html" style="display:none;">Documentos</a>
       </div>
     </div>
   </div>
@@ -50,6 +48,51 @@
       <div class="result-icon">▤</div>
       <h2>Asignaciones Villa Fiad</h2>
       <p class="muted">Acomodadores, plataforma, audio/video y microfonistas. Usá los botones de arriba para abrir/guardar PDF.</p>
+    </div>
+  </div>
+
+
+  <div class="card pad resultados-documentos" style="margin-top:14px;">
+    <div class="section-title">
+      <div>
+        <h2 class="h2" style="margin:0;">Documentos para ver o descargar</h2>
+        <div class="muted">Elegí el documento, revisalo abajo y usá imprimir/guardar PDF.</div>
+      </div>
+      <span class="badge soft">Todo desde Resultados</span>
+    </div>
+    <div class="grid three documentos-controls" style="margin-top:10px;">
+      <div class="field">
+        <div class="label">Documento</div>
+        <select class="input" id="tipoDocumentoResultados">
+          <option value="programa">Programa mensual</option>
+          <option value="acomodadores">Asignaciones Villa Fiad</option>
+          <option value="presidente-mes">Documento del presidente - visitas/salidas</option>
+          <option value="presidente-semana">PDF presidente por semana</option>
+          <option value="resumen">Resumen completo / imprimir</option>
+        </select>
+      </div>
+      <div class="field" id="weekFieldResultados">
+        <div class="label">Semana del mes</div>
+        <select class="input" id="semanaDocumentoResultados">
+          <option value="1">Semana 1</option>
+          <option value="2">Semana 2</option>
+          <option value="3">Semana 3</option>
+          <option value="4">Semana 4</option>
+          <option value="5">Semana 5</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="label">Acciones</div>
+        <div class="row documentos-actions">
+          <button class="btn" id="btnActualizarDocResultados" type="button">Actualizar</button>
+          <button class="btn primary" id="btnImprimirDocResultados" type="button">Imprimir / guardar PDF</button>
+          <a class="btn" id="btnAbrirDocResultados" href="#" target="_blank" rel="noopener">Abrir</a>
+        </div>
+      </div>
+    </div>
+    <div class="help" id="docHelpResultados" style="margin-top:10px;">La vista se carga abajo.</div>
+    <div class="documentos-preview-wrap resultados-preview-wrap" style="margin-top:12px;">
+      <iframe id="docFrameResultados" class="documentos-frame resultados-doc-frame" title="Documento seleccionado"></iframe>
     </div>
   </div>
 
@@ -88,7 +131,7 @@
   });
 })();
 </script>
-<script src="js/pages/resultados.js?v=20260429b43" type="module"></script>
-<script src="js/viewer-mode.js?v=20260429b43" type="module"></script>
+<script src="js/pages/resultados.js?v=20260429b45" type="module"></script>
+<script src="js/viewer-mode.js?v=20260429b45" type="module"></script>
 </body>
 </html>

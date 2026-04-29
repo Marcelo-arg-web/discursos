@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Preparar semana · Villa Fiad</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
+</head>
+<body class="has-topbar">
+<div id="topbar"></div>
+<div class="container preparar-container">
+  <div id="toastHost"></div>
+  <div class="card pad">
+    <div class="section-title">
+      <div>
+        <h1 class="h1" style="margin:0;">Preparar semana</h1>
+        <div class="muted">Modo guiado: revisá visitante, salientes, asignaciones y documentos desde una sola pantalla.</div>
+      </div>
+      <span class="pill">Administrador</span>
+    </div>
+    <hr class="sep"/>
+    <div class="grid three">
+      <div class="field">
+        <div class="label">Semana / fecha de referencia</div>
+        <input class="input" id="fechaSemana" type="date"/>
+        <div class="help">Usá el sábado de esa semana, como en Asignaciones.</div>
+      </div>
+      <div class="field">
+        <div class="label">Acciones rápidas</div>
+        <div class="row">
+          <button class="btn" id="btnEstaSemana" type="button">Esta semana</button>
+          <button class="btn" id="btnAnterior" type="button">◀ Anterior</button>
+          <button class="btn" id="btnSiguiente" type="button">Siguiente ▶</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="label">Abrir trabajo</div>
+        <div class="row">
+          <a class="btn primary" id="linkAsignaciones" href="asignaciones.html">Cargar asignaciones</a>
+          <a class="btn" id="linkDocumentos" href="documentos.html">Documentos/PDF</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid three" style="margin-top:14px; align-items:start;">
+    <div class="card pad">
+      <div class="section-title"><h2 class="h2" style="margin:0;">Visitante que viene</h2><span class="badge soft" id="badgeVisitante">Cargando</span></div>
+      <div id="visitanteBox" class="muted">Elegí una semana.</div>
+      <div class="row" style="margin-top:10px;"><a class="btn" href="visitantes.html">Editar visitantes</a></div>
+    </div>
+    <div class="card pad">
+      <div class="section-title"><h2 class="h2" style="margin:0;">Salientes locales</h2><span class="badge soft">Villa Fiad</span></div>
+      <div id="salientesBox" class="muted">Elegí una semana.</div>
+      <div class="row" style="margin-top:10px;"><a class="btn" href="salientes.html">Editar salientes</a></div>
+    </div>
+    <div class="card pad">
+      <div class="section-title"><h2 class="h2" style="margin:0;">Alertas</h2><span class="badge soft">Revisión</span></div>
+      <div id="alertasBox" class="muted">Sin alertas todavía.</div>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-top:14px;">
+    <div class="section-title">
+      <div>
+        <h2 class="h2" style="margin:0;">Flujo recomendado</h2>
+        <div class="muted">Orden práctico para no olvidarse de nada.</div>
+      </div>
+      <span class="badge soft">Paso a paso</span>
+    </div>
+    <div class="grid four preparar-steps" style="margin-top:12px;">
+      <a class="card pad step-card" id="stepAsignaciones" href="asignaciones.html"><b>1. Sugerir y guardar</b><span class="muted">Cargar la semana y revisar nombres.</span></a>
+      <a class="card pad step-card" id="stepPresidente" href="presidente.html"><b>2. PDF presidente</b><span class="muted">Ver la hoja de la semana.</span></a>
+      <a class="card pad step-card" id="stepMes" href="documentos.html"><b>3. Documentos del mes</b><span class="muted">Programa mensual y asignaciones.</span></a>
+      <a class="card pad step-card" href="resultados.html"><b>4. Revisar resultados</b><span class="muted">Lo que verán los usuarios.</span></a>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing; if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){ nw.postMessage({type:'SKIP_WAITING'}); }
+        });
+      });
+    }).catch(function(e){ console.log('SW error', e); });
+    navigator.serviceWorker.addEventListener('controllerchange', function(){ if(refreshing) return; refreshing = true; location.reload(); });
+  });
+})();
+</script>
+<script src="js/pages/preparar-semana.js?v=20260429b45" type="module"></script>
+<script src="js/nav-mobile.js"></script>
+<script src="js/pro-shell.js?v=20260429b45"></script>
+<script src="js/viewer-mode.js?v=20260429b45" type="module"></script>
+</body>
+</html>

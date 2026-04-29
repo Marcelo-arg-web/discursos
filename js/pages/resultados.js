@@ -104,24 +104,11 @@ function addLocalSpeaker(nombre){
   if(k) clavesDiscursantesLocales.add(k);
 }
 async function cargarDiscursantesLocales(){
-  // Refuerza el filtro con los conferenciantes/personas cargados por el administrador.
-  try{
-    const snap = await getDocs(collection(db,"conferenciantesLocales"));
-    snap.docs.map(d=>d.data()).forEach(r=>{
-      if(r?.activo === false) return;
-      if(r?.nombre) addLocalSpeaker(r.nombre);
-    });
-  }catch(e){ console.warn("No pude leer conferenciantesLocales para resultados.", e); }
-  try{
-    const snap = await getDocs(collection(db,"personas"));
-    snap.docs.map(d=>d.data()).forEach(p=>{
-      if(p?.activo === false) return;
-      const roles = Array.isArray(p?.roles) ? p.roles.map(r=>String(r).toLowerCase()) : [];
-      const tieneBosquejos = Array.isArray(p?.bosquejos) && p.bosquejos.length;
-      if(roles.includes("discursante") || tieneBosquejos) addLocalSpeaker(p?.nombre);
-    });
-  }catch(e){ console.warn("No pude leer personas para resultados.", e); }
+  // En Resultados solo se muestran salidas de discursantes locales de Villa Fiad.
+  // No se suman visitantes ni conferenciantes de otras congregaciones aunque existan en otras colecciones.
+  clavesDiscursantesLocales = new Set(LOCALES_VILLA_FIAD.map(n => normalKey(n)));
 }
+
 function salienteFecha(row){
   return String(row?.fecha || row?.id || row?.date || "").slice(0,10);
 }
@@ -137,7 +124,78 @@ function syncLinks(){
   const q = `?mes=${encodeURIComponent(ym)}`;
   const a = $("linkDocumentos");
   if(a) a.href = "documentos.html" + q;
+  refreshDocumentosResultados();
 }
+
+
+function saturdayOfMonthWeek(mesISO, weekNum){
+  const parts = String(mesISO||"").split("-").map(Number);
+  const y = parts[0], m = parts[1];
+  if(!y || !m) return "";
+  const monthIndex = m - 1;
+  const sats = [];
+  const d = new Date(y, monthIndex, 1);
+  while(d.getMonth() === monthIndex){
+    if(d.getDay() === 6) sats.push(new Date(d));
+    d.setDate(d.getDate()+1);
+  }
+  const dt = sats[Math.max(0, Number(weekNum || 1)-1)];
+  if(!dt) return "";
+  return dt.getFullYear() + "-" + String(dt.getMonth()+1).padStart(2,"0") + "-" + String(dt.getDate()).padStart(2,"0");
+}
+function buildDocSrc(){
+  const tipo = $("tipoDocumentoResultados")?.value || "programa";
+  const mes = $("mesResultados")?.value || currentYM();
+  const sem = $("semanaDocumentoResultados")?.value || "1";
+  const qs = new URLSearchParams();
+  qs.set("mes", mes);
+  qs.set("embed", "1");
+  let file = "programa-mensual.html";
+  let help = "Programa mensual listo para imprimir o guardar como PDF.";
+  if(tipo === "acomodadores"){
+    file = "tablero-acomodadores.html";
+    help = "Asignaciones Villa Fiad: acomodadores, plataforma, audio/video y microfonistas.";
+  }else if(tipo === "presidente-mes"){
+    file = "doc-presi.html";
+    help = "Documento del presidente con visitantes y salientes locales del mes.";
+  }else if(tipo === "presidente-semana"){
+    file = "presidente.html";
+    qs.delete("mes");
+    qs.set("semana", saturdayOfMonthWeek(mes, sem));
+    qs.set("embed", "1");
+    help = "PDF semanal para el presidente.";
+  }else if(tipo === "resumen"){
+    file = "imprimir.html";
+    qs.set("semana", sem);
+    help = "Resumen completo mensual.";
+  }
+  return { url: file + "?" + qs.toString(), help, tipo };
+}
+function updateDocVisibility(){
+  const tipo = $("tipoDocumentoResultados")?.value || "programa";
+  const wf = $("weekFieldResultados");
+  if(wf) wf.style.display = (tipo === "presidente-semana" || tipo === "resumen") ? "block" : "none";
+}
+function refreshDocumentosResultados(){
+  updateDocVisibility();
+  const built = buildDocSrc();
+  const frame = $("docFrameResultados");
+  if(frame) frame.src = built.url;
+  const open = $("btnAbrirDocResultados");
+  if(open) open.href = built.url.replace(/[?&]embed=1/, "").replace(/\?$/, "");
+  const h = $("docHelpResultados");
+  if(h) h.textContent = built.help;
+}
+function printDocumentosResultados(){
+  const frame = $("docFrameResultados");
+  try{
+    frame?.contentWindow?.focus();
+    frame?.contentWindow?.print();
+  }catch(e){
+    window.open($("btnAbrirDocResultados")?.href || buildDocSrc().url, "_blank");
+  }
+}
+
 async function previewVisitantes(){
   const box = $("previewVisitantes");
   if(!box) return;
@@ -216,6 +274,10 @@ async function requireAccess(){
     mes.value = params.get("mes") || currentYM();
     mes.addEventListener("change", syncLinks);
   }
+  $("tipoDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
+  $("semanaDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
+  $("btnActualizarDocResultados")?.addEventListener("click", refreshDocumentosResultados);
+  $("btnImprimirDocResultados")?.addEventListener("click", printDocumentosResultados);
   syncLinks();
   await Promise.all([previewVisitantes(), previewSalientes()]);
 })();
