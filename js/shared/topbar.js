@@ -11,8 +11,7 @@ export function renderTopbar({ auth, active="panel", showAdminLinks=true }){
     <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
     <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
     <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
-    <a href="presidente.html" class="${active==='presidente'?'active':''}">Presidente</a>
-    <a href="imprimir.html" class="${active==='imprimir'?'active':''}">Imprimir</a>
+    <a href="documentos.html" class="${active==='documentos'?'active':''}">Documentos/PDF</a>
     <a href="importar.html" class="${active==='importar'?'active':''}">Importar</a>
   ` : ``;
 

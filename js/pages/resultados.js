@@ -24,13 +24,11 @@ function renderAdminTopbar(){
         <a href="panel.html">Panel</a>
         <a href="asignaciones.html">Asignaciones</a>
         <a href="resultados.html" class="active">Resultados</a>
-        <a href="programa-mensual.html">Programa mensual</a>
-        <a href="tablero-acomodadores.html">Asignaciones Villa Fiad</a>
+        <a href="documentos.html">Documentos/PDF</a>
         <a href="visitantes.html">Visitantes</a>
         <a href="salientes.html">Salientes</a>
         <a href="personas.html">Personas</a>
         <a href="funciones.html">Funciones</a>
-        <a href="directorio-discursos.html">PDF discursantes</a>
         <a href="usuarios.html">Usuarios</a>
         <a href="perfil.html">Mi perfil</a>
       </div>
@@ -137,13 +135,8 @@ function salienteDestino(row){
 function syncLinks(){
   const ym = $("mesResultados")?.value || currentYM();
   const q = `?mes=${encodeURIComponent(ym)}`;
-  const map = {
-    linkPrograma: "programa-mensual.html" + q,
-    linkAcomodadores: "tablero-acomodadores.html" + q,
-    linkPresidente: "doc-presi.html" + q,
-    linkImprimir: "imprimir.html" + q,
-  };
-  Object.entries(map).forEach(([id,href])=>{ const a=$(id); if(a) a.href = href; });
+  const a = $("linkDocumentos");
+  if(a) a.href = "documentos.html" + q;
 }
 async function previewVisitantes(){
   const box = $("previewVisitantes");

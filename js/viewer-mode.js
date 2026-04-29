@@ -5,6 +5,7 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-
 
 const VIEWER_ALLOWED = new Set([
   "resultados.html",
+  "documentos.html",
   "programa-mensual.html",
   "tablero-acomodadores.html",
   "doc-presi.html",

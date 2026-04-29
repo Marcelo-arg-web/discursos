@@ -1,6 +1,8 @@
 /* pro-shell.js - Entorno profesional online para Asignaciones Villa Fiad
    No cambia Firebase ni la lógica de guardado: solo mejora navegación, estructura visual y accesibilidad. */
 (function(){
+  const isEmbeddedDocument = new URLSearchParams(location.search).get('embed') === '1';
+  if(isEmbeddedDocument) document.documentElement.classList.add('embedded-doc-root');
   const ICONS = {
     'panel': '⌂',
     'inicio': '⌂',
@@ -22,6 +24,8 @@
     'mi perfil': '👤',
     'pdf discursantes': '📄',
     'discursantes pdf': '📄',
+    'documentos': '📄',
+    'documentos/pdf': '📄',
     'doc presidente': '☰'
   };
 
@@ -30,27 +34,64 @@
     const href = (a.getAttribute('href') || '').toLowerCase();
     if(href.includes('panel') || href.includes('inicio')) return 'panel';
     if(href.includes('asignaciones.html')) return 'asignaciones';
-    if(href.includes('programa-mensual')) return 'programa';
-    if(href.includes('tablero-acomodadores')) return 'asignaciones villa fiad';
+    if(href.includes('documentos')) return 'documentos/pdf';
+    if(href.includes('programa-mensual')) return 'documentos/pdf';
+    if(href.includes('tablero-acomodadores')) return 'documentos/pdf';
     if(href.includes('visitantes')) return 'visitantes';
     if(href.includes('salientes')) return 'salientes';
     if(href.includes('funciones')) return 'funciones';
     if(href.includes('personas')) return 'personas';
     if(href.includes('discursantes')) return 'discursantes';
     if(href.includes('estadisticas')) return 'estadísticas';
-    if(href.includes('doc-presi')) return 'visitas/salidas';
-    if(href.includes('imprimir')) return 'imprimir';
+    if(href.includes('doc-presi')) return 'documentos/pdf';
+    if(href.includes('presidente.html')) return 'documentos/pdf';
+    if(href.includes('imprimir')) return 'documentos/pdf';
     if(href.includes('importar')) return 'importar';
-    if(href.includes('directorio-discursos')) return 'pdf discursantes';
+    if(href.includes('directorio-discursos')) return 'documentos/pdf';
     if(href.includes('perfil')) return 'perfil';
     if(href.includes('usuarios')) return 'usuarios';
     return txt;
+  }
+
+
+  function consolidateDocumentLinks(linkContainer){
+    if(!linkContainer) return;
+    const docTargets = [
+      'programa-mensual.html',
+      'tablero-acomodadores.html',
+      'doc-presi.html',
+      'presidente.html',
+      'imprimir.html',
+      'directorio-discursos.html'
+    ];
+    const links = Array.from(linkContainer.querySelectorAll('a'));
+    const matches = links.filter(a=>{
+      const href = (a.getAttribute('href') || '').toLowerCase();
+      return docTargets.some(t=>href.includes(t));
+    });
+    const current = (location.pathname.split('/').pop() || '').toLowerCase();
+    const isDocPage = current === 'documentos.html' || docTargets.some(t=>current === t);
+    let keep = linkContainer.querySelector('a[href="documentos.html"]');
+    if(!keep){
+      keep = matches[0] || document.createElement('a');
+      if(!matches[0]){
+        const resultados = linkContainer.querySelector('a[href="resultados.html"]');
+        if(resultados) resultados.insertAdjacentElement('afterend', keep);
+        else linkContainer.appendChild(keep);
+      }
+    }
+    keep.href = 'documentos.html';
+    keep.textContent = 'Documentos/PDF';
+    keep.className = isDocPage ? 'active' : '';
+    keep.dataset.unifiedDocs = '1';
+    matches.forEach(a=>{ if(a !== keep) a.remove(); });
   }
 
   function enhanceTopbar(topbar){
     if(!topbar || topbar.dataset.proShell === '1') return;
     topbar.dataset.proShell = '1';
     document.body.classList.add('pro-online');
+    if(isEmbeddedDocument) document.body.classList.add('embedded-doc');
 
     const brand = topbar.querySelector('.brand');
     if(brand && !brand.querySelector('.brand-title')){
@@ -89,6 +130,8 @@
       if(location.pathname.endsWith('/perfil.html')) a.className = 'active';
       linkContainer.appendChild(a);
     }
+
+    consolidateDocumentLinks(linkContainer);
 
     const links = topbar.querySelectorAll('.links a, .nav a');
     links.forEach(a=>{

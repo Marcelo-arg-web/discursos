@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Documentos y PDF · Villa Fiad</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
+</head>
+<body class="has-topbar">
+<div id="topbar"></div>
+<div class="container documentos-container">
+  <div id="toastHost"></div>
+  <div class="card pad no-print">
+    <div class="section-title">
+      <div>
+        <h1 class="h1" style="margin:0;">Documentos y PDF</h1>
+        <div class="muted">Un solo lugar para ver, imprimir o guardar los documentos del mes.</div>
+      </div>
+      <span class="pill">Selector único</span>
+    </div>
+    <hr class="sep"/>
+    <div class="grid three documentos-controls">
+      <div class="field">
+        <div class="label">Documento</div>
+        <select class="input" id="tipoDocumento">
+          <option value="programa">Programa mensual</option>
+          <option value="acomodadores">Asignaciones Villa Fiad</option>
+          <option value="presidente-mes">Documento del presidente - visitas/salidas</option>
+          <option value="presidente-semana">PDF presidente por semana</option>
+          <option value="resumen">Resumen completo / imprimir</option>
+          <option value="discursantes" data-admin-only="true">PDF de discursantes</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="label">Mes</div>
+        <input class="input" id="mesDocumento" type="month"/>
+      </div>
+      <div class="field" id="weekField">
+        <div class="label">Semana del mes</div>
+        <select class="input" id="semanaDocumento">
+          <option value="1">Semana 1</option>
+          <option value="2">Semana 2</option>
+          <option value="3">Semana 3</option>
+          <option value="4">Semana 4</option>
+          <option value="5">Semana 5</option>
+        </select>
+      </div>
+    </div>
+    <div class="row documentos-actions" style="margin-top:14px;">
+      <button class="btn" id="btnActualizarDoc" type="button">Actualizar vista</button>
+      <button class="btn primary" id="btnImprimirDoc" type="button">Imprimir / guardar PDF</button>
+      <a class="btn" id="btnAbrirDoc" href="#" target="_blank" rel="noopener">Abrir en pestaña</a>
+    </div>
+    <div class="help" id="docHelp" style="margin-top:10px;">La vista se carga abajo. Para enviar por WhatsApp o correo, usá Imprimir / guardar PDF.</div>
+  </div>
+
+  <div class="documentos-preview-wrap">
+    <iframe id="docFrame" class="documentos-frame" title="Vista del documento seleccionado"></iframe>
+  </div>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing; if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){ nw.postMessage({type:'SKIP_WAITING'}); }
+        });
+      });
+    }).catch(function(e){ console.log('SW error', e); });
+    navigator.serviceWorker.addEventListener('controllerchange', function(){ if(refreshing) return; refreshing = true; location.reload(); });
+  });
+})();
+</script>
+<script src="js/pages/documentos.js?v=20260429b43" type="module"></script>
+<script src="js/nav-mobile.js"></script>
+<script src="js/pro-shell.js?v=20260429b43"></script>
+<script src="js/viewer-mode.js?v=20260429b43" type="module"></script>
+</body>
+</html>

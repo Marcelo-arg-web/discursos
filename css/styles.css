@@ -1167,3 +1167,50 @@ body.login-page{
 .login-card.reset-card{max-width:460px;}
 .login-card.reset-card .login-form{gap:10px;}
 .login-card.reset-card .small{font-size:12px;}
+
+
+/* build 43 - Documentos/PDF unificado */
+.documentos-container{max-width:1280px;}
+.documentos-controls{align-items:end;}
+.documentos-actions{gap:10px;flex-wrap:wrap;}
+.documentos-preview-wrap{
+  margin-top:16px;
+  border:1px solid rgba(219,229,241,.95);
+  border-radius:22px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:0 18px 45px rgba(15, 37, 68, .10);
+}
+.documentos-frame{
+  display:block;
+  width:100%;
+  min-height:78vh;
+  border:0;
+  background:#fff;
+}
+.embedded-doc .topbar,
+.embedded-doc .no-print,
+.embedded-doc .acciones,
+.embedded-doc button:not(.print-keep){
+  display:none !important;
+}
+.embedded-doc.has-topbar,
+body.embedded-doc.pro-online.has-topbar{
+  padding-top:0 !important;
+  padding-left:0 !important;
+}
+.embedded-doc .container{
+  max-width:none !important;
+  padding:12px !important;
+}
+.embedded-doc .card{
+  box-shadow:none !important;
+}
+@media print{
+  .documentos-preview-wrap{border:0!important;box-shadow:none!important;margin:0!important;}
+  .documentos-frame{min-height:100vh;}
+}
+@media (max-width: 760px){
+  .documentos-actions .btn{width:100%;justify-content:center;}
+  .documentos-frame{min-height:70vh;}
+}
