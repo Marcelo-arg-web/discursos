@@ -18,6 +18,7 @@ const MANAGED = [
   { key: "oracion", label: "Oración", aliases: ["oracion", "oración"] },
   { key: "conductor", label: "Conductor La Atalaya", aliases: ["conductor", "conductor atalaya", "conductor la atalaya"] },
   { key: "lector", label: "Lector La Atalaya", aliases: ["lector", "lector atalaya", "lector la atalaya"] },
+  { key: "multimedia", label: "Audio/Video", aliases: ["multimedia", "audio", "video", "audio/video", "audio y video"] },
   { key: "microfonista", label: "Microfonista", aliases: ["microfonista", "microfonistas"] },
   { key: "acomodador", label: "Acomodador", aliases: ["acomodador", "acomodadores"] },
   { key: "plataforma", label: "Acomodador plataforma", aliases: ["plataforma", "acomodador plataforma", "acomodador de plataforma"] },
@@ -159,10 +160,14 @@ function render(){
   for(const p of rows){
     const tr = document.createElement("tr");
     const estado = p.activo===false ? ' <span class="pill" style="background:#fff1f2;border-color:#fecdd3;color:#9f1239">inactivo</span>' : "";
-    tr.innerHTML = `<td><b>${escapeHtml(p.nombre || "")}</b>${estado}</td>` + MANAGED.map(def => {
+    const disabled = IS_ADMIN ? "" : "disabled";
+    const activoChecked = p.activo === false ? "" : "checked";
+    tr.innerHTML = `
+      <td class="sticky-name"><b>${escapeHtml(p.nombre || "")}</b>${estado}</td>
+      <td class="td-center"><input type="checkbox" ${activoChecked} ${disabled} data-id="${escapeHtml(p.id)}" data-active="1" aria-label="Activo para ${escapeHtml(p.nombre || "persona")}"></td>
+    ` + MANAGED.map(def => {
       const checked = hasManagedRole(p, def) ? "checked" : "";
-      const disabled = IS_ADMIN ? "" : "disabled";
-      return `<td class="td-center"><input type="checkbox" ${checked} ${disabled} data-id="${escapeHtml(p.id)}" data-role="${def.key}" aria-label="${escapeHtml(def.label)} para ${escapeHtml(p.nombre || "persona")}"></td>`;
+      return `<td class="td-center" title="${escapeHtml(def.label)}"><input type="checkbox" ${checked} ${disabled} data-id="${escapeHtml(p.id)}" data-role="${def.key}" aria-label="${escapeHtml(def.label)} para ${escapeHtml(p.nombre || "persona")}"></td>`;
     }).join("");
     tbody.appendChild(tr);
   }
@@ -175,6 +180,11 @@ async function cargar(){
   setStatus(`Funciones cargadas: ${cache.length} personas.`);
 }
 
+function activeFromRow(p){
+  const cb = document.querySelector(`input[data-id="${CSS.escape(p.id)}"][data-active="1"]`);
+  return cb ? !!cb.checked : p.activo !== false;
+}
+
 async function guardarFunciones(){
   if(!IS_ADMIN) return toast("Modo solo lectura.", true);
   const btn = $("btnGuardarFunciones");
@@ -183,14 +193,16 @@ async function guardarFunciones(){
     let cambios = 0;
     for(const p of cache){
       const roles = rolesFromRow(p);
+      const activo = activeFromRow(p);
       const before = JSON.stringify((Array.isArray(p.roles) ? p.roles : []).map(String).sort());
       const after = JSON.stringify(roles.map(String).sort());
-      if(before === after) continue;
-      await updateDoc(doc(db,"personas",p.id), { roles, updatedAt: serverTimestamp() });
+      const activoAntes = p.activo !== false;
+      if(before === after && activoAntes === activo) continue;
+      await updateDoc(doc(db,"personas",p.id), { roles, activo, updatedAt: serverTimestamp() });
       cambios++;
     }
     await cargar();
-    toast(cambios ? `Funciones guardadas: ${cambios} persona(s) actualizada(s).` : "No había cambios para guardar.");
+    toast(cambios ? `Funciones/estado guardados: ${cambios} persona(s) actualizada(s).` : "No había cambios para guardar.");
   }catch(e){
     console.error(e);
     toast("No pude guardar funciones. Revisá permisos de Firestore.", true);

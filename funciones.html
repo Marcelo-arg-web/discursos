@@ -39,15 +39,17 @@
     </div>
     <div class="notice" id="status" style="display:none; margin-top:10px;"></div>
     <hr class="sep"/>
-    <div class="table-wrap" style="overflow:auto;">
-      <table class="table compact" id="tblFunciones">
+    <div class="table-wrap funciones-wrap" style="overflow:auto;">
+      <table class="table compact funciones-table" id="tblFunciones">
         <thead>
           <tr>
-            <th>Persona</th>
+            <th class="sticky-name">Persona</th>
+            <th class="td-center">Activo</th>
             <th class="td-center">Presidente</th>
             <th class="td-center">Oración</th>
             <th class="td-center">Conductor<br/>Atalaya</th>
             <th class="td-center">Lector<br/>Atalaya</th>
+            <th class="td-center">Audio/<br/>Video</th>
             <th class="td-center">Microfonista</th>
             <th class="td-center">Acomodador</th>
             <th class="td-center">Acomodador<br/>plataforma</th>
@@ -57,7 +59,7 @@
       </table>
     </div>
     <div class="small muted" style="margin-top:12px;">
-      Nota: si nadie tiene un tilde en una función, el sistema usa las listas de respaldo actuales para no dejar el programa vacío. Cuando marques tildes, las sugerencias priorizan esos permisos.
+      Nota: dejá marcado <b>Activo</b> solo en quienes pueden aparecer en las sugerencias. Si nadie tiene un tilde en una función, el sistema usa las listas de respaldo actuales para no dejar el programa vacío. Cuando marques tildes, las sugerencias priorizan esos permisos.
     </div>
   </div>
 </div>
@@ -86,7 +88,7 @@
   });
 })();
 </script>
-<script src="js/pages/funciones.js?v=20260428b35" type="module"></script>
+<script src="js/pages/funciones.js?v=20260429b38" type="module"></script>
 <script src="js/nav-mobile.js"></script>
 <script src="js/pro-shell.js"></script>
   <script src="js/viewer-mode.js?v=20260429" type="module"></script>

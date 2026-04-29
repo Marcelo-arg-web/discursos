@@ -146,10 +146,10 @@ function render(){
       }
 
       if(act==="toggle"){
-        const nuevo = !(p.activo===false);
-        await updateDoc(docRef(db,"personas",id), { activo: !nuevo, updatedAt: serverTimestamp() });
+        const nuevoActivo = p.activo === false;
+        await updateDoc(docRef(db,"personas",id), { activo: nuevoActivo, updatedAt: serverTimestamp() });
         await cargar();
-        toast((!nuevo) ? "Activado." : "Desactivado.");
+        toast(nuevoActivo ? "Activado." : "Desactivado.");
       }
     });
   });
