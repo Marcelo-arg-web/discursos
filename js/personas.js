@@ -1,5 +1,5 @@
-import { db } from "./firebase.js";
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { db } from "./firebase.js?v=20260429b68";
+import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { mountTopbar, requireAuth } from "./guard.js";
 import { qs, toast } from "./utils.js";
 

@@ -1,7 +1,7 @@
-import { auth, db } from "../firebase-config.js";
+import { auth, db } from "../firebase-config.js?v=20260429b68";
 import { hasPublicAccess } from "../services/publicAccess.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -143,7 +143,7 @@ import {
   startAt,
   endAt,
   documentId
-} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 let personasMap = new Map();
 async function loadPersonasMap(){

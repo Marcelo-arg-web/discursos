@@ -1,7 +1,7 @@
-import { auth, db } from "../firebase-config.js";
+import { auth, db } from "../firebase-config.js?v=20260429b68";
 import { hasPublicAccess, setPublicAccess } from "../services/publicAccess.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-import { collection, getDocs, doc, getDoc, query, orderBy, documentId, startAt, endAt } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { collection, getDocs, doc, getDoc, query, orderBy, documentId, startAt, endAt } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { bosquejos } from "../data/bosquejos.js";
 
 let personasMap = new Map();
@@ -467,14 +467,21 @@ async function requireAccess(){
       }
     }, 4500);
 
-    setTimeout(()=>{
+    setTimeout(async ()=>{
       if(settled) return;
-      renderViewerTopbar("Usuario");
-      if(profileBtn){
-        profileBtn.style.display = "inline-flex";
-        profileBtn.href = "perfil.html";
+      // Build 68: no terminar como invitado falso. Si Auth tarda, esperamos;
+      // si ya hay currentUser, usamos ese usuario para poder leer datos.
+      const cu = auth.currentUser;
+      if(cu){
+        const u = await getUsuarioSeguro(cu);
+        if(profileBtn){ profileBtn.style.display = "inline-flex"; profileBtn.href = "perfil.html"; }
+        if(isAdminRole(u?.rol)) renderAdminTopbar(); else renderViewerTopbar(u?.nombre || cu.email || "Usuario");
+        finish({ user:cu, usuario:u, public:false, authTimeoutRecovered:true });
+      }else{
+        renderViewerTopbar("Esperando sesión…");
+        const box = $("asignacionesMesList");
+        if(box) box.innerHTML = `<div class="muted">Esperando que el navegador confirme la sesión. Si tarda mucho, tocá Salir y entrá otra vez.</div>`;
       }
-      finish({ user:null, usuario:{rol:"viewer", activo:true}, public:false, authTimeout:true });
     }, 7000);
   });
 }

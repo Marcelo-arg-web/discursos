@@ -1,10 +1,10 @@
-import { auth } from "./firebase.js";
+import { auth } from "./firebase.js?v=20260429b68";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 import { roleFromEmail } from "./roles.js";
 import { ensureUserDoc } from "./db.js";

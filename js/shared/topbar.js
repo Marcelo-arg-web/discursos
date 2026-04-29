@@ -1,4 +1,4 @@
-import { signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 export function renderTopbar({ auth, active="panel", showAdminLinks=true }){
   const el = document.getElementById("topbar");

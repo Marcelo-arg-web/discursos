@@ -18,9 +18,9 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// Network-first para HTML/JS/CSS - build 67 (siempre traer lo último).
+// Network-first para HTML/JS/CSS - build 68 (siempre traer lo último).
 // Para imágenes y otros assets: cache-first (opcional).
-const ASSET_CACHE = "assets-v67_usuario_sin_bloqueo";
+const ASSET_CACHE = "assets-v68_usuario_real_datos";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -120,12 +120,12 @@ self.addEventListener("fetch", (event) => {
 // build 58: vista previa de documentos optimizada para Android con desplazamiento táctil vertical y horizontal.
 
 // build 58: reglas Firestore con rescate de superadmin por email y diagnóstico de permisos en Usuarios.
-// build 67: en Android los botones Sugerir de asignaciones quedan compactos para ver mejor el nombre.
+// build 68: en Android los botones Sugerir de asignaciones quedan compactos para ver mejor el nombre.
 
-// build 67: usuarios tienen Mi perfil para cargar datos y bosquejos; Resultados muestra primero la vista previa; PDF externo solo aprobados para salir con bosquejos.
+// build 68: usuarios tienen Mi perfil para cargar datos y bosquejos; Resultados muestra primero la vista previa; PDF externo solo aprobados para salir con bosquejos.
 
-// build 67: usuario común ve Resultados y Mi perfil; botón de acceso visible al perfil propio.
+// build 68: usuario común ve Resultados y Mi perfil; botón de acceso visible al perfil propio.
 
-// build 67: corrige modo consulta residual; usuario autenticado vuelve a cargar datos, menú y Mi perfil.
+// build 68: corrige modo consulta residual; usuario autenticado vuelve a cargar datos, menú y Mi perfil.
 
-// build 67: Resultados y Mi perfil no quedan bloqueados esperando /usuarios; vista previa de documentos carga primero.
+// build 68: Resultados y Mi perfil no quedan bloqueados esperando /usuarios; vista previa de documentos carga primero.

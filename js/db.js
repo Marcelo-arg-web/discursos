@@ -1,8 +1,8 @@
-import { db } from "./firebase.js";
+import { db } from "./firebase.js?v=20260429b68";
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc,
   collection, addDoc, getDocs, onSnapshot, query, where, orderBy, limit
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 export const fs = {
   doc, getDoc, setDoc, updateDoc, deleteDoc,

@@ -1,8 +1,8 @@
 // Discursantes (visitas (visitantes + salidas)) y Conferenciantes locales
 // Requiere: firebase-config.js exporte { auth, db }
 
-import { auth, db } from "../firebase-config.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { auth, db } from "../firebase-config.js?v=20260429b68";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection,
   getDocs,
@@ -15,7 +15,7 @@ import {
   serverTimestamp,
   orderBy,
   query
-} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
 

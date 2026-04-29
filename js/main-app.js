@@ -1,5 +1,5 @@
-import { auth } from "./firebase.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { auth } from "./firebase.js?v=20260429b68";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { ensureUserDoc } from "./db.js";
 import { roleFromEmail, canEdit } from "./roles.js";
 import { $, $$, initials, toast } from "./utils.js";

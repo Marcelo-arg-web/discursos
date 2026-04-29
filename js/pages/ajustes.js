@@ -1,4 +1,4 @@
-import { auth } from "../firebase.js";
+import { auth } from "../firebase.js?v=20260429b68";
 import { db, fs, ensureUserDoc } from "../db.js";
 import { roleFromEmail } from "../roles.js";
 import { escapeHtml, toast } from "../utils.js";
