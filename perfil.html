@@ -41,45 +41,22 @@
         </label>
       </div>
 
-
       <div class="card mini" style="margin-top:14px; border-radius:16px; box-shadow:none; background:#f8fbff;">
         <div class="section-title" style="margin-bottom:8px;">
           <div>
             <h3 style="margin:0; font-size:16px;">Buscar bosquejo</h3>
-            <div class="muted small">Escribí el número y el sistema completa el título. También muestra las canciones que ya se usaron con ese discurso.</div>
+            <div class="muted small">Escribí el número de discurso y el sistema completa el título.</div>
           </div>
           <span class="pill">Consulta rápida</span>
         </div>
-        <div class="grid two" style="align-items:end;">
-          <label>Número de discurso
-            <input class="input" id="consultaBosquejo" inputmode="numeric" placeholder="Ej: 42" type="text"/>
+        <div class="grid perfil-bosquejo-grid" style="align-items:end; grid-template-columns: 120px minmax(0, 1fr); gap:10px;">
+          <label>Número
+            <input class="input" id="consultaBosquejo" inputmode="numeric" maxlength="3" pattern="[0-9]{1,3}" placeholder="42" type="text" style="text-align:center;"/>
           </label>
           <label>Título del discurso
             <input class="input" id="consultaTitulo" placeholder="Se completa automáticamente" readonly type="text"/>
           </label>
         </div>
-        <div id="consultaCanciones" class="notice" style="margin-top:10px;">
-          Ingresá un número de bosquejo para ver las canciones elegidas.
-        </div>
-        <div class="row" style="margin-top:10px; gap:10px;">
-          <button class="btn" id="btnAgregarTiene" type="button">Agregar a discursos que ya tiene</button>
-          <button class="btn" id="btnAgregarPreparar" type="button">Agregar a discursos que quiere preparar</button>
-        </div>
-      </div>
-
-      <div class="grid two" style="margin-top:10px; align-items:start;">
-        <label>Discursos que ya tiene
-          <textarea id="discursosTiene" class="input textarea-tall" placeholder="Ejemplo:
-42 - ¿Puede el amor vencer al odio?
-87 - Andemos con Dios"></textarea>
-          <span class="help">Un bosquejo por línea. Podés poner número y título.</span>
-        </label>
-        <label>Discursos que quiere preparar
-          <textarea id="discursosPreparar" class="input textarea-tall" placeholder="Ejemplo:
-10 - Usemos bien nuestro tiempo
-181 - ¿Anda usted con Dios?"></textarea>
-          <span class="help">Esta lista ayuda a saber qué bosquejos puede preparar próximamente.</span>
-        </label>
       </div>
 
       <label>Observaciones
@@ -112,9 +89,9 @@
   });
 })();
 </script>
-<script src="js/pages/perfil.js?v=20260429b42" type="module"></script>
+<script src="js/pages/perfil.js?v=20260429b44" type="module"></script>
 <script src="js/nav-mobile.js"></script>
-<script src="js/pro-shell.js?v=20260429b43"></script>
-<script src="js/viewer-mode.js?v=20260429b43" type="module"></script>
+<script src="js/pro-shell.js?v=20260429b44"></script>
+<script src="js/viewer-mode.js?v=20260429b44" type="module"></script>
 </body>
 </html>

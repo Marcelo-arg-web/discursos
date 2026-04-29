@@ -16,9 +16,9 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// Network-first para HTML/JS/CSS - build 43 (siempre traer lo último).
+// Network-first para HTML/JS/CSS - build 44 (siempre traer lo último).
 // Para imágenes y otros assets: cache-first (opcional).
-const ASSET_CACHE = "assets-v43-documentos-unificados";
+const ASSET_CACHE = "assets-v44-perfil-bosquejo-simple";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -90,3 +90,5 @@ self.addEventListener("fetch", (event) => {
 // build 43: perfil agrega consulta de bosquejo, título automático y canciones elegidas.
 
 // build 43: Documentos/PDF unificado con selector y menos páginas repetidas en el menú.
+
+// build 44: perfil simplificado; número de bosquejo compacto, título más largo y sin canciones/listas extra.

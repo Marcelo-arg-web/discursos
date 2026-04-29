@@ -1214,3 +1214,10 @@ body.embedded-doc.pro-online.has-topbar{
   .documentos-actions .btn{width:100%;justify-content:center;}
   .documentos-frame{min-height:70vh;}
 }
+
+/* build 44 - Perfil: consulta de bosquejo compacta */
+@media (max-width: 720px){
+  .perfil-bosquejo-grid{
+    grid-template-columns: 96px minmax(0, 1fr) !important;
+  }
+}
