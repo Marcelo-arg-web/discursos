@@ -1,4 +1,5 @@
 import { auth, db } from "../firebase-config.js";
+import { hasPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
@@ -107,6 +108,7 @@ function ensureTopbarStyles(){ /* estilos unificados en css/styles.css */ }
 async function requireActiveUser(activePage){
   ensureTopbarStyles();
   renderTopbar(activePage);
+  if(hasPublicAccess()) return { user:null, usuario:{ rol:"usuario", activo:true, public:true } };
 
   return new Promise((resolve)=>{
     onAuthStateChanged(auth, async (user)=>{
@@ -278,17 +280,18 @@ async function cargarMes(){
 (async function(){
   await requireActiveUser("imprimir");
 
-  // mes por defecto = mes actual
+  // mes por defecto = mes actual o mes recibido desde Resultados
   const now = new Date();
-  document.getElementById("mes").value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  const params = new URLSearchParams(location.search);
+  document.getElementById("mes").value = params.get("mes") || `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
   document.getElementById("btnPrint")?.addEventListener("click", ()=>{
     syncPrintTitle();
     window.print();
   });
   document.getElementById("btnRecargar")?.addEventListener("click", cargarMes);
-  document.getElementById("btnTabAcom")?.addEventListener("click", ()=>{ window.location.href = "tablero-acomodadores.html"; });
-  document.getElementById("btnTabMM")?.addEventListener("click", ()=>{ window.location.href = "tablero-acomodadores.html#av"; });
-  document.getElementById("btnProgramaMensual")?.addEventListener("click", ()=>{ window.location.href = "programa-mensual.html"; });
+  document.getElementById("btnTabAcom")?.addEventListener("click", ()=>{ window.location.href = `tablero-acomodadores.html?mes=${encodeURIComponent(document.getElementById("mes")?.value||"")}`; });
+  document.getElementById("btnTabMM")?.addEventListener("click", ()=>{ window.location.href = `tablero-acomodadores.html?mes=${encodeURIComponent(document.getElementById("mes")?.value||"")}#av`; });
+  document.getElementById("btnProgramaMensual")?.addEventListener("click", ()=>{ window.location.href = `programa-mensual.html?mes=${encodeURIComponent(document.getElementById("mes")?.value||"")}`; });
   document.getElementById("btnPresidente")?.addEventListener("click", ()=>{
     const mesISO = String(document.getElementById("mes")?.value||"").trim();
     const sem = String(document.getElementById("semana")?.value||"1").trim();

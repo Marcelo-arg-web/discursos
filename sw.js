@@ -16,9 +16,9 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// Network-first para HTML/JS/CSS - build 35 (siempre traer lo último).
+// Network-first para HTML/JS/CSS - build 36 (siempre traer lo último).
 // Para imágenes y otros assets: cache-first (opcional).
-const ASSET_CACHE = "assets-v35-funciones-sugerencias";
+const ASSET_CACHE = "assets-v36-resultados-usuarios";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -71,6 +71,8 @@ self.addEventListener("fetch", (event) => {
   // Default: passthrough
 });
 
-// build 35: formulario de inicio profesional y textos limpios
+// build 36: formulario de inicio profesional y textos limpios
 
-// build 35: tablero mensual agrega Plataforma junto a Microfonistas
+// build 36: tablero mensual agrega Plataforma junto a Microfonistas
+
+// build 36: modo resultados para usuarios no admin

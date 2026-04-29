@@ -1022,3 +1022,18 @@ body.login-page{
   border-radius:16px;
   background:#fff;
 }
+
+/* Build 36 - vista de resultados para usuarios solo lectura */
+.viewer-result-mode .viewer-topbar .links a{white-space:nowrap;}
+.viewer-result-mode .badge.soft{background:#eef4ff;color:#36527a;border-color:#d6e4ff;}
+.results-container{max-width:1120px;}
+.results-hero{border:1px solid rgba(37,99,235,.18);box-shadow:0 16px 38px rgba(15,23,42,.08);}
+.results-actions{gap:8px;flex-wrap:wrap;}
+.result-card{text-decoration:none;color:inherit;transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;min-height:150px;}
+.result-card:hover{transform:translateY(-2px);box-shadow:0 18px 42px rgba(15,23,42,.11);border-color:rgba(37,99,235,.28);}
+.result-card h2{margin:6px 0 6px;font-size:18px;}
+.result-icon{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:#eef4ff;color:#1d4ed8;font-weight:900;font-size:20px;}
+.result-list{display:flex;flex-direction:column;gap:10px;}
+.result-line{padding:10px 12px;border:1px solid #e6edf5;border-radius:14px;background:#fbfdff;}
+.preview-list{min-height:96px;}
+@media (max-width: 760px){.results-actions .btn{width:100%;justify-content:center}.viewer-result-mode .topbar .actions .badge.soft{display:none}}

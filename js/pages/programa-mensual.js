@@ -1,4 +1,5 @@
 import { auth, db } from "../firebase-config.js";
+import { hasPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import {
   doc,
@@ -65,6 +66,7 @@ async function getUsuario(uid){
 async function requireActiveUser(){
   ensureTopbarStyles();
   renderTopbar("programa");
+  if(hasPublicAccess()) return { user:null, usuario:{ rol:"usuario", activo:true, public:true } };
   return new Promise((resolve)=>{
     onAuthStateChanged(auth, async (user)=>{
       if(!user){ window.location.href = "index.html"; return; }
@@ -283,7 +285,8 @@ async function cargar(){
   await requireActiveUser();
 
   const now = new Date();
-  $("mes").value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  const params = new URLSearchParams(location.search);
+  $("mes").value = params.get("mes") || `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
 
   $("btnCargar")?.addEventListener("click", cargar);
   $("mes")?.addEventListener("change", cargar);

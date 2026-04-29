@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Resultados · Villa Fiad</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
+</head>
+<body class="has-topbar viewer-result-mode">
+<div id="topbar"></div>
+<div class="container results-container">
+  <div id="toastHost"></div>
+  <div class="card pad results-hero">
+    <div class="section-title">
+      <div>
+        <h1 class="h1" style="margin:0;">Resultados Villa Fiad</h1>
+        <div class="muted">Vista de consulta. Acá se puede ver lo ya preparado y descargar/guardar en PDF.</div>
+      </div>
+      <span class="pill">Solo lectura</span>
+    </div>
+    <hr class="sep"/>
+    <div class="grid two">
+      <div class="field">
+        <div class="label">Mes para ver o descargar</div>
+        <input class="input" id="mesResultados" type="month"/>
+      </div>
+      <div class="field">
+        <div class="label">Accesos del mes</div>
+        <div class="row results-actions">
+          <a class="btn primary" id="linkPrograma" href="programa-mensual.html">Programa mensual</a>
+          <a class="btn" id="linkAcomodadores" href="tablero-acomodadores.html">Acomodadores</a>
+          <a class="btn" id="linkPresidente" href="doc-presi.html">Presidente</a>
+          <a class="btn" id="linkImprimir" href="imprimir.html">Descargar/PDF</a>
+        </div>
+        <div class="help">En cada página usá el botón Imprimir/PDF para guardar o enviar el archivo.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid three results-grid" style="margin-top:14px;">
+    <a class="card pad result-card" href="visitantes.html">
+      <div class="result-icon">⇢</div>
+      <h2>Quienes vienen</h2>
+      <p class="muted">Conferenciantes visitantes, congregación, bosquejo, título y fecha.</p>
+    </a>
+    <a class="card pad result-card" href="salientes.html">
+      <div class="result-icon">⇠</div>
+      <h2>Quienes salen</h2>
+      <p class="muted">Hermanos que salen a dar discursos, fecha, bosquejo y congregación.</p>
+    </a>
+    <a class="card pad result-card" href="tablero-acomodadores.html">
+      <div class="result-icon">▤</div>
+      <h2>Asignaciones Villa Fiad</h2>
+      <p class="muted">Acomodadores, plataforma, audio/video y microfonistas listos para imprimir.</p>
+    </a>
+  </div>
+
+  <div class="grid two" style="margin-top:14px; align-items:start;">
+    <div class="card pad">
+      <div class="section-title">
+        <h2 class="h2" style="margin:0;">Próximos visitantes</h2>
+        <a class="btn sm" href="visitantes.html">Ver todo</a>
+      </div>
+      <div id="previewVisitantes" class="preview-list muted">Cargando…</div>
+    </div>
+    <div class="card pad">
+      <div class="section-title">
+        <h2 class="h2" style="margin:0;">Próximas salidas</h2>
+        <a class="btn sm" href="salientes.html">Ver todo</a>
+      </div>
+      <div id="previewSalientes" class="preview-list muted">Cargando…</div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing; if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){ nw.postMessage({type:'SKIP_WAITING'}); }
+        });
+      });
+    }).catch(function(e){ console.log('SW error', e); });
+    navigator.serviceWorker.addEventListener('controllerchange', function(){ if(refreshing) return; refreshing = true; location.reload(); });
+  });
+})();
+</script>
+<script src="js/pages/resultados.js?v=20260429" type="module"></script>
+<script src="js/viewer-mode.js?v=20260429" type="module"></script>
+</body>
+</html>

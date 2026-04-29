@@ -381,6 +381,11 @@ const juevesAsig = juevesAsignDoc || {};
 
 (async function(){
   await requireActiveUser("tablero");
+  const now = new Date();
+  const params = new URLSearchParams(location.search);
+  const mesEl = $("mes");
+  if(mesEl) mesEl.value = params.get("mes") || `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
   $("btnPrint")?.addEventListener("click", ()=>window.print());
   $("btnCargar")?.addEventListener("click", cargar);
+  await cargar();
 })();

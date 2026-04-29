@@ -44,6 +44,14 @@ function isActiveValue(v){
   return ["true", "si", "sí", "activo", "1", "yes"].includes(s);
 }
 
+function isAdminRole(rol){
+  const r = String(rol || "").toLowerCase();
+  return r === "admin" || r === "superadmin";
+}
+function homeForRole(rol){
+  return isAdminRole(rol) ? "panel.html" : "resultados.html";
+}
+
 async function repairAdminUserDoc(user){
   const ref = doc(db, "usuarios", user.uid);
   await setDoc(ref, {
@@ -134,7 +142,7 @@ async function entrar(){
       return;
     }
 
-    window.location.href = "panel.html";
+    window.location.href = homeForRole(u?.rol);
   }catch(e){
     console.error(e);
     toast(friendlyAuthError(e), true);
@@ -183,7 +191,7 @@ onAuthStateChanged(auth, async (user)=>{
     try{
       const u = await ensureUsuarioDoc(user);
       if(isActiveValue(u?.activo)){
-        window.location.href = "panel.html";
+        window.location.href = homeForRole(u?.rol);
       }else{
         await signOut(auth);
       }

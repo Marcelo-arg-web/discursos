@@ -1,4 +1,5 @@
 import { auth, db } from "../firebase-config.js";
+import { hasPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import { doc, getDoc, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { bosquejos } from "../data/bosquejos.js";
@@ -45,6 +46,7 @@ function renderTopbar(active){
 
 async function requireActiveUser(){
   renderTopbar("docpresi");
+  if(hasPublicAccess()) return { user:null, usuario:{ rol:"usuario", activo:true, public:true } };
   return new Promise((resolve)=>{
     onAuthStateChanged(auth, async (user)=>{
       if(!user){ window.location.href="index.html"; return; }
@@ -181,12 +183,12 @@ function renderDoc(ym, visitas, salientes, rng){
   await requireActiveUser();
 
   const mesEl = $("mes");
-  // default: mes actual
+  // default: mes actual o mes recibido desde Resultados
   const dt = new Date();
-  mesEl.value = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;
+  const params = new URLSearchParams(location.search);
+  mesEl.value = params.get("mes") || `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;
 
-  $("btnPrint")?.addEventListener("click", ()=>window.print());
-  $("btnGenerar")?.addEventListener("click", async ()=>{
+  async function generar(){
     const ym = mesEl.value;
     $("contenido").innerHTML = `<div class="muted">Cargando…</div>`;
     try{
@@ -196,5 +198,9 @@ function renderDoc(ym, visitas, salientes, rng){
       console.error(e);
       $("contenido").innerHTML = `<div class="muted"><b>Error cargando.</b> Revisá consola y permisos.</div>`;
     }
-  });
+  }
+
+  $("btnPrint")?.addEventListener("click", ()=>window.print());
+  $("btnGenerar")?.addEventListener("click", generar);
+  await generar();
 })();
