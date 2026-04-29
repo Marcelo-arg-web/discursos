@@ -5,7 +5,7 @@
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Mi perfil · Arreglos Discursos</title>
 <link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="css/styles.css?v=20260429b47" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b48" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
 <div id="topbar"></div>
@@ -39,6 +39,24 @@
             <option value="Otro">Otro</option>
           </select>
         </label>
+        <label>Congregación
+          <input class="input" id="congregacionPerfil" placeholder="Villa Fiad" type="text"/>
+        </label>
+      </div>
+
+      <div class="card mini admin-only" id="aprobacionDiscursanteBox" style="margin-top:14px; border-radius:16px; box-shadow:none; background:#fff;">
+        <div class="section-title" style="margin-bottom:8px;">
+          <div>
+            <h3 style="margin:0; font-size:16px;">Aprobación para discursos</h3>
+            <div class="muted small">Estos tildes los maneja el admin y definen si aparece en el PDF para otras congregaciones.</div>
+          </div>
+          <span class="pill">Solo admin</span>
+        </div>
+        <div class="row perfil-checks" style="gap:16px; flex-wrap:wrap;">
+          <label class="checkline"><input type="checkbox" id="aprobadoSalida"/> Aprobado para salir a dar discursos</label>
+          <label class="checkline"><input type="checkbox" id="soloLocalmente"/> Solo localmente</label>
+        </div>
+        <div class="help">El PDF externo incluye solo ancianos o siervos ministeriales aprobados para salir y que no estén marcados como “solo localmente”.</div>
       </div>
 
       <div class="card mini" style="margin-top:14px; border-radius:16px; box-shadow:none; background:#f8fbff;">
@@ -49,20 +67,43 @@
           </div>
           <span class="pill">Consulta rápida</span>
         </div>
-        <div class="grid perfil-bosquejo-grid" style="align-items:end; grid-template-columns: 120px minmax(0, 1fr); gap:10px;">
+        <div class="grid perfil-bosquejo-grid" style="align-items:end; grid-template-columns: 120px minmax(0, 1fr) auto; gap:10px;">
           <label>Número
             <input class="input" id="consultaBosquejo" inputmode="numeric" maxlength="3" pattern="[0-9]{1,3}" placeholder="42" type="text" style="text-align:center;"/>
           </label>
           <label>Título del discurso
             <input class="input" id="consultaTitulo" placeholder="Se completa automáticamente" readonly type="text"/>
           </label>
+          <button class="btn" id="btnUsarConsultaPerfil" type="button">Agregar al perfil</button>
         </div>
+      </div>
+
+      <div class="card mini" id="perfilBosquejosBox" style="margin-top:14px; border-radius:16px; box-shadow:none; background:#fff;">
+        <div class="section-title" style="margin-bottom:8px;">
+          <div>
+            <h3 style="margin:0; font-size:16px;">Bosquejos del discursante</h3>
+            <div class="muted small">Estos son los discursos que aparecerán en el PDF si el admin aprueba al discursante para salir.</div>
+          </div>
+          <span class="pill">Perfil</span>
+        </div>
+        <div class="grid" style="align-items:end; grid-template-columns: 120px minmax(0, 1fr) auto auto auto; gap:10px;">
+          <label>Número
+            <input class="input" id="perfilBosquejoNum" inputmode="numeric" maxlength="3" pattern="[0-9]{1,3}" placeholder="42" type="text" style="text-align:center;"/>
+          </label>
+          <label>Título del discurso
+            <input class="input" id="perfilBosquejoTitulo" placeholder="Título del bosquejo" type="text"/>
+          </label>
+          <button class="btn primary" id="btnGuardarPerfilBosquejo" type="button">Guardar</button>
+          <button class="btn" id="btnNuevoPerfilBosquejo" type="button">Nuevo</button>
+          <button class="btn danger" id="btnEliminarPerfilBosquejo" type="button">Eliminar</button>
+        </div>
+        <div class="tableWrap" id="listaPerfilBosquejos" style="margin-top:10px; max-height:260px; overflow:auto;"></div>
       </div>
 
       <div class="card mini admin-only" id="adminBosquejosBox" style="margin-top:14px; border-radius:16px; box-shadow:none; background:#fff;">
         <div class="section-title" style="margin-bottom:8px;">
           <div>
-            <h3 style="margin:0; font-size:16px;">Agregar / editar bosquejos</h3>
+            <h3 style="margin:0; font-size:16px;">Catálogo general de bosquejos</h3>
             <div class="muted small">Catálogo usado por la consulta rápida, visitantes, salientes y documentos.</div>
           </div>
           <span class="pill">Solo admin</span>
@@ -118,9 +159,9 @@
   });
 })();
 </script>
-<script src="js/pages/perfil.js?v=20260429b47" type="module"></script>
+<script src="js/pages/perfil.js?v=20260429b48" type="module"></script>
 <script src="js/nav-mobile.js"></script>
-<script src="js/pro-shell.js?v=20260429b47"></script>
-<script src="js/viewer-mode.js?v=20260429b47" type="module"></script>
+<script src="js/pro-shell.js?v=20260429b48"></script>
+<script src="js/viewer-mode.js?v=20260429b48" type="module"></script>
 </body>
 </html>

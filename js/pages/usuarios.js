@@ -83,10 +83,13 @@ function sanitizePhone(phone){
   // WhatsApp wa.me necesita solo dígitos y código país. Para AR: 54...
   return String(phone||"").replace(/\D/g, "");
 }
+function boolValue(v){
+  return v === true || String(v || "").toLowerCase() === "true" || String(v || "").toLowerCase() === "sí" || String(v || "").toLowerCase() === "si";
+}
 
 async function listUsuarios(){
   const tbody = $("tbodyUsuarios");
-  if(tbody) tbody.innerHTML = `<tr><td colspan="5" class="muted">Cargando…</td></tr>`;
+  if(tbody) tbody.innerHTML = `<tr><td colspan="6" class="muted">Cargando…</td></tr>`;
   const qy = query(collection(db, "usuarios"), orderBy("nombre"));
   const snap = await getDocs(qy);
   const rows = [];
@@ -100,18 +103,24 @@ async function listUsuarios(){
 
   if(!tbody) return;
   if(filtered.length === 0){
-    tbody.innerHTML = `<tr><td colspan="5" class="muted">No hay usuarios.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="muted">No hay usuarios.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = filtered.map(u=>{
     const activo = !!u.activo;
+    const aprobado = boolValue(u.aprobadoSalida || u.aprobadoParaSalir);
+    const soloLocal = boolValue(u.soloLocalmente || u.soloLocal);
     return `
       <tr>
         <td>${escapeHtml(u.nombre||"—")}</td>
         <td>${escapeHtml(u.email||"—")}</td>
         <td><span class="badge">${escapeHtml(u.rol||"usuario")}</span></td>
         <td>${activo ? "sí" : "no"}</td>
+        <td>
+          <label class="inline-check"><input type="checkbox" data-action="aprobadoSalida" data-id="${u.id}" ${aprobado?"checked":""}/> Aprobado salida</label><br/>
+          <label class="inline-check"><input type="checkbox" data-action="soloLocalmente" data-id="${u.id}" ${soloLocal?"checked":""}/> Solo local</label>
+        </td>
         <td>
           <button class="btn ${activo?"":"ok"}" data-action="toggle" data-id="${u.id}" data-activo="${activo}">${activo?"Desactivar":"Activar"}</button>
           <button class="btn" data-action="perfil" data-id="${u.id}">Perfil</button>
@@ -132,6 +141,43 @@ async function listUsuarios(){
       }catch(e){
         console.error(e);
         toast("No se pudo actualizar (revisá permisos)", true);
+      }
+    });
+  });
+
+  tbody.querySelectorAll("input[data-action='aprobadoSalida']").forEach(chk=>{
+    chk.addEventListener("change", async ()=>{
+      const id = chk.getAttribute("data-id");
+      try{
+        await setDoc(doc(db,"usuarios",id), {
+          aprobadoSalida: chk.checked,
+          aprobadoParaSalir: chk.checked,
+          perfilActualizadoEn: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge:true });
+        toast(chk.checked ? "Aprobado para salir ✅" : "Aprobación para salir quitada.");
+      }catch(e){
+        console.error(e);
+        toast("No se pudo actualizar aprobación.", true);
+        chk.checked = !chk.checked;
+      }
+    });
+  });
+
+  tbody.querySelectorAll("input[data-action='soloLocalmente']").forEach(chk=>{
+    chk.addEventListener("change", async ()=>{
+      const id = chk.getAttribute("data-id");
+      try{
+        await setDoc(doc(db,"usuarios",id), {
+          soloLocalmente: chk.checked,
+          perfilActualizadoEn: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge:true });
+        toast(chk.checked ? "Marcado como solo local." : "Ya puede aparecer en PDF externo si está aprobado.");
+      }catch(e){
+        console.error(e);
+        toast("No se pudo actualizar solo local.", true);
+        chk.checked = !chk.checked;
       }
     });
   });

@@ -1656,3 +1656,35 @@ body.has-topbar .profile-section{
   .main>.topbar{height:auto !important;min-height:64px;}
   .content{padding:18px 12px 32px;}
 }
+
+/* Build 48 - aprobación de discursantes y PDF externo */
+.checkline,
+.inline-check{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-weight:800;
+  color:#163451;
+}
+.checkline input,
+.inline-check input{
+  width:18px;
+  height:18px;
+  accent-color:var(--vf-primary, #1f63d6);
+}
+.perfil-speeches-table td,
+.speaker-talk-table td{vertical-align:top;}
+.approved-speaker-card{border-left:5px solid var(--vf-primary, #1f63d6);}
+.speaker-talk-table{margin-top:6px;}
+@media print{
+  .approved-speaker-card{border-left:0!important;border:1px solid #d1d5db!important;padding:10px!important;margin:8px 0!important;}
+  .speaker-talk-table th,
+  .speaker-talk-table td{font-size:11px!important;padding:5px 7px!important;}
+  .speaker-head h2{font-size:16px!important;}
+  .speaker-head p,
+  .speaker-contact{font-size:11px!important;}
+}
+@media (max-width: 800px){
+  .perfil-bosquejo-grid{grid-template-columns:96px minmax(0, 1fr)!important;}
+  #btnUsarConsultaPerfil{grid-column:1 / -1;}
+}

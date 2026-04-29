@@ -76,6 +76,8 @@ async function requireActiveUser(){
 }
 function val(id){ return ($(id)?.value || "").trim(); }
 function setVal(id, v){ const el=$(id); if(el) el.value = v || ""; }
+function setChecked(id, v){ const el=$(id); if(el) el.checked = !!v; }
+function isChecked(id){ return !!$(id)?.checked; }
 function normNum(v){
   const m = String(v ?? "").trim().match(/\d{1,3}/);
   return m ? String(Number(m[0])) : "";
@@ -119,6 +121,123 @@ function setupConsultaBosquejo(){
     consultaTimer = setTimeout(actualizarConsultaBosquejo, 250);
   });
   input.addEventListener("change", actualizarConsultaBosquejo);
+}
+
+
+let perfilBosquejos = [];
+let perfilBosquejoSeleccionado = "";
+
+function normalizarBosquejoItem(item){
+  if(!item) return null;
+  if(typeof item === "string"){
+    const m = item.trim().match(/^(\d{1,3})\s*[-–—:.]?\s*(.*)$/);
+    if(!m) return null;
+    return { num:String(Number(m[1])), titulo:String(m[2]||"").trim() };
+  }
+  const num = normNum(item.num || item.numero || item.bosquejo || item.id);
+  if(!num) return null;
+  return { num, titulo:String(item.titulo || item.nombre || item.title || "").trim() };
+}
+function parseLegacyBosquejos(text){
+  return String(text || "").split(/\r?\n/).map(normalizarBosquejoItem).filter(Boolean);
+}
+function normalizarListaBosquejos(data){
+  let arr = [];
+  if(Array.isArray(data?.perfilBosquejos)) arr = data.perfilBosquejos.map(normalizarBosquejoItem).filter(Boolean);
+  else if(Array.isArray(data?.bosquejosPerfil)) arr = data.bosquejosPerfil.map(normalizarBosquejoItem).filter(Boolean);
+  else arr = parseLegacyBosquejos(data?.discursosTiene);
+  const seen = new Set();
+  return arr.filter(x=>{
+    if(seen.has(x.num)) return false;
+    seen.add(x.num);
+    return true;
+  }).sort((a,b)=>(Number(a.num)||0)-(Number(b.num)||0));
+}
+function setPerfilBosquejoForm(num="", titulo=""){
+  setVal("perfilBosquejoNum", num);
+  setVal("perfilBosquejoTitulo", titulo);
+  perfilBosquejoSeleccionado = num || "";
+}
+function limpiarPerfilBosquejoForm(){
+  setPerfilBosquejoForm("", "");
+  $("perfilBosquejoNum")?.focus();
+}
+function renderPerfilBosquejos(){
+  const wrap = $("listaPerfilBosquejos");
+  if(!wrap) return;
+  const rows = [...perfilBosquejos].sort((a,b)=>(Number(a.num)||0)-(Number(b.num)||0));
+  wrap.innerHTML = `
+    <table class="table perfil-speeches-table">
+      <thead><tr><th style="width:90px;">N°</th><th>Título</th><th style="width:120px;">Acción</th></tr></thead>
+      <tbody>
+        ${rows.map(x=>`
+          <tr>
+            <td style="font-family:var(--mono);">${escapeHtml(x.num)}</td>
+            <td>${escapeHtml(x.titulo || "")}</td>
+            <td><button class="btn sm" type="button" data-editar-perfil-bosquejo="${escapeHtml(x.num)}">Editar</button></td>
+          </tr>
+        `).join("") || `<tr><td colspan="3" class="muted">Todavía no hay bosquejos cargados en este perfil.</td></tr>`}
+      </tbody>
+    </table>`;
+  wrap.querySelectorAll("[data-editar-perfil-bosquejo]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const n = btn.getAttribute("data-editar-perfil-bosquejo");
+      const item = perfilBosquejos.find(x=>String(x.num)===String(n));
+      setPerfilBosquejoForm(item?.num || n, item?.titulo || "");
+      $("perfilBosquejoTitulo")?.focus();
+    });
+  });
+}
+async function completarTituloPerfilBosquejo(){
+  const n = normNum(val("perfilBosquejoNum"));
+  setVal("perfilBosquejoNum", n);
+  if(!n) return;
+  const existing = perfilBosquejos.find(x=>String(x.num)===String(n));
+  if(existing && !val("perfilBosquejoTitulo")) setVal("perfilBosquejoTitulo", existing.titulo || "");
+  if(!val("perfilBosquejoTitulo")){
+    const title = await getTituloBosquejo(n);
+    if(title) setVal("perfilBosquejoTitulo", title);
+  }
+}
+async function guardarPerfilBosquejoItem(){
+  const num = normNum(val("perfilBosquejoNum"));
+  let titulo = val("perfilBosquejoTitulo");
+  if(!num){ toast("Escribí el número del bosquejo.", true); return; }
+  if(!titulo) titulo = await getTituloBosquejo(num);
+  if(!titulo){ toast("Escribí el título del bosquejo.", true); return; }
+  const idx = perfilBosquejos.findIndex(x=>String(x.num)===String(num));
+  const item = { num, titulo };
+  if(idx >= 0) perfilBosquejos[idx] = item;
+  else perfilBosquejos.push(item);
+  perfilBosquejoSeleccionado = num;
+  renderPerfilBosquejos();
+  setPerfilBosquejoForm(num, titulo);
+  toast("Bosquejo agregado al perfil. Recordá tocar Guardar perfil.");
+}
+function eliminarPerfilBosquejoItem(){
+  const num = normNum(val("perfilBosquejoNum") || perfilBosquejoSeleccionado);
+  if(!num){ toast("Elegí un bosquejo del perfil para eliminar.", true); return; }
+  perfilBosquejos = perfilBosquejos.filter(x=>String(x.num)!==String(num));
+  limpiarPerfilBosquejoForm();
+  renderPerfilBosquejos();
+  toast("Bosquejo quitado del perfil. Recordá tocar Guardar perfil.");
+}
+function setupPerfilBosquejos(){
+  normalizarInputNumero("consultaBosquejo");
+  normalizarInputNumero("perfilBosquejoNum");
+  $("perfilBosquejoNum")?.addEventListener("change", completarTituloPerfilBosquejo);
+  $("btnGuardarPerfilBosquejo")?.addEventListener("click", guardarPerfilBosquejoItem);
+  $("btnNuevoPerfilBosquejo")?.addEventListener("click", limpiarPerfilBosquejoForm);
+  $("btnEliminarPerfilBosquejo")?.addEventListener("click", eliminarPerfilBosquejoItem);
+  $("btnUsarConsultaPerfil")?.addEventListener("click", async()=>{
+    await actualizarConsultaBosquejo();
+    const num = normNum(val("consultaBosquejo"));
+    const titulo = ultimoTituloConsultado || val("consultaTitulo");
+    if(!num || !titulo || titulo.includes("No encontré")){ toast("Primero ingresá un número de bosquejo válido.", true); return; }
+    setPerfilBosquejoForm(num, titulo);
+    await guardarPerfilBosquejoItem();
+  });
+  renderPerfilBosquejos();
 }
 
 let catalogoBosquejos = [];
@@ -282,6 +401,11 @@ function fillForm(data, user){
   setVal("emailPerfil", data?.email || (TARGET_UID === user.uid ? (user?.email || "") : ""));
   setVal("telefono", data?.telefono || data?.telefonoPerfil || "");
   setVal("responsabilidad", data?.responsabilidad || data?.privilegio || "");
+  setVal("congregacionPerfil", data?.congregacionPerfil || data?.congregacion || "Villa Fiad");
+  setChecked("aprobadoSalida", data?.aprobadoSalida === true || data?.aprobadoParaSalir === true);
+  setChecked("soloLocalmente", data?.soloLocalmente === true || data?.soloLocal === true);
+  perfilBosquejos = normalizarListaBosquejos(data);
+  renderPerfilBosquejos();
   setVal("observacionesPerfil", data?.observacionesPerfil || "");
   const modo = $("modoPerfil");
   if(modo) modo.textContent = TARGET_UID === user.uid ? "Mi perfil" : "Editando perfil";
@@ -303,24 +427,35 @@ async function saveProfile(ev){
   const email = val("emailPerfil");
   const telefono = val("telefono");
   const responsabilidad = val("responsabilidad");
+  const congregacionPerfil = val("congregacionPerfil") || "Villa Fiad";
   const observacionesPerfil = val("observacionesPerfil");
 
   if(!nombreCompleto){ toast("Completá nombre y apellido.", true); return; }
 
+  const data = {
+    nombre: nombreCompleto,
+    nombreCompleto,
+    email: email || CURRENT?.email || "",
+    telefono,
+    responsabilidad,
+    congregacionPerfil,
+    perfilBosquejos,
+    observacionesPerfil,
+    perfilDiscursante: true,
+    perfilActualizadoEn: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  };
+  if(esAdminActual){
+    data.aprobadoSalida = isChecked("aprobadoSalida");
+    data.aprobadoParaSalir = isChecked("aprobadoSalida");
+    data.soloLocalmente = isChecked("soloLocalmente");
+  }
+
   const btn = $("btnGuardarPerfil");
   try{
     if(btn){ btn.disabled=true; btn.textContent="Guardando…"; }
-    await setDoc(doc(db,"usuarios",TARGET_UID), {
-      nombre: nombreCompleto,
-      nombreCompleto,
-      email: email || CURRENT?.email || "",
-      telefono,
-      responsabilidad,
-      observacionesPerfil,
-      perfilDiscursante: true,
-      perfilActualizadoEn: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    }, { merge:true });
+    await setDoc(doc(db,"usuarios",TARGET_UID), data, { merge:true });
+    CURRENT = { ...(CURRENT || {}), ...data };
     toast("Perfil guardado ✅");
   }catch(e){
     console.error(e);
@@ -334,6 +469,7 @@ async function saveProfile(ev){
   const { user, usuario } = await requireActiveUser();
   await loadTarget(user, usuario);
   setupConsultaBosquejo();
+  setupPerfilBosquejos();
   setupAdminBosquejos(isAdminRole(usuario?.rol));
   $("formPerfil")?.addEventListener("submit", saveProfile);
 })();
