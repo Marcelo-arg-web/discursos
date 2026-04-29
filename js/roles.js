@@ -1,4 +1,4 @@
-import { SUPERADMINS, ADMINS } from "./firebase-config.js?v=20260429b68";
+import { SUPERADMINS, ADMINS } from "./firebase-config.js?v=20260429b69";
 
 export function roleFromEmail(email=""){
   const e = (email||"").toLowerCase();
