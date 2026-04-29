@@ -91,6 +91,7 @@ function renderViewerTopbar(name="Usuario"){
       <div class="brand"><span class="brand-dot"></span>Villa Fiad</div>
       <div class="links viewer-links">
         <a href="resultados.html" class="active">Resultados</a>
+        <a href="perfil.html">Mi perfil</a>
       </div>
       <div class="actions">
         <span class="badge">Solo lectura</span>

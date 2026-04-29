@@ -16,9 +16,9 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// Network-first para HTML/JS/CSS - build 60 (siempre traer lo último).
+// Network-first para HTML/JS/CSS - build 61 (siempre traer lo último).
 // Para imágenes y otros assets: cache-first (opcional).
-const ASSET_CACHE = "assets-v60-android-sugerir-compacto";
+const ASSET_CACHE = "assets-v61-perfil-resultados-pdf";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -118,4 +118,6 @@ self.addEventListener("fetch", (event) => {
 // build 58: vista previa de documentos optimizada para Android con desplazamiento táctil vertical y horizontal.
 
 // build 58: reglas Firestore con rescate de superadmin por email y diagnóstico de permisos en Usuarios.
-// build 60: en Android los botones Sugerir de asignaciones quedan compactos para ver mejor el nombre.
+// build 61: en Android los botones Sugerir de asignaciones quedan compactos para ver mejor el nombre.
+
+// build 61: usuarios tienen Mi perfil para cargar datos y bosquejos; Resultados muestra primero la vista previa; PDF externo solo aprobados para salir con bosquejos.

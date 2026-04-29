@@ -128,7 +128,7 @@ function render(){
 
   if(status){
     const extra = sinBosquejos ? ` (${sinBosquejos} aprobado/s sin bosquejos cargados no se incluyen).` : ".";
-    status.textContent = rows.length ? `Discursantes aprobados para enviar: ${rows.length}${extra}` : "No hay discursantes aprobados para salir con bosquejos cargados.";
+    status.textContent = rows.length ? `Discursantes aprobados para salir incluidos en el PDF: ${rows.length}${extra}` : "No hay discursantes aprobados para salir con bosquejos cargados.";
   }
   if(!rows.length){ dir.innerHTML = ""; return; }
 
@@ -139,23 +139,21 @@ function render(){
     const tel = u.telefono || u.telefonoPerfil || "";
     const cong = getCongregacion(u);
     return `<article class="speaker-card approved-speaker-card">
-      <div class="speaker-head">
+      <div class="speaker-head speaker-head-clean">
         <div>
           <h2>${escapeHtml(nombre)}</h2>
-          <p>${escapeHtml(privilegio)} · ${escapeHtml(cong)}</p>
+          <p><strong>${escapeHtml(privilegio)}</strong> · Congregación ${escapeHtml(cong)}</p>
         </div>
         <div class="speaker-contact">
-          ${tel ? `<strong>Tel:</strong> ${escapeHtml(tel)}<br/>` : ""}
-          <strong>Congregación:</strong> ${escapeHtml(cong)}
+          <strong>Tel:</strong> ${escapeHtml(tel || "—")}
         </div>
       </div>
-      <table class="table speaker-talk-table">
-        <thead><tr><th style="width:90px;">Bosquejo</th><th>Título del discurso</th></tr></thead>
+      <table class="table speaker-talk-table directory-approved-table">
+        <thead><tr><th style="width:220px;">Conferenciante</th><th style="width:145px;">Privilegio</th><th style="width:150px;">Congregación</th><th style="width:130px;">Teléfono</th><th style="width:80px;">N°</th><th>Nombre del discurso</th></tr></thead>
         <tbody>
-          ${bosquejos.map(b=>`<tr><td style="font-family:var(--mono);">${escapeHtml(b.num)}</td><td>${escapeHtml(b.titulo || "")}</td></tr>`).join("")}
+          ${bosquejos.map(b=>`<tr><td>${escapeHtml(nombre)}</td><td>${escapeHtml(privilegio)}</td><td>${escapeHtml(cong)}</td><td>${escapeHtml(tel || "—")}</td><td style="font-family:var(--mono); text-align:center;">${escapeHtml(b.num)}</td><td>${escapeHtml(b.titulo || "")}</td></tr>`).join("")}
         </tbody>
       </table>
-      ${u.observacionesPerfil ? `<div class="speaker-notes"><strong>Observaciones internas:</strong> ${escapeHtml(u.observacionesPerfil)}</div>` : ""}
     </article>`;
   }).join("");
 }

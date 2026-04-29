@@ -2098,7 +2098,7 @@ html.embedded-doc-root body.embedded-doc .documentos-preview-wrap{
   }
 }
 
-/* build 60 - Android: dar más espacio al nombre en las asignaciones.
+/* build 61 - Android: dar más espacio al nombre en las asignaciones.
    En pantallas chicas el botón Sugerir queda compacto y el selector ocupa el espacio principal. */
 @media (max-width: 720px){
   body.has-topbar #multimedia1,
@@ -2161,4 +2161,24 @@ html.embedded-doc-root body.embedded-doc .documentos-preview-wrap{
     max-width: 68px !important;
     font-size: 11px !important;
   }
+}
+
+
+/* build 61 - Resultados: documentos primero, perfil disponible para usuarios y PDF de discursantes más claro. */
+.resultados-documentos{ border-width:2px; }
+.resultados-documentos .section-title h2::before{ content:"Vista previa y descarga"; display:block; font-size:12px; color:#1d5fc2; font-weight:900; text-transform:uppercase; letter-spacing:.04em; margin-bottom:3px; }
+.directory-approved-table{ font-size:13px; }
+.directory-approved-table th{ white-space:nowrap; }
+.speaker-head-clean{ align-items:center; }
+@media print{
+  .approved-speaker-card{ break-inside:avoid; page-break-inside:avoid; box-shadow:none !important; border:1px solid #b8c9df !important; margin-bottom:10px !important; }
+  .directory-approved-table{ font-size:10.5px; }
+  .directory-approved-table th,.directory-approved-table td{ padding:5px 6px !important; }
+  .speaker-notes{ display:none !important; }
+}
+@media (max-width: 720px){
+  .resultados-documentos{ margin-top:12px !important; }
+  .documentos-controls{ grid-template-columns:1fr !important; }
+  .documentos-actions{ display:grid !important; grid-template-columns:1fr 1fr; gap:8px; }
+  .documentos-actions .primary{ grid-column:1 / -1; }
 }
