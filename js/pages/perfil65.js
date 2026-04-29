@@ -29,10 +29,28 @@ async function getUsuario(uid){
   const snap = await getDoc(doc(db,"usuarios",uid));
   return snap.exists() ? snap.data() : null;
 }
+function timeoutValue(ms, value){
+  return new Promise(resolve => setTimeout(() => resolve(value), ms));
+}
+async function getUsuarioSeguro(user){
+  if(!user) return null;
+  try{
+    const u = await Promise.race([
+      getUsuario(user.uid),
+      timeoutValue(2500, { _timeout:true, uid:user.uid, email:user.email, nombre:user.email, rol:"viewer", activo:true })
+    ]);
+    if(u && u._timeout) console.warn("Tiempo de espera leyendo /usuarios en Perfil. Se muestra el perfil editable igual.");
+    return u || { uid:user.uid, email:user.email, nombre:user.email, rol:"viewer", activo:true, _missingProfile:true };
+  }catch(e){
+    console.warn("No pude leer /usuarios del usuario actual en Perfil", e);
+    return { uid:user.uid, email:user.email, nombre:user.email, rol:"viewer", activo:true, _readError:true };
+  }
+}
 function renderTopbar(rol, nombre){
   const admin = isAdminRole(rol);
   const el = document.getElementById("topbar");
   if(!el) return;
+  el.dataset.realShell = "1";
   el.innerHTML = `
     <div class="topbar">
       <div class="brand"><span class="brand-dot"></span>Villa Fiad</div>
@@ -69,17 +87,8 @@ async function requireActiveUser(){
     onAuthStateChanged(auth, async user=>{
       if(!user){ location.href="index.html"; return; }
       try{ setPublicAccess(false); }catch{}
-      let u = null;
-      try{
-        u = await getUsuario(user.uid);
-      }catch(e){
-        console.warn("No pude leer /usuarios del usuario actual en Perfil", e);
-        u = { uid:user.uid, email:user.email, nombre:user.email, rol:"viewer", activo:true, _readError:true };
-      }
+      const u = await getUsuarioSeguro(user);
       if(u && u.activo === false){ await signOut(auth); location.href="index.html"; return; }
-      if(!u){
-        u = { uid:user.uid, email:user.email, nombre:user.email, rol:"viewer", activo:true, _missingProfile:true };
-      }
       renderTopbar(u?.rol, u?.nombre || user.email);
       resolve({ user, usuario:u });
     });
@@ -427,8 +436,19 @@ async function loadTarget(user, usuario){
   const requested = params.get("uid");
   const isAdmin = isAdminRole(usuario?.rol);
   TARGET_UID = (isAdmin && requested) ? requested : user.uid;
-  const snap = await getDoc(doc(db,"usuarios",TARGET_UID));
-  CURRENT = snap.exists() ? snap.data() : {};
+  try{
+    const snap = await Promise.race([
+      getDoc(doc(db,"usuarios",TARGET_UID)),
+      timeoutValue(2500, null)
+    ]);
+    CURRENT = snap && snap.exists && snap.exists() ? snap.data() : {};
+  }catch(e){
+    console.warn("No pude cargar el perfil destino; se habilita formulario vacío para guardar.", e);
+    CURRENT = {};
+  }
+  if(TARGET_UID === user.uid){
+    CURRENT = { email:user.email || CURRENT.email || "", nombre:user.displayName || CURRENT.nombre || CURRENT.nombreCompleto || user.email || "", ...CURRENT };
+  }
   fillForm(CURRENT, user);
 }
 
@@ -523,11 +543,16 @@ async function saveProfile(ev){
 }
 
 (async function(){
-  const { user, usuario } = await requireActiveUser();
-  await loadTarget(user, usuario);
-  setupConsultaBosquejo();
-  setupPerfilBosquejos();
-  setupAdminBosquejos(isAdminRole(usuario?.rol));
-  $("btnEliminarPerfilAdmin")?.addEventListener("click", eliminarPerfilDiscursanteAdmin);
-  $("formPerfil")?.addEventListener("submit", saveProfile);
+  try{
+    const { user, usuario } = await requireActiveUser();
+    await loadTarget(user, usuario);
+    setupConsultaBosquejo();
+    setupPerfilBosquejos();
+    setupAdminBosquejos(isAdminRole(usuario?.rol));
+    $("btnEliminarPerfilAdmin")?.addEventListener("click", eliminarPerfilDiscursanteAdmin);
+    $("formPerfil")?.addEventListener("submit", saveProfile);
+  }catch(e){
+    console.error("Error inicializando Perfil", e);
+    toast("No pude cargar el perfil completo. Probá salir y volver a entrar. Si persiste, revisá reglas de Firestore.", true);
+  }
 })();

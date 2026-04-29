@@ -61,11 +61,29 @@ async function getUsuario(uid){
   const snap = await getDoc(doc(db,"usuarios",uid));
   return snap.exists() ? snap.data() : null;
 }
+function timeoutValue(ms, value){
+  return new Promise(resolve => setTimeout(() => resolve(value), ms));
+}
+async function getUsuarioSeguro(user){
+  if(!user) return null;
+  try{
+    const u = await Promise.race([
+      getUsuario(user.uid),
+      timeoutValue(2500, { _timeout:true, uid:user.uid, email:user.email, nombre:user.email, rol:"viewer", activo:true })
+    ]);
+    if(u && u._timeout) console.warn("Tiempo de espera leyendo /usuarios del usuario actual. Se sigue como usuario autenticado.");
+    return u || { uid:user.uid, email:user.email, nombre:user.email, rol:"viewer", activo:true, _missingProfile:true };
+  }catch(e){
+    console.warn("No pude leer /usuarios del usuario actual. Se sigue como usuario autenticado.", e);
+    return { uid:user.uid, email:user.email, nombre:user.email, rol:"viewer", activo:true, _readError:true };
+  }
+}
 function renderAdminTopbar(){
   document.body.classList.add("pro-online", "has-topbar");
   document.body.classList.remove("public-view");
   const el = document.getElementById("topbar");
   if(!el) return;
+  el.dataset.realShell = "1";
   el.innerHTML = `
     <div class="topbar">
       <div class="brand"><span class="brand-dot"></span>Villa Fiad</div>
@@ -90,6 +108,7 @@ function renderViewerTopbar(name="Usuario"){
   document.body.classList.toggle("public-view", hasPublicAccess());
   const el = document.getElementById("topbar");
   if(!el) return;
+  el.dataset.realShell = "1";
   el.innerHTML = `
     <div class="topbar viewer-topbar resultados-only">
       <div class="brand"><span class="brand-dot"></span>Villa Fiad</div>
@@ -404,17 +423,8 @@ async function requireAccess(){
       // sin datos y sin perfil: seguía marcado como "vf_public=1".
       if(user){
         if(hasPublicAccess()) setPublicAccess(false);
-        let u = null;
-        try{
-          u = await getUsuario(user.uid);
-        }catch(e){
-          console.warn("No pude leer /usuarios del usuario actual. Se habilita vista segura de usuario autenticado.", e);
-          u = { email:user.email, nombre:user.email, rol:"viewer", activo:true, _readError:true };
-        }
+        const u = await getUsuarioSeguro(user);
         if(u && u.activo === false){ await signOut(auth); location.href="index.html"; return; }
-        if(!u){
-          u = { email:user.email, nombre:user.email, rol:"viewer", activo:true, _missingProfile:true };
-        }
         if(profileBtn){
           profileBtn.style.display = "inline-flex";
           profileBtn.href = "perfil.html";
@@ -523,18 +533,25 @@ function attachScrollablePreviewFrame(frame, helpEl){
       if(!mes.value) mes.setAttribute("value", value);
       mes.addEventListener("change", syncLinks);
     }
-    // Menú provisorio inmediato para que nunca quede pantalla sin navegación.
-    renderViewerTopbar("Usuario");
-    await requireAccess();
     attachScrollablePreviewFrame($("docFrameResultados"), $("docHelpResultados"));
     $("tipoDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
     $("semanaDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
     $("btnActualizarDocResultados")?.addEventListener("click", refreshDocumentosResultados);
     $("btnImprimirDocResultados")?.addEventListener("click", printDocumentosResultados);
+
+    // Cargar lo visible primero. Antes esto esperaba la lectura del perfil en Firestore;
+    // si esa lectura tardaba o quedaba bloqueada, la pantalla quedaba a medio cargar.
+    renderViewerTopbar("Usuario");
+    syncLinks();
+    setTimeout(refreshDocumentosResultados, 300);
+    setTimeout(refreshDocumentosResultados, 1200);
+
+    await requireAccess();
     syncLinks();
     await Promise.allSettled([previewVisitantes(), previewSalientes(), renderAsignacionesMes()]);
   }catch(e){
     console.error("Error inicializando Resultados", e);
+    try{ syncLinks(); }catch{}
     const box = $("asignacionesMesList");
     if(box) box.innerHTML = `<div class="empty-state error">No pude terminar de cargar Resultados. Cerrá sesión, entrá de nuevo y verificá conexión.</div>`;
   }

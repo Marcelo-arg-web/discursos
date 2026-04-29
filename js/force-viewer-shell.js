@@ -1,4 +1,4 @@
-/* build 65 - Shell visible para usuario común sin depender de Firebase.
+/* build 66 - Shell visible para usuario común sin depender de Firebase.
    Evita pantalla sin menú si Auth/Firestore tardan o si quedó cache viejo. */
 (function(){
   function page(){ return (location.pathname.split('/').pop() || 'index.html').toLowerCase(); }
@@ -26,6 +26,7 @@
     var top=document.getElementById('topbar');
     if(!top) return;
     top.style.display='block';
+    if(top.dataset.realShell === '1') { setMonth(); return; }
     var isPerfil = page()==='perfil.html';
     var publicMode = false;
     try{ publicMode = sessionStorage.getItem('vf_public') === '1' && !isPerfil; }catch(e){}

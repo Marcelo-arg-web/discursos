@@ -39,6 +39,16 @@ async function getUsuario(uid){
   const snap = await getDoc(doc(db,"usuarios",uid));
   return snap.exists() ? snap.data() : null;
 }
+function timeoutValue(ms, value){ return new Promise(resolve => setTimeout(()=>resolve(value), ms)); }
+async function getUsuarioSeguro(user){
+  try{
+    const u = await Promise.race([getUsuario(user.uid), timeoutValue(2500, null)]);
+    return u || { uid:user.uid, email:user.email, nombre:user.email, rol:"viewer", activo:true, _fallback:true };
+  }catch(e){
+    console.warn("No pude leer /usuarios; sigo con usuario autenticado para no dejar el documento en blanco", e);
+    return { uid:user.uid, email:user.email, nombre:user.email, rol:"viewer", activo:true, _readError:true };
+  }
+}
 function isAdminRole(rol){
   const r = String(rol||"").toLowerCase();
   return r === "admin" || r === "superadmin";
@@ -112,8 +122,8 @@ async function requireActiveUser(active){
         window.location.href = "index.html";
         return;
       }
-      const u = await getUsuario(user.uid);
-      if(!u?.activo){
+      const u = await getUsuarioSeguro(user);
+      if(u && u.activo === false){
         await signOut(auth);
         toast("Tu usuario todavía no está activo.", true);
         window.location.href = "index.html";
