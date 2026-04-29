@@ -9,6 +9,7 @@ const VIEWER_ALLOWED = new Set([
   "tablero-acomodadores.html",
   "doc-presi.html",
   "imprimir.html",
+  "perfil.html",
 ]);
 
 let viewerMode = false;
@@ -37,17 +38,18 @@ function logout(){
 function renderViewerTopbar(){
   const topbar = document.getElementById("topbar");
   if(!topbar) return;
-  const stamp = pageName() + "|viewer-resultados-only";
-  if(lastTopbarStamp === stamp && topbar.dataset.viewerNav === "resultados-only") return;
+  const stamp = pageName() + "|viewer-resultados-perfil";
+  if(lastTopbarStamp === stamp && topbar.dataset.viewerNav === "resultados-perfil") return;
   lastTopbarStamp = stamp;
-  topbar.dataset.viewerNav = "resultados-only";
+  topbar.dataset.viewerNav = "resultados-perfil";
   document.body.classList.add("viewer-result-mode");
   const name = currentUserDoc?.nombre || currentUserDoc?.email || (hasPublicAccess() ? "Modo consulta" : "Usuario");
   topbar.innerHTML = `
     <div class="topbar viewer-topbar resultados-only">
       <div class="brand"><span class="brand-dot"></span><span>Villa Fiad</span></div>
       <div class="links viewer-links">
-        <a href="resultados.html" class="active">Resultados</a>
+        <a href="resultados.html" class="${pageName()==='resultados.html'?'active':''}">Resultados</a>
+        <a href="perfil.html" class="${pageName()==='perfil.html'?'active':''}">Mi perfil</a>
       </div>
       <div class="actions">
         <span class="badge">Solo lectura</span>

@@ -16,9 +16,9 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// Network-first para HTML/JS/CSS - build 41 (siempre traer lo último).
+// Network-first para HTML/JS/CSS - build 42 (siempre traer lo último).
 // Para imágenes y otros assets: cache-first (opcional).
-const ASSET_CACHE = "assets-v41-resultados-usuarios-salientes";
+const ASSET_CACHE = "assets-v42-perfil-consulta-bosquejo";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -71,18 +71,20 @@ self.addEventListener("fetch", (event) => {
   // Default: passthrough
 });
 
-// build 41: formulario de inicio profesional y textos limpios
+// build 42: formulario de inicio profesional y textos limpios
 
-// build 41: tablero mensual agrega Plataforma junto a Microfonistas
+// build 42: tablero mensual agrega Plataforma junto a Microfonistas
 
-// build 41: modo resultados para usuarios no admin
+// build 42: modo resultados para usuarios no admin
 
-// build 41: página Funciones agrega Audio\/Video para filtrar sugerencias de multimedia.
+// build 42: página Funciones agrega Audio\/Video para filtrar sugerencias de multimedia.
 
-// build 41: Funciones agrega columna Activo y encabezado fijo para ver Presidente/Oración/etc al bajar.
+// build 42: Funciones agrega columna Activo y encabezado fijo para ver Presidente/Oración/etc al bajar.
 
-// build 41: reset de clave desde Usuarios, perfil de discursante y PDF para enviar a otras congregaciones.
+// build 42: reset de clave desde Usuarios, perfil de discursante y PDF para enviar a otras congregaciones.
 
-// build 41: recuperación de clave más clara, enlace nuevo y página restablecer-clave.html.
+// build 42: recuperación de clave más clara, enlace nuevo y página restablecer-clave.html.
 
-// build 41: usuarios comunes solo ven Resultados; próximas salidas filtra salientes locales de Villa Fiad.
+// build 42: usuarios comunes solo ven Resultados; próximas salidas filtra salientes locales de Villa Fiad.
+
+// build 42: perfil agrega consulta de bosquejo, título automático y canciones elegidas.

@@ -1,8 +1,15 @@
 import { auth, db } from "../firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-import { doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { bosquejos } from "../data/bosquejos.js";
+import { canciones } from "../data/canciones.js";
 
 const $ = (id)=>document.getElementById(id);
+const bosquejosMap = new Map(Object.entries(bosquejos).map(([k,v]) => [String(k), String(v)]));
+const cancionesMap = new Map(Object.entries(canciones).map(([k,v]) => [String(k), String(v)]));
+let consultaTimer = null;
+let ultimoBosquejoConsultado = "";
+let ultimoTituloConsultado = "";
 
 function escapeHtml(s){
   return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
@@ -45,12 +52,6 @@ function renderTopbar(rol, nombre){
           <a href="perfil.html" class="active">Mi perfil</a>
         ` : `
           <a href="resultados.html">Resultados</a>
-          <a href="visitantes.html">Visitantes</a>
-          <a href="salientes.html">Salientes</a>
-          <a href="programa-mensual.html">Programa mensual</a>
-          <a href="tablero-acomodadores.html">Acomodadores</a>
-          <a href="doc-presi.html">Presidente</a>
-          <a href="imprimir.html">Descargar/PDF</a>
           <a href="perfil.html" class="active">Mi perfil</a>
         `}
       </div>
@@ -76,6 +77,164 @@ async function requireActiveUser(){
 }
 function val(id){ return ($(id)?.value || "").trim(); }
 function setVal(id, v){ const el=$(id); if(el) el.value = v || ""; }
+function normNum(v){
+  const m = String(v ?? "").trim().match(/\d{1,3}/);
+  return m ? String(Number(m[0])) : "";
+}
+function songTitle(num){
+  const n = normNum(num);
+  return n ? (cancionesMap.get(n) || "") : "";
+}
+function lineForBosquejo(){
+  const n = ultimoBosquejoConsultado || normNum($("consultaBosquejo")?.value);
+  const t = (ultimoTituloConsultado || $("consultaTitulo")?.value || "").trim();
+  if(!n) return "";
+  return t ? `${n} - ${t}` : n;
+}
+function appendLineToTextarea(textareaId){
+  const line = lineForBosquejo();
+  const box = $(textareaId);
+  if(!line || !box){ toast("Primero escribí un número de bosquejo.", true); return; }
+  const n = ultimoBosquejoConsultado || normNum($("consultaBosquejo")?.value);
+  const lines = String(box.value || "").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const exists = lines.some(x => normNum(x) === n);
+  if(!exists) lines.push(line);
+  box.value = lines.join("\n");
+  toast(exists ? "Ese bosquejo ya estaba en la lista." : "Bosquejo agregado. No olvides guardar el perfil.");
+}
+async function getTituloBosquejo(num){
+  const n = normNum(num);
+  if(!n) return "";
+  const local = bosquejosMap.get(n) || "";
+  try{
+    const snap = await getDoc(doc(db, "discursos", n));
+    if(snap.exists()){
+      const d = snap.data() || {};
+      return String(d.titulo || d.nombre || local || "").trim();
+    }
+  }catch(e){
+    // Si Firestore no permite leer el catálogo, se usa la lista local incluida en la app.
+  }
+  return String(local || "").trim();
+}
+function extractSongNumbers(data){
+  const nums = [];
+  const direct = ["cancion", "cancionNumero", "cancionDiscurso", "cancionPublica", "cancionInicial", "cancionEspecial"];
+  for(const key of direct){
+    const v = data?.[key];
+    if(v === undefined || v === null || v === "") continue;
+    const found = String(v).match(/\d{1,3}/g) || [];
+    nums.push(...found.map(x=>String(Number(x))).filter(Boolean));
+  }
+  for(const [key, value] of Object.entries(data || {})){
+    const k = String(key).toLowerCase();
+    if(!k.includes("cancion") || k.includes("titulo")) continue;
+    if(value === undefined || value === null || value === "") continue;
+    const found = String(value).match(/\d{1,3}/g) || [];
+    nums.push(...found.map(x=>String(Number(x))).filter(Boolean));
+  }
+  return Array.from(new Set(nums));
+}
+function dataBosquejo(data){
+  const keys = ["bosquejo", "numeroBosquejo", "numBosquejo", "discurso", "discursoNumero", "numeroDiscurso", "nroDiscurso"];
+  for(const k of keys){
+    const n = normNum(data?.[k]);
+    if(n) return n;
+  }
+  return "";
+}
+async function cancionesElegidasPorBosquejo(num){
+  const n = normNum(num);
+  if(!n) return [];
+  const out = new Map();
+  try{
+    const discSnap = await getDoc(doc(db, "discursos", n));
+    if(discSnap.exists()){
+      const d = discSnap.data() || {};
+      for(const song of extractSongNumbers(d)){
+        const key = String(song);
+        const info = out.get(key) || { num:key, titulo:songTitle(key), usos:[] };
+        info.usos.push({ fuente:"Catálogo de discursos", fecha:"" });
+        out.set(key, info);
+      }
+    }
+  }catch(e){}
+  const sources = [
+    { name:"visitas", label:"Visitantes" },
+    { name:"asignaciones", label:"Asignaciones" },
+    { name:"salientes", label:"Salientes" }
+  ];
+  for(const src of sources){
+    try{
+      const snap = await getDocs(collection(db, src.name));
+      snap.forEach(docu=>{
+        const d = docu.data() || {};
+        if(dataBosquejo(d) !== n) return;
+        for(const song of extractSongNumbers(d)){
+          const key = String(song);
+          const info = out.get(key) || { num:key, titulo:songTitle(key), usos:[] };
+          const fecha = d.fecha || d.fechaISO || docu.id || "";
+          info.usos.push({ fuente:src.label, fecha:String(fecha) });
+          out.set(key, info);
+        }
+      });
+    }catch(e){
+      // Puede fallar por permisos en modo lectura. No bloquea la consulta del título.
+    }
+  }
+  return Array.from(out.values()).sort((a,b)=>Number(a.num)-Number(b.num));
+}
+function renderCancionesConsulta(num, cancionesEncontradas, cargando=false){
+  const box = $("consultaCanciones");
+  if(!box) return;
+  const n = normNum(num);
+  if(!n){
+    box.innerHTML = "Ingresá un número de bosquejo para ver las canciones elegidas.";
+    return;
+  }
+  if(cargando){
+    box.innerHTML = `<b>Canciones elegidas:</b><br><span class="muted">Buscando historial del bosquejo ${escapeHtml(n)}…</span>`;
+    return;
+  }
+  if(!cancionesEncontradas.length){
+    box.innerHTML = `<b>Canciones elegidas:</b><br><span class="muted">Todavía no hay canciones cargadas en el historial para el bosquejo ${escapeHtml(n)}.</span>`;
+    return;
+  }
+  box.innerHTML = `<b>Canciones elegidas para el bosquejo ${escapeHtml(n)}:</b>
+    <div class="grid" style="gap:8px; margin-top:8px;">
+      ${cancionesEncontradas.map(c=>`
+        <div class="card mini" style="box-shadow:none; padding:10px; border-radius:12px;">
+          <b>Canción ${escapeHtml(c.num)}</b>${c.titulo ? ` - ${escapeHtml(c.titulo)}` : ""}
+          <div class="small muted">${escapeHtml(c.usos.slice(0,4).map(u=>`${u.fuente}${u.fecha ? " · " + u.fecha : ""}`).join(" | "))}${c.usos.length>4 ? ` | +${c.usos.length-4} más` : ""}</div>
+        </div>`).join("")}
+    </div>`;
+}
+async function actualizarConsultaBosquejo(){
+  const n = normNum($("consultaBosquejo")?.value);
+  ultimoBosquejoConsultado = n;
+  ultimoTituloConsultado = "";
+  setVal("consultaTitulo", "");
+  renderCancionesConsulta(n, [], !!n);
+  if(!n) return;
+  const title = await getTituloBosquejo(n);
+  if(ultimoBosquejoConsultado !== n) return;
+  ultimoTituloConsultado = title;
+  setVal("consultaTitulo", title || "No encontré título para ese número");
+  const songs = await cancionesElegidasPorBosquejo(n);
+  if(ultimoBosquejoConsultado !== n) return;
+  renderCancionesConsulta(n, songs);
+}
+function setupConsultaBosquejo(){
+  const input = $("consultaBosquejo");
+  if(!input) return;
+  input.addEventListener("input", ()=>{
+    clearTimeout(consultaTimer);
+    consultaTimer = setTimeout(actualizarConsultaBosquejo, 300);
+  });
+  input.addEventListener("change", actualizarConsultaBosquejo);
+  $("btnAgregarTiene")?.addEventListener("click", ()=>appendLineToTextarea("discursosTiene"));
+  $("btnAgregarPreparar")?.addEventListener("click", ()=>appendLineToTextarea("discursosPreparar"));
+}
 
 let CURRENT = null;
 let TARGET_UID = null;
@@ -142,5 +301,6 @@ async function saveProfile(ev){
 (async function(){
   const { user, usuario } = await requireActiveUser();
   await loadTarget(user, usuario);
+  setupConsultaBosquejo();
   $("formPerfil")?.addEventListener("submit", saveProfile);
 })();

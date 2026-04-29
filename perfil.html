@@ -20,7 +20,7 @@
       <span id="modoPerfil" class="pill">Perfil</span>
     </div>
     <hr class="sep"/>
-    <form id="formPerfil" autocomplete="off">
+    <form id="formPerfil" class="viewer-allowed" autocomplete="off">
       <div class="grid two">
         <label>Nombre y apellido
           <input class="input" id="nombreCompleto" placeholder="Nombre Apellido" type="text"/>
@@ -39,6 +39,32 @@
             <option value="Otro">Otro</option>
           </select>
         </label>
+      </div>
+
+
+      <div class="card mini" style="margin-top:14px; border-radius:16px; box-shadow:none; background:#f8fbff;">
+        <div class="section-title" style="margin-bottom:8px;">
+          <div>
+            <h3 style="margin:0; font-size:16px;">Buscar bosquejo</h3>
+            <div class="muted small">Escribí el número y el sistema completa el título. También muestra las canciones que ya se usaron con ese discurso.</div>
+          </div>
+          <span class="pill">Consulta rápida</span>
+        </div>
+        <div class="grid two" style="align-items:end;">
+          <label>Número de discurso
+            <input class="input" id="consultaBosquejo" inputmode="numeric" placeholder="Ej: 42" type="text"/>
+          </label>
+          <label>Título del discurso
+            <input class="input" id="consultaTitulo" placeholder="Se completa automáticamente" readonly type="text"/>
+          </label>
+        </div>
+        <div id="consultaCanciones" class="notice" style="margin-top:10px;">
+          Ingresá un número de bosquejo para ver las canciones elegidas.
+        </div>
+        <div class="row" style="margin-top:10px; gap:10px;">
+          <button class="btn" id="btnAgregarTiene" type="button">Agregar a discursos que ya tiene</button>
+          <button class="btn" id="btnAgregarPreparar" type="button">Agregar a discursos que quiere preparar</button>
+        </div>
       </div>
 
       <div class="grid two" style="margin-top:10px; align-items:start;">
@@ -86,9 +112,9 @@
   });
 })();
 </script>
-<script src="js/pages/perfil.js?v=20260429b39" type="module"></script>
+<script src="js/pages/perfil.js?v=20260429b42" type="module"></script>
 <script src="js/nav-mobile.js"></script>
 <script src="js/pro-shell.js"></script>
-<script src="js/viewer-mode.js?v=20260429b41" type="module"></script>
+<script src="js/viewer-mode.js?v=20260429b42" type="module"></script>
 </body>
 </html>
