@@ -59,6 +59,35 @@
         </div>
       </div>
 
+      <div class="card mini admin-only" id="adminBosquejosBox" style="margin-top:14px; border-radius:16px; box-shadow:none; background:#fff;">
+        <div class="section-title" style="margin-bottom:8px;">
+          <div>
+            <h3 style="margin:0; font-size:16px;">Agregar / editar bosquejos</h3>
+            <div class="muted small">Catálogo usado por la consulta rápida, visitantes, salientes y documentos.</div>
+          </div>
+          <span class="pill">Solo admin</span>
+        </div>
+        <div class="grid" style="align-items:end; grid-template-columns: 120px minmax(0, 1fr) auto auto auto; gap:10px;">
+          <label>Número
+            <input class="input" id="bosquejoNumAdmin" inputmode="numeric" maxlength="3" pattern="[0-9]{1,3}" placeholder="42" type="text" style="text-align:center;"/>
+          </label>
+          <label>Título del discurso
+            <input class="input" id="bosquejoTituloAdmin" placeholder="Título del bosquejo" type="text"/>
+          </label>
+          <button class="btn primary" id="btnGuardarBosquejo" type="button">Guardar</button>
+          <button class="btn" id="btnNuevoBosquejo" type="button">Nuevo</button>
+          <button class="btn danger" id="btnEliminarBosquejo" type="button">Eliminar</button>
+        </div>
+        <div class="grid" style="grid-template-columns:minmax(0,1fr) auto; gap:10px; margin-top:10px; align-items:end;">
+          <label>Buscar en catálogo
+            <input class="input" id="buscarBosquejoAdmin" placeholder="Número o título" type="text"/>
+          </label>
+          <button class="btn" id="btnRecargarBosquejos" type="button">Actualizar lista</button>
+        </div>
+        <div class="muted small" id="bosquejosAdminStatus" style="margin-top:8px;">Cargando bosquejos…</div>
+        <div class="tableWrap" id="listaBosquejosAdmin" style="margin-top:10px; max-height:320px; overflow:auto;"></div>
+      </div>
+
       <label>Observaciones
         <textarea id="observacionesPerfil" class="input" placeholder="Disponibilidad, horarios, congregaciones cercanas, etc."></textarea>
       </label>
@@ -89,9 +118,9 @@
   });
 })();
 </script>
-<script src="js/pages/perfil.js?v=20260429b45" type="module"></script>
+<script src="js/pages/perfil.js?v=20260429b46" type="module"></script>
 <script src="js/nav-mobile.js"></script>
-<script src="js/pro-shell.js?v=20260429b45"></script>
-<script src="js/viewer-mode.js?v=20260429b45" type="module"></script>
+<script src="js/pro-shell.js?v=20260429b46"></script>
+<script src="js/viewer-mode.js?v=20260429b46" type="module"></script>
 </body>
 </html>

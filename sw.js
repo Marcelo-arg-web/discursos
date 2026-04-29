@@ -16,9 +16,9 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// Network-first para HTML/JS/CSS - build 45 (siempre traer lo último).
+// Network-first para HTML/JS/CSS - build 46 (siempre traer lo último).
 // Para imágenes y otros assets: cache-first (opcional).
-const ASSET_CACHE = "assets-v45-preparar-resultados-salientes-locales";
+const ASSET_CACHE = "assets-v46-perfil-abm-bosquejos";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -93,4 +93,5 @@ self.addEventListener("fetch", (event) => {
 
 // build 44: perfil simplificado; número de bosquejo compacto, título más largo y sin canciones/listas extra.
 
-// build 45: modo Preparar semana, usuarios limitados a Resultados y salientes filtrados solo a locales Villa Fiad.
+// build 46: modo Preparar semana, usuarios limitados a Resultados y salientes filtrados solo a locales Villa Fiad.
+// build 46: Mi perfil agrega alta, edición y eliminación de bosquejos desde el catálogo admin.
