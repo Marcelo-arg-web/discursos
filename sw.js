@@ -16,9 +16,9 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// Network-first para HTML/JS/CSS - build 54 (siempre traer lo último).
+// Network-first para HTML/JS/CSS - build 55 (siempre traer lo último).
 // Para imágenes y otros assets: cache-first (opcional).
-const ASSET_CACHE = "assets-v54-resultados-asignaciones-mes";
+const ASSET_CACHE = "assets-v55-bordes-visibles";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -93,20 +93,22 @@ self.addEventListener("fetch", (event) => {
 
 // build 44: perfil simplificado; número de bosquejo compacto, título más largo y sin canciones/listas extra.
 
-// build 54: modo Preparar semana, usuarios limitados a Resultados y salientes filtrados solo a locales Villa Fiad.
-// build 54: Mi perfil agrega alta, edición y eliminación de bosquejos desde el catálogo admin.
+// build 55: modo Preparar semana, usuarios limitados a Resultados y salientes filtrados solo a locales Villa Fiad.
+// build 55: Mi perfil agrega alta, edición y eliminación de bosquejos desde el catálogo admin.
 
-// build 54: revisión estética general, tarjetas, formularios, tablas, navegación y modo móvil.
+// build 55: revisión estética general, tarjetas, formularios, tablas, navegación y modo móvil.
 
-// build 54: perfiles con aprobación para salir, solo local y PDF de discursantes filtrado por ancianos/siervos ministeriales aprobados.
+// build 55: perfiles con aprobación para salir, solo local y PDF de discursantes filtrado por ancianos/siervos ministeriales aprobados.
 
-// build 54: vista previa de documentos sin menú interno y estilo profesional unificado.
+// build 55: vista previa de documentos sin menú interno y estilo profesional unificado.
 
-// build 54: usuarios comunes acceden a Mi perfil; admin puede cambiar o limpiar perfiles de discursante.
+// build 55: usuarios comunes acceden a Mi perfil; admin puede cambiar o limpiar perfiles de discursante.
 
-// build 54: Usuarios lee todos los perfiles de Firestore sin orderBy(nombre), permite eliminar perfil y borrar registro como superadmin.
+// build 55: Usuarios lee todos los perfiles de Firestore sin orderBy(nombre), permite eliminar perfil y borrar registro como superadmin.
 
-// build 54: Personas queda fusionado dentro de Funciones; permite agregar, editar, eliminar, activar/desactivar y marcar funciones desde una sola página. Menú sin solapa Personas y ajuste PWA/Android.
+// build 55: Personas queda fusionado dentro de Funciones; permite agregar, editar, eliminar, activar/desactivar y marcar funciones desde una sola página. Menú sin solapa Personas y ajuste PWA/Android.
 
 
-// build 54: usuarios permite vincular perfiles faltantes de Authentication por UID y email.
+// build 55: usuarios permite vincular perfiles faltantes de Authentication por UID y email.
+
+// build 55: bordes más visibles en recuadros, formularios, tablas y tarjetas para monitores con poco contraste.

@@ -1823,7 +1823,7 @@ body.pro-online.viewer-result-mode .topbar .links a[href="resultados.html"]{
 }
 
 
-/* Build 54 - Resultados: asignaciones del mes */
+/* Build 55 - Resultados: asignaciones del mes */
 .result-month-assignments .empty-state{
   border:1px dashed var(--border, #dbe6f4);
   border-radius:18px;
@@ -1857,4 +1857,147 @@ body.pro-online.viewer-result-mode .topbar .links a[href="resultados.html"]{
 @media (max-width: 760px){
   .result-month-table{ min-width:900px; }
   .resultados-asignaciones-mes{ padding:14px; }
+}
+
+/* =========================================================
+   Build 55 - Bordes más visibles para monitores con poco contraste
+   Mejora visual solamente: no cambia funcionamiento ni datos.
+   ========================================================= */
+:root{
+  --vf-visible-line:#9db9d8;
+  --vf-visible-line-soft:#b8cce4;
+  --vf-visible-bg:#fbfdff;
+  --vf-visible-shadow:0 10px 26px rgba(31, 99, 214, .08);
+}
+
+/* Recuadros principales donde se cargan, revisan o muestran datos */
+body.has-topbar .card,
+body.pro-online .card,
+.center-wrap .card.pad,
+.login-card,
+.soft-card,
+.profile-box,
+.profile-section,
+.bosquejo-admin,
+.speaker-card,
+.result-card,
+.documentos-preview-wrap,
+.result-month-table-wrap,
+.table-wrap,
+.board-wrap,
+.role-checks label,
+.switch-line,
+.result-line,
+.notice,
+.toast,
+#status,
+body.has-topbar [id$="Status"]{
+  border:1.5px solid var(--vf-visible-line-soft) !important;
+  box-shadow:var(--vf-visible-shadow) !important;
+}
+
+/* Tarjetas de contenido: línea superior muy suave para distinguir secciones */
+body.has-topbar .card.pad,
+body.pro-online .card.pad,
+.soft-card,
+.profile-box,
+.profile-section,
+.bosquejo-admin{
+  background:linear-gradient(180deg, #ffffff 0%, var(--vf-visible-bg) 100%) !important;
+  border-top-color:#7fb0e8 !important;
+}
+
+/* Campos de entrada más fáciles de ubicar */
+body.has-topbar .input,
+body.has-topbar .inp,
+body.has-topbar select,
+body.has-topbar textarea,
+body.pro-online .input,
+body.pro-online .inp,
+body.pro-online select,
+body.pro-online textarea,
+.login-form .input{
+  border:1.6px solid var(--vf-visible-line) !important;
+  background:#ffffff !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 1px 0 rgba(31,99,214,.04) !important;
+}
+
+body.has-topbar .input:hover,
+body.has-topbar .inp:hover,
+body.has-topbar select:hover,
+body.has-topbar textarea:hover,
+body.pro-online .input:hover,
+body.pro-online .inp:hover,
+body.pro-online select:hover,
+body.pro-online textarea:hover{
+  border-color:#6da4df !important;
+}
+
+body.has-topbar .input:focus,
+body.has-topbar .inp:focus,
+body.has-topbar select:focus,
+body.has-topbar textarea:focus,
+body.pro-online .input:focus,
+body.pro-online .inp:focus,
+body.pro-online select:focus,
+body.pro-online textarea:focus,
+.login-form .input:focus{
+  border-color:#2563eb !important;
+  box-shadow:0 0 0 4px rgba(37,99,235,.18), inset 0 1px 0 rgba(255,255,255,.8) !important;
+}
+
+/* Tablas con contorno visible y cabecera diferenciada */
+body.has-topbar .table,
+body.has-topbar table.table,
+body.pro-online .table,
+body.pro-online table.table{
+  border:1.5px solid var(--vf-visible-line-soft) !important;
+  box-shadow:0 8px 22px rgba(31,99,214,.07) !important;
+}
+body.has-topbar .table th,
+body.has-topbar table.table th,
+body.pro-online .table th,
+body.pro-online table.table th{
+  border-bottom:1.5px solid var(--vf-visible-line-soft) !important;
+  background:linear-gradient(180deg, #eef6ff, #e6f0fb) !important;
+}
+body.has-topbar .table td,
+body.has-topbar table.table td,
+body.pro-online .table td,
+body.pro-online table.table td{
+  border-bottom:1px solid #dce8f5 !important;
+}
+
+/* Botones con contorno más definido sin cambiar colores */
+body.has-topbar .btn,
+body.has-topbar button.btn,
+body.pro-online .btn,
+body.pro-online button.btn{
+  border-width:1.4px !important;
+}
+
+/* En documentos embebidos y en impresión se conserva el formato limpio */
+html.embedded-doc-root body.embedded-doc .card,
+html.embedded-doc-root body.embedded-doc .table,
+html.embedded-doc-root body.embedded-doc .documentos-preview-wrap{
+  border-color:#d8e3ef !important;
+  box-shadow:none !important;
+}
+@media print{
+  body.has-topbar .card,
+  body.pro-online .card,
+  .table,
+  .documentos-preview-wrap,
+  .result-month-table-wrap,
+  .speaker-card{
+    border-color:#d1d5db !important;
+    box-shadow:none !important;
+  }
+  body.has-topbar .input,
+  body.has-topbar .inp,
+  body.has-topbar select,
+  body.has-topbar textarea{
+    border-color:#cbd5e1 !important;
+    box-shadow:none !important;
+  }
 }
