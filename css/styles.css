@@ -2097,3 +2097,68 @@ html.embedded-doc-root body.embedded-doc .documentos-preview-wrap{
     max-height:none !important;
   }
 }
+
+/* build 60 - Android: dar más espacio al nombre en las asignaciones.
+   En pantallas chicas el botón Sugerir queda compacto y el selector ocupa el espacio principal. */
+@media (max-width: 720px){
+  body.has-topbar #multimedia1,
+  body.has-topbar #multimedia2,
+  body.has-topbar #plataforma,
+  body.has-topbar #acomodadorEntrada,
+  body.has-topbar #acomodadorAuditorio1,
+  body.has-topbar #microfonista1,
+  body.has-topbar #microfonista2{
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    font-size: 17px !important;
+    padding-left: 14px !important;
+    padding-right: 26px !important;
+  }
+
+  body.has-topbar #btnSugMultimedia1,
+  body.has-topbar #btnSugMultimedia2,
+  body.has-topbar #btnSugPlataforma,
+  body.has-topbar #btnSugAcomEntrada,
+  body.has-topbar #btnSugAcomAuditorio1,
+  body.has-topbar #btnSugMicrofonista1,
+  body.has-topbar #btnSugMicrofonista2{
+    flex: 0 0 76px !important;
+    width: 76px !important;
+    min-width: 76px !important;
+    max-width: 76px !important;
+    padding: 0 7px !important;
+    height: 54px !important;
+    font-size: 12px !important;
+    line-height: 1.1 !important;
+    border-radius: 16px !important;
+    white-space: nowrap !important;
+  }
+
+  body.has-topbar #multimedia1 + button,
+  body.has-topbar #multimedia2 + button,
+  body.has-topbar #plataforma + button,
+  body.has-topbar #acomodadorEntrada + button,
+  body.has-topbar #acomodadorAuditorio1 + button,
+  body.has-topbar #microfonista1 + button,
+  body.has-topbar #microfonista2 + button{
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 380px){
+  body.has-topbar #btnSugMultimedia1,
+  body.has-topbar #btnSugMultimedia2,
+  body.has-topbar #btnSugPlataforma,
+  body.has-topbar #btnSugAcomEntrada,
+  body.has-topbar #btnSugAcomAuditorio1,
+  body.has-topbar #btnSugMicrofonista1,
+  body.has-topbar #btnSugMicrofonista2{
+    flex-basis: 68px !important;
+    width: 68px !important;
+    min-width: 68px !important;
+    max-width: 68px !important;
+    font-size: 11px !important;
+  }
+}
