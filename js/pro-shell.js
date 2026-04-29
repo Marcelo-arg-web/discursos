@@ -1,4 +1,4 @@
-/* pro-shell.js - Build 70 seguro.
+/* pro-shell.js - Build 71 seguro.
    Corrección: se quitó el MutationObserver global que reescribía el menú una y otra vez
    y podía congelar Resultados/Mi perfil en usuario común. */
 (function(){

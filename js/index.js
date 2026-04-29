@@ -1,4 +1,4 @@
-import { auth, db } from "./firebase-config.js?v=20260429b70";
+import { auth, db } from "./firebase-config.js?v=20260429b71";
 import { allowedUids } from "./data/allowedUids.js";
 import { sendPasswordRecoveryEmail, recoveryOkMessage } from "./shared/password-reset.js";
 import {

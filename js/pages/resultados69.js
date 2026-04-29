@@ -1,4 +1,4 @@
-import { auth, db } from "../firebase-config.js?v=20260429b70";
+import { auth, db } from "../firebase-config.js?v=20260429b71";
 import { hasPublicAccess, setPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { collection, getDocs, doc, getDoc, query, orderBy, documentId, startAt, endAt } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -267,7 +267,7 @@ function refreshDocumentosResultados(loadPreview=false){
   if(open) open.href = built.url.replace(/[?&]embed=1/, "").replace(/\?$/, "");
   const h = $("docHelpResultados");
 
-  // Build 70: NO se carga el iframe automáticamente al abrir Resultados.
+  // Build 71: NO se carga el iframe automáticamente al abrir Resultados.
   // En algunos navegadores/PC el iframe + service worker anterior dejaba la página "no responde".
   // Primero cargan los datos reales; la vista previa se carga solo cuando el usuario toca Actualizar.
   if(frame){
@@ -495,7 +495,7 @@ async function requireAccess(){
 
     setTimeout(async ()=>{
       if(settled) return;
-      // Build 70: no terminar como invitado falso. Si Auth tarda, esperamos;
+      // Build 71: no terminar como invitado falso. Si Auth tarda, esperamos;
       // si ya hay currentUser, usamos ese usuario para poder leer datos.
       const cu = auth.currentUser;
       if(cu){

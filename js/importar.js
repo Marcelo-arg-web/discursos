@@ -1,4 +1,4 @@
-import { db } from "./firebase.js?v=20260429b70";
+import { db } from "./firebase.js?v=20260429b71";
 import { collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { mountTopbar, requireAuth } from "./guard.js";
 import { qs, toast } from "./utils.js";

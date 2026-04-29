@@ -1,4 +1,4 @@
-/* build 70 - limpieza de cache/service worker para evitar páginas congeladas.
+/* build 71 - limpieza de cache/service worker para evitar páginas congeladas.
    La app queda online normal; el navegador siempre toma los archivos nuevos de GitHub Pages. */
 (function(){
   function clearCaches(){

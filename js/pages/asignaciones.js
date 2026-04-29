@@ -2,7 +2,7 @@
 // Admin: carga personas, guarda asignaciones semanales, y autocompleta visitante/títulos.
 // NO modifica Firebase.
 
-import { auth, db } from "../firebase-config.js?v=20260429b70";
+import { auth, db } from "../firebase-config.js?v=20260429b71";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection,
@@ -1964,7 +1964,33 @@ function abrirPdfPresidente() {
   window.open(`presidente.html?semana=${encodeURIComponent(s)}&auto=1`, "_blank");
 }
 
-// ---------------- Aviso semanal (acomodadores + multimedia) ----------------
+// ---------------- Aviso semanal completo ----------------
+function nombreAsignadoPorValor(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "—";
+  if (raw === "__VISITANTE__") return "";
+  const porId = personaNameById(raw);
+  if (porId) return porId;
+  return raw.replace(/^Visitante\s+/i, "");
+}
+
+function oracionFinalAvisoTexto(a) {
+  const raw = String(a?.oracionFinalId || "").trim();
+  const visitante = String(a?.oradorPublico || "").trim();
+  const presidente = personaNameById(a?.presidenteId) || String(a?.presidente || "").trim();
+
+  if (raw && raw !== "__VISITANTE__") {
+    const porId = personaNameById(raw);
+    return (porId || raw).replace(/^Visitante\s+/i, "") || "—";
+  }
+
+  if (visitante && presidente) return `${visitante}/${presidente}`;
+  if (visitante) return visitante;
+  if (presidente) return presidente;
+  return "—";
+}
+
+// ---------------- Aviso semanal completo ----------------
 function buildAvisoSemanal(semanaSatISO, a) {
   const sab = semanaSatISO;
   const jue = addDaysISO(semanaSatISO, -2);
@@ -1978,30 +2004,52 @@ function buildAvisoSemanal(semanaSatISO, a) {
     ].join("\n");
   }
 
-  const m1 = personaNameById(a?.multimedia1Id) || "—";
-  const m2 = personaNameById(a?.multimedia2Id) || "—";
+  const pres = personaNameById(a?.presidenteId) || "—";
+  const oi = personaNameById(a?.oracionInicialId) || "—";
+  const of = oracionFinalAvisoTexto(a);
+
+  const conductor = personaNameById(a?.conductorAtalayaId) || "—";
+  const lector = personaNameById(a?.lectorAtalayaId) || "—";
+
+  const av1 = personaNameById(a?.multimedia1Id) || "—";
+  const av2 = personaNameById(a?.multimedia2Id) || "—";
   const plat = personaNameById(a?.plataformaId) || "—";
   const ent = personaNameById(a?.acomodadorEntradaId) || "—";
   const aud = personaNameById(a?.acomodadorAuditorio1Id || a?.acomodadorAuditorioId) || "—";
-  const pres = personaNameById(a?.presidenteId) || "—";
-  const visitante = (a?.oradorPublico || "").trim();
+  const mic1 = personaNameById(a?.microfonista1Id) || "—";
+  const mic2 = personaNameById(a?.microfonista2Id) || "—";
 
   const lines = [];
   lines.push(`*Asignaciones de esta semana*`);
   lines.push(`Jueves ${fmtAR(jue)} (20:00) y Sábado ${fmtAR(sab)} (19:30)`);
   lines.push("");
-  if(visitante){
-    lines.push(`*Orador visitante*`);
-    lines.push(`• ${visitante}/${pres}`);
-    lines.push("");
-  }
-  lines.push(`*Acomodadores*`);
-  lines.push(`• Plataforma: ${plat}`);
-  lines.push(`• Entrada: ${ent}`);
-  lines.push(`• Auditorio: ${aud}`);
+
+  lines.push(`*Presidencia y oraciones*`);
+  lines.push(`• Presidente: ${pres}`);
+  lines.push(`• Oración inicial: ${oi}`);
+  lines.push(`• Oración final: ${of}`);
   lines.push("");
-  lines.push(`*Multimedia*`);
-  lines.push(`• ${m1} / ${m2}`);
+
+  lines.push(`*La Atalaya*`);
+  lines.push(`• Conductor: ${conductor}`);
+  lines.push(`• Lector: ${lector}`);
+  lines.push("");
+
+  lines.push(`*Acomodadores*`);
+  lines.push(`• Acomodador de plataforma: ${plat}`);
+  lines.push(`• Acomodador de entrada: ${ent}`);
+  lines.push(`• Acomodador de auditorio: ${aud}`);
+  lines.push("");
+
+  lines.push(`*Audio / video*`);
+  lines.push(`• Audio/video 1: ${av1}`);
+  lines.push(`• Audio/video 2: ${av2}`);
+  lines.push("");
+
+  lines.push(`*Microfonistas*`);
+  lines.push(`• Microfonista 1: ${mic1}`);
+  lines.push(`• Microfonista 2: ${mic2}`);
+
   return lines.join("\n");
 }
 

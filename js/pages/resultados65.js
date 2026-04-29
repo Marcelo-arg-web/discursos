@@ -1,4 +1,4 @@
-import { auth, db } from "../firebase-config.js?v=20260429b70";
+import { auth, db } from "../firebase-config.js?v=20260429b71";
 import { hasPublicAccess, setPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { collection, getDocs, doc, getDoc, query, orderBy, documentId, startAt, endAt } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -469,7 +469,7 @@ async function requireAccess(){
 
     setTimeout(async ()=>{
       if(settled) return;
-      // Build 70: no terminar como invitado falso. Si Auth tarda, esperamos;
+      // Build 71: no terminar como invitado falso. Si Auth tarda, esperamos;
       // si ya hay currentUser, usamos ese usuario para poder leer datos.
       const cu = auth.currentUser;
       if(cu){
