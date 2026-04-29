@@ -1,8 +1,55 @@
 import { auth, db } from "../firebase-config.js";
 import { hasPublicAccess, setPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-import { collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { collection, getDocs, doc, getDoc, query, orderBy, documentId, startAt, endAt } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { bosquejos } from "../data/bosquejos.js";
+
+let personasMap = new Map();
+let personasMapLoaded = false;
+
+async function loadPersonasMap(){
+  if(personasMapLoaded) return;
+  personasMapLoaded = true;
+  personasMap = new Map();
+  try{
+    const snap = await getDocs(collection(db, "personas"));
+    snap.docs.forEach(d=>{
+      const x = d.data() || {};
+      const nombre = String(x.nombre || x.name || x.apellidoNombre || "").trim();
+      if(nombre) personasMap.set(d.id, nombre);
+    });
+  }catch(e){
+    console.warn("No pude cargar personas para resolver nombres en Resultados", e);
+  }
+}
+
+function nombrePorId(id){
+  const key = String(id||"").trim();
+  return key ? (personasMap.get(key) || "") : "";
+}
+
+function resolveNombre(asig, keys){
+  for(const k of keys){
+    const v = asig?.[k];
+    if(v === undefined || v === null) continue;
+    const s = String(v).trim();
+    if(!s) continue;
+    return nombrePorId(s) || s;
+  }
+  return "";
+}
+
+function mesTitulo(mesISO){
+  const [y,m] = String(mesISO||"").split("-").map(Number);
+  const dt = (y && m) ? new Date(y, m-1, 1) : new Date();
+  return dt.toLocaleDateString("es-AR", { month:"long", year:"numeric" }).replace(/^./, c=>c.toUpperCase());
+}
+
+function formatFechaLarga(iso){
+  const [y,m,d] = String(iso||"").slice(0,10).split("-").map(Number);
+  if(!y || !m || !d) return iso || "—";
+  return new Date(y, m-1, d).toLocaleDateString("es-AR", { weekday:"long", day:"numeric", month:"long" });
+}
 
 const $ = (id)=>document.getElementById(id);
 
@@ -125,6 +172,7 @@ function syncLinks(){
   const a = $("linkDocumentos");
   if(a) a.href = "documentos.html" + q;
   refreshDocumentosResultados();
+  renderAsignacionesMes();
 }
 
 
@@ -195,6 +243,93 @@ function printDocumentosResultados(){
     window.open($("btnAbrirDocResultados")?.href || buildDocSrc().url, "_blank");
   }
 }
+
+
+async function loadAsignacionesMes(mesISO){
+  const qy = query(
+    collection(db,"asignaciones"),
+    orderBy(documentId()),
+    startAt(mesISO),
+    endAt(mesISO + "\uf8ff")
+  );
+  const snap = await getDocs(qy);
+  return snap.docs.map(d=>{
+    const raw = d.data() || {};
+    const a = raw.asignaciones || {};
+    const merged = { ...raw, ...a };
+    delete merged.asignaciones;
+    return { id:d.id, data:merged };
+  }).sort((a,b)=>String(a.id).localeCompare(String(b.id)));
+}
+
+function asignacionResumen(a){
+  const presidente = resolveNombre(a, ["presidenteId","presidenteNombre","presidente"]);
+  const oracionInicial = resolveNombre(a, ["oracionInicialId","oracionInicialNombre","oracionInicial"]);
+  const conductor = resolveNombre(a, ["conductorAtalayaId","conductorAtalayaNombre","conductorAtalaya"]);
+  const lector = resolveNombre(a, ["lectorAtalayaId","lectorAtalayaNombre","lectorAtalaya"]);
+  const orador = String(a.oradorPublico || a.visitante || a.orador || "").trim();
+  const congregacion = String(a.congregacionVisitante || a.congregacion || "").trim();
+  const bosquejo = String(a.numeroDiscurso || a.bosquejo || a.discurso || "").trim();
+  const titulo = String(a.tituloDiscurso || a.titulo || "").trim() || (bosquejo && bosquejos[Number(bosquejo)] ? bosquejos[Number(bosquejo)] : "");
+  const plataforma = resolveNombre(a, ["plataformaId","plataformaNombre","plataforma"]);
+  const mic1 = resolveNombre(a, ["microfonista1Id","microfonista1Nombre","microfonista1"]);
+  const mic2 = resolveNombre(a, ["microfonista2Id","microfonista2Nombre","microfonista2"]);
+  const audio = resolveNombre(a, ["multimedia1Id","multimedia1Nombre","multimedia1","audioId","audioNombre","audio"]);
+  const video = resolveNombre(a, ["multimedia2Id","multimedia2Nombre","multimedia2","videoId","videoNombre","video"]);
+  const entrada = resolveNombre(a, ["acomodadorEntradaId","acomodadorEntradaNombre","acomodadorEntrada"]);
+  const auditorio1 = resolveNombre(a, ["acomodadorAuditorio1Id","acomodadorAuditorio1Nombre","acomodadorAuditorio1","acomodadorAuditorioId","acomodadorAuditorioNombre","acomodadorAuditorio"]);
+  return { presidente, oracionInicial, conductor, lector, orador, congregacion, bosquejo, titulo, plataforma, mic1, mic2, audio, video, entrada, auditorio1 };
+}
+
+function renderAsignacionesMesRows(items, mesISO){
+  const box = $("asignacionesMesList");
+  const badge = $("asignacionesMesBadge");
+  if(badge) badge.textContent = mesTitulo(mesISO);
+  if(!box) return;
+  if(!items.length){
+    box.innerHTML = `<div class="empty-state">No hay asignaciones guardadas para ${escapeHtml(mesTitulo(mesISO))}.</div>`;
+    return;
+  }
+  const rows = items.map((it, idx)=>{
+    const x = asignacionResumen(it.data || {});
+    const reunion = [x.orador ? `Visitante: ${x.orador}` : "", x.congregacion ? `Cong.: ${x.congregacion}` : "", x.bosquejo ? `Bosq. ${x.bosquejo}` : "", x.titulo || ""].filter(Boolean).join(" · ");
+    const pres = [`Pres.: ${x.presidente || "—"}`, `Orac. inicial: ${x.oracionInicial || "—"}`].join(" · ");
+    const atalaya = [`Cond.: ${x.conductor || "—"}`, `Lector: ${x.lector || "—"}`].join(" · ");
+    const servicio = [
+      `Plataforma: ${x.plataforma || "—"}`,
+      `Mic.: ${[x.mic1, x.mic2].filter(Boolean).join(" / ") || "—"}`,
+      `Audio/Video: ${[x.audio, x.video].filter(Boolean).join(" / ") || "—"}`,
+      `Acomod.: ${[x.entrada, x.auditorio1].filter(Boolean).join(" / ") || "—"}`
+    ].join(" · ");
+    return `<tr>
+      <td class="td-center">${idx+1}</td>
+      <td><strong>${escapeHtml(formatFechaLarga(it.id))}</strong><div class="muted small">${escapeHtml(it.id)}</div></td>
+      <td>${escapeHtml(pres)}</td>
+      <td>${escapeHtml(reunion || "—")}</td>
+      <td>${escapeHtml(atalaya)}</td>
+      <td>${escapeHtml(servicio)}</td>
+    </tr>`;
+  }).join("");
+  box.innerHTML = `<div class="table-wrap result-month-table-wrap"><table class="table result-month-table" style="width:100%;">
+    <thead><tr><th class="td-center">#</th><th>Fecha</th><th>Presidencia</th><th>Discurso público</th><th>Atalaya</th><th>Servicio</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+async function renderAsignacionesMes(){
+  const box = $("asignacionesMesList");
+  const mesISO = $("mesResultados")?.value || currentYM();
+  if(box) box.innerHTML = `<div class="muted">Cargando asignaciones de ${escapeHtml(mesTitulo(mesISO))}…</div>`;
+  try{
+    await loadPersonasMap();
+    const items = await loadAsignacionesMes(mesISO);
+    renderAsignacionesMesRows(items, mesISO);
+  }catch(e){
+    console.error(e);
+    if(box) box.innerHTML = `<div class="empty-state error">No pude cargar las asignaciones del mes. Revisá permisos o conexión.</div>`;
+  }
+}
+
 
 async function previewVisitantes(){
   const box = $("previewVisitantes");
@@ -279,5 +414,5 @@ async function requireAccess(){
   $("btnActualizarDocResultados")?.addEventListener("click", refreshDocumentosResultados);
   $("btnImprimirDocResultados")?.addEventListener("click", printDocumentosResultados);
   syncLinks();
-  await Promise.all([previewVisitantes(), previewSalientes()]);
+  await Promise.all([previewVisitantes(), previewSalientes(), renderAsignacionesMes()]);
 })();

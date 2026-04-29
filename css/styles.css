@@ -1821,3 +1821,40 @@ body.pro-online.viewer-result-mode .topbar .links a[href="resultados.html"]{
   .role-checks{grid-template-columns:1fr;}
   .funciones-wrap{max-height:calc(100vh - 420px);}
 }
+
+
+/* Build 54 - Resultados: asignaciones del mes */
+.result-month-assignments .empty-state{
+  border:1px dashed var(--border, #dbe6f4);
+  border-radius:18px;
+  padding:16px;
+  background:rgba(248,251,255,.82);
+}
+.result-month-assignments .empty-state.error{
+  border-color:#fecaca;
+  background:#fff7f7;
+  color:#991b1b;
+}
+.result-month-table-wrap{
+  overflow:auto;
+  border:1px solid var(--border, #dbe6f4);
+  border-radius:18px;
+  background:#fff;
+}
+.result-month-table{
+  min-width:980px;
+  margin:0;
+}
+.result-month-table th{
+  position:sticky;
+  top:0;
+  z-index:1;
+}
+.result-month-table td{
+  vertical-align:top;
+  line-height:1.45;
+}
+@media (max-width: 760px){
+  .result-month-table{ min-width:900px; }
+  .resultados-asignaciones-mes{ padding:14px; }
+}
