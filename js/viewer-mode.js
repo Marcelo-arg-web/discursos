@@ -85,13 +85,11 @@ function apply(){
 const mo = new MutationObserver(()=>apply());
 mo.observe(document.documentElement, { childList:true, subtree:true });
 
-if(hasPublicAccess()){
-  viewerMode = true;
-  currentUserDoc = { nombre: "Modo consulta", rol: "viewer" };
-  apply();
-}else{
-  onAuthStateChanged(auth, async (user)=>{
-    if(!user) return;
+onAuthStateChanged(auth, async (user)=>{
+  if(user){
+    // Si estaba prendido el modo consulta público de una sesión anterior,
+    // se limpia para que el usuario autenticado pueda usar Mi perfil y leer datos.
+    if(hasPublicAccess()) setPublicAccess(false);
     try{
       const snap = await getDoc(doc(db, "usuarios", user.uid));
       currentUserDoc = snap.exists() ? snap.data() : { email:user.email, rol:"viewer" };
@@ -103,6 +101,12 @@ if(hasPublicAccess()){
       viewerMode = true;
       apply();
     }
-  });
-}
+    return;
+  }
+  if(hasPublicAccess()){
+    viewerMode = true;
+    currentUserDoc = { nombre: "Modo consulta", rol: "viewer" };
+    apply();
+  }
+});
 window.addEventListener("DOMContentLoaded", apply);

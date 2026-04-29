@@ -1,4 +1,5 @@
 import { auth, db } from "../firebase-config.js";
+import { setPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import {
   doc, getDoc, setDoc, updateDoc, deleteField, serverTimestamp, collection, getDocs
@@ -67,8 +68,18 @@ async function requireActiveUser(){
   return new Promise(resolve=>{
     onAuthStateChanged(auth, async user=>{
       if(!user){ location.href="index.html"; return; }
-      const u = await getUsuario(user.uid);
-      if(!u?.activo){ await signOut(auth); location.href="index.html"; return; }
+      try{ setPublicAccess(false); }catch{}
+      let u = null;
+      try{
+        u = await getUsuario(user.uid);
+      }catch(e){
+        console.warn("No pude leer /usuarios del usuario actual en Perfil", e);
+        u = { uid:user.uid, email:user.email, nombre:user.email, rol:"viewer", activo:true, _readError:true };
+      }
+      if(u && u.activo === false){ await signOut(auth); location.href="index.html"; return; }
+      if(!u){
+        u = { uid:user.uid, email:user.email, nombre:user.email, rol:"viewer", activo:true, _missingProfile:true };
+      }
       renderTopbar(u?.rol, u?.nombre || user.email);
       resolve({ user, usuario:u });
     });

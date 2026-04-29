@@ -16,6 +16,10 @@ import {
 
 const $ = (id) => document.getElementById(id);
 
+function clearConsultaPublica(){
+  try { sessionStorage.removeItem("vf_public"); } catch {}
+}
+
 // Recuperación segura: solo funciona si Firebase Auth acepta correo y contraseña.
 // No saltea la contraseña; únicamente repara el documento /usuarios del administrador si quedó desactivado o faltante.
 const ADMIN_RECOVERY_EMAILS = [
@@ -129,6 +133,7 @@ async function entrar(){
 
   try{
     const cred = await signInWithEmailAndPassword(auth, email, password);
+    clearConsultaPublica();
     if(!isUidAllowed(cred.user.uid)){
       await signOut(auth);
       toast("Tu usuario no está autorizado para ingresar. Hablá con un admin.", true);
@@ -189,6 +194,7 @@ async function reset(){
 onAuthStateChanged(auth, async (user)=>{
   if(user){
     try{
+      clearConsultaPublica();
       const u = await ensureUsuarioDoc(user);
       if(isActiveValue(u?.activo)){
         window.location.href = homeForRole(u?.rol);

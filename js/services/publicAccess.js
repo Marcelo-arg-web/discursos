@@ -14,3 +14,8 @@ export function setPublicAccess(enabled){
     else sessionStorage.removeItem("vf_public");
   } catch {}
 }
+
+
+export function clearPublicAccess(){
+  try { sessionStorage.removeItem("vf_public"); } catch {}
+}

@@ -395,33 +395,53 @@ async function previewSalientes(){
 
 async function requireAccess(){
   const profileBtn = $("btnMiPerfilResultados");
-  if(hasPublicAccess()){
-    renderViewerTopbar("Modo consulta");
-    if(profileBtn) profileBtn.style.display = "none";
-    return;
-  }
   return new Promise(resolve=>{
+    let settled = false;
+    const finish = (value)=>{ if(settled) return; settled = true; resolve(value); };
     onAuthStateChanged(auth, async user=>{
-      if(!user){ location.href="index.html"; return; }
-      let u = null;
-      try{
-        u = await getUsuario(user.uid);
-      }catch(e){
-        console.warn("No pude leer /usuarios del usuario actual. Se habilita vista segura de consulta.", e);
-        u = { email:user.email, nombre:user.email, rol:"viewer", activo:true, _readError:true };
+      // Si hay usuario autenticado, se limpia el modo consulta público residual.
+      // Ese era el motivo por el que el usuario común veía Resultados sin menú completo,
+      // sin datos y sin perfil: seguía marcado como "vf_public=1".
+      if(user){
+        if(hasPublicAccess()) setPublicAccess(false);
+        let u = null;
+        try{
+          u = await getUsuario(user.uid);
+        }catch(e){
+          console.warn("No pude leer /usuarios del usuario actual. Se habilita vista segura de usuario autenticado.", e);
+          u = { email:user.email, nombre:user.email, rol:"viewer", activo:true, _readError:true };
+        }
+        if(u && u.activo === false){ await signOut(auth); location.href="index.html"; return; }
+        if(!u){
+          u = { email:user.email, nombre:user.email, rol:"viewer", activo:true, _missingProfile:true };
+        }
+        if(profileBtn){
+          profileBtn.style.display = "inline-flex";
+          profileBtn.href = "perfil.html";
+        }
+        if(isAdminRole(u?.rol)) renderAdminTopbar();
+        else renderViewerTopbar(u?.nombre || user.email || "Usuario");
+        finish({ user, usuario:u, public:false });
+        return;
       }
-      if(u && u.activo === false){ await signOut(auth); location.href="index.html"; return; }
-      if(!u){
-        u = { email:user.email, nombre:user.email, rol:"viewer", activo:true, _missingProfile:true };
+
+      if(hasPublicAccess()){
+        renderViewerTopbar("Modo consulta");
+        if(profileBtn) profileBtn.style.display = "none";
+        finish({ user:null, usuario:{rol:"viewer"}, public:true });
+        return;
       }
-      if(profileBtn){
-        profileBtn.style.display = "inline-flex";
-        profileBtn.href = "perfil.html";
-      }
-      if(isAdminRole(u?.rol)) renderAdminTopbar();
-      else renderViewerTopbar(u?.nombre || user.email || "Usuario");
-      resolve();
+      location.href="index.html";
     });
+
+    setTimeout(()=>{
+      if(settled) return;
+      if(hasPublicAccess()){
+        renderViewerTopbar("Modo consulta");
+        if(profileBtn) profileBtn.style.display = "none";
+        finish({ user:null, usuario:{rol:"viewer"}, public:true, timeout:true });
+      }
+    }, 4500);
   });
 }
 
@@ -494,19 +514,28 @@ function attachScrollablePreviewFrame(frame, helpEl){
 }
 
 (async function(){
-  const mes = $("mesResultados");
-  if(mes){
-    const params = new URLSearchParams(location.search);
-    mes.value = params.get("mes") || currentYM();
-    mes.addEventListener("change", syncLinks);
+  try{
+    const mes = $("mesResultados");
+    if(mes){
+      const params = new URLSearchParams(location.search);
+      const value = params.get("mes") || currentYM();
+      mes.value = value;
+      if(!mes.value) mes.setAttribute("value", value);
+      mes.addEventListener("change", syncLinks);
+    }
+    // Menú provisorio inmediato para que nunca quede pantalla sin navegación.
+    renderViewerTopbar("Usuario");
+    await requireAccess();
+    attachScrollablePreviewFrame($("docFrameResultados"), $("docHelpResultados"));
+    $("tipoDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
+    $("semanaDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
+    $("btnActualizarDocResultados")?.addEventListener("click", refreshDocumentosResultados);
+    $("btnImprimirDocResultados")?.addEventListener("click", printDocumentosResultados);
+    syncLinks();
+    await Promise.allSettled([previewVisitantes(), previewSalientes(), renderAsignacionesMes()]);
+  }catch(e){
+    console.error("Error inicializando Resultados", e);
+    const box = $("asignacionesMesList");
+    if(box) box.innerHTML = `<div class="empty-state error">No pude terminar de cargar Resultados. Cerrá sesión, entrá de nuevo y verificá conexión.</div>`;
   }
-  renderViewerTopbar("Usuario");
-  await requireAccess();
-  attachScrollablePreviewFrame($("docFrameResultados"), $("docHelpResultados"));
-  $("tipoDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
-  $("semanaDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
-  $("btnActualizarDocResultados")?.addEventListener("click", refreshDocumentosResultados);
-  $("btnImprimirDocResultados")?.addEventListener("click", printDocumentosResultados);
-  syncLinks();
-  await Promise.all([previewVisitantes(), previewSalientes(), renderAsignacionesMes()]);
 })();

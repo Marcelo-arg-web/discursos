@@ -5,10 +5,10 @@
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Resultados · Villa Fiad</title>
 <link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="css/styles.css?v=20260429b63" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b64" rel="stylesheet"/>
 </head>
 <body class="has-topbar viewer-result-mode">
-<div id="topbar"></div>
+<div id="topbar"><div class="topbar viewer-topbar resultados-only"><div class="brand"><span class="brand-dot"></span><span class="brand-copy"><span class="brand-title">Asignaciones</span><span class="brand-sub">Villa Fiad · online</span></span></div><div class="links viewer-links"><a href="resultados.html" class="active">Resultados</a><a href="perfil.html">Mi perfil</a></div><div class="actions"><span class="badge">Solo lectura</span><button class="btn danger sm" type="button" onclick="try{sessionStorage.removeItem('vf_public')}catch{}; location.href='index.html'">Salir</button></div></div></div>
 <div class="container results-container">
   <div id="toastHost"></div>
   <div class="card pad results-hero">
@@ -131,18 +131,25 @@
 </div>
 
 <script>
-// fallback menu build 63
+// fallback seguro build 64: menú y mes visibles aunque Firebase tarde o falle.
 (function(){
   function ym(){var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
-  document.addEventListener('DOMContentLoaded', function(){
+  function ensureBasics(){
+    document.body.classList.add('pro-online','has-topbar','viewer-result-mode');
     var m=document.getElementById('mesResultados');
-    if(m && !m.value) m.value = new URLSearchParams(location.search).get('mes') || ym();
+    if(m && !m.value){
+      var v = new URLSearchParams(location.search).get('mes') || ym();
+      m.value = v; m.setAttribute('value', v);
+    }
     var top=document.getElementById('topbar');
     if(top && !top.innerHTML.trim()){
-      document.body.classList.add('pro-online','has-topbar','viewer-result-mode');
-      top.innerHTML='<div class="topbar viewer-topbar resultados-only"><div class="brand"><span class="brand-dot"></span><span>Villa Fiad</span></div><div class="links viewer-links"><a href="resultados.html" class="active">Resultados</a><a href="perfil.html">Mi perfil</a></div><div class="actions"><span class="badge">Solo lectura</span><button class="btn danger sm" type="button" onclick="location.href=\'index.html\'">Salir</button></div></div>';
+      top.innerHTML='<div class="topbar viewer-topbar resultados-only"><div class="brand"><span class="brand-dot"></span><span class="brand-copy"><span class="brand-title">Asignaciones</span><span class="brand-sub">Villa Fiad · online</span></span></div><div class="links viewer-links"><a href="resultados.html" class="active">Resultados</a><a href="perfil.html">Mi perfil</a></div><div class="actions"><span class="badge">Solo lectura</span><button class="btn danger sm" type="button" onclick="try{sessionStorage.removeItem(\'vf_public\')}catch{};location.href=\'index.html\'">Salir</button></div></div>';
     }
-  });
+  }
+  ensureBasics();
+  document.addEventListener('DOMContentLoaded', ensureBasics);
+  setTimeout(ensureBasics, 300);
+  setTimeout(ensureBasics, 1500);
 })();
 </script>
 <script>
@@ -163,9 +170,9 @@
   });
 })();
 </script>
-<script src="js/pages/resultados.js?v=20260429b63" type="module"></script>
+<script src="js/pages/resultados.js?v=20260429b64" type="module"></script>
 <script src="js/nav-mobile.js"></script>
-<script src="js/pro-shell.js?v=20260429b63"></script>
-<script src="js/viewer-mode.js?v=20260429b63" type="module"></script>
+<script src="js/pro-shell.js?v=20260429b64"></script>
+<script src="js/viewer-mode.js?v=20260429b64" type="module"></script>
 </body>
 </html>
