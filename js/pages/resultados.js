@@ -390,8 +390,10 @@ async function previewSalientes(){
 }
 
 async function requireAccess(){
+  const profileBtn = $("btnMiPerfilResultados");
   if(hasPublicAccess()){
     renderViewerTopbar("Modo consulta");
+    if(profileBtn) profileBtn.style.display = "none";
     return;
   }
   return new Promise(resolve=>{
@@ -399,6 +401,10 @@ async function requireAccess(){
       if(!user){ location.href="index.html"; return; }
       const u = await getUsuario(user.uid);
       if(!u?.activo){ await signOut(auth); location.href="index.html"; return; }
+      if(profileBtn){
+        profileBtn.style.display = "inline-flex";
+        profileBtn.href = "perfil.html";
+      }
       if(isAdminRole(u?.rol)) renderAdminTopbar();
       else renderViewerTopbar(u?.nombre || user.email || "Usuario");
       resolve();

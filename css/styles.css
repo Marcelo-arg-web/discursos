@@ -2098,7 +2098,7 @@ html.embedded-doc-root body.embedded-doc .documentos-preview-wrap{
   }
 }
 
-/* build 61 - Android: dar más espacio al nombre en las asignaciones.
+/* build 62 - Android: dar más espacio al nombre en las asignaciones.
    En pantallas chicas el botón Sugerir queda compacto y el selector ocupa el espacio principal. */
 @media (max-width: 720px){
   body.has-topbar #multimedia1,
@@ -2164,7 +2164,7 @@ html.embedded-doc-root body.embedded-doc .documentos-preview-wrap{
 }
 
 
-/* build 61 - Resultados: documentos primero, perfil disponible para usuarios y PDF de discursantes más claro. */
+/* build 62 - Resultados: documentos primero, perfil disponible para usuarios y PDF de discursantes más claro. */
 .resultados-documentos{ border-width:2px; }
 .resultados-documentos .section-title h2::before{ content:"Vista previa y descarga"; display:block; font-size:12px; color:#1d5fc2; font-weight:900; text-transform:uppercase; letter-spacing:.04em; margin-bottom:3px; }
 .directory-approved-table{ font-size:13px; }

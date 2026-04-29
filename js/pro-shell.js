@@ -113,6 +113,36 @@
     funcionesLinks.forEach(a => { if(a !== keep) a.remove(); });
   }
 
+  function ensureViewerLinks(topbar){
+    if(!topbar) return;
+    const linkContainer = topbar.querySelector('.links, .nav');
+    if(!linkContainer) return;
+    const isViewerNav = topbar.classList.contains('viewer-topbar') || topbar.classList.contains('resultados-only') || document.body.classList.contains('viewer-result-mode');
+    if(!isViewerNav) return;
+    const current = (location.pathname.split('/').pop() || '').toLowerCase();
+    const links = Array.from(linkContainer.querySelectorAll('a'));
+    let resultados = links.find(a => (a.getAttribute('href') || '').toLowerCase().includes('resultados.html'));
+    let perfil = links.find(a => (a.getAttribute('href') || '').toLowerCase().includes('perfil.html'));
+    links.forEach(a => {
+      const href = (a.getAttribute('href') || '').toLowerCase();
+      if(!href.includes('resultados.html') && !href.includes('perfil.html')) a.remove();
+    });
+    if(!resultados){
+      resultados = document.createElement('a');
+      linkContainer.appendChild(resultados);
+    }
+    resultados.href = 'resultados.html';
+    resultados.textContent = 'Resultados';
+    resultados.className = current === 'resultados.html' ? 'active' : '';
+    if(!perfil){
+      perfil = document.createElement('a');
+      resultados.insertAdjacentElement('afterend', perfil);
+    }
+    perfil.href = 'perfil.html';
+    perfil.textContent = 'Mi perfil';
+    perfil.className = current === 'perfil.html' ? 'active' : '';
+  }
+
   function enhanceTopbar(topbar){
     if(isEmbeddedDocument){
       document.body.classList.add('embedded-doc');
@@ -120,7 +150,12 @@
       if(topbar) topbar.style.display = 'none';
       return;
     }
-    if(!topbar || topbar.dataset.proShell === '1') return;
+    if(!topbar) return;
+    ensureViewerLinks(topbar);
+    if(topbar.dataset.proShell === '1'){
+      ensureViewerLinks(topbar);
+      return;
+    }
     topbar.dataset.proShell = '1';
     document.body.classList.add('pro-online');
 
