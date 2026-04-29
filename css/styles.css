@@ -2210,3 +2210,40 @@ body.pro-online.has-topbar:not(.embedded-doc) #topbar > .topbar{visibility:visib
 body.pro-online.has-topbar:not(.embedded-doc) .viewer-links a[href="resultados.html"],
 body.pro-online.has-topbar:not(.embedded-doc) .viewer-links a[href="perfil.html"]{display:flex !important;}
 body.pro-online.public-view.viewer-result-mode:not(.embedded-doc) .viewer-links a[href="perfil.html"]{display:none !important;}
+
+
+/* Build 67 - usuario común sin bloqueo: menú visible y botones utilizables */
+body.pro-online.viewer-result-mode:not(.embedded-doc) #topbar .topbar.viewer-topbar.resultados-only{
+  pointer-events:auto !important;
+}
+body.pro-online.viewer-result-mode:not(.embedded-doc) #topbar .topbar.viewer-topbar.resultados-only .links,
+body.pro-online.viewer-result-mode:not(.embedded-doc) #topbar .topbar.viewer-topbar.resultados-only .viewer-links{
+  display:flex !important;
+}
+@media (max-width:1023px){
+  body.pro-online.viewer-result-mode:not(.embedded-doc) #topbar .topbar.viewer-topbar.resultados-only{
+    flex-wrap:wrap !important;
+    align-items:center !important;
+    min-height:74px !important;
+  }
+  body.pro-online.viewer-result-mode:not(.embedded-doc) #topbar .topbar.viewer-topbar.resultados-only .links,
+  body.pro-online.viewer-result-mode:not(.embedded-doc) #topbar .topbar.viewer-topbar.resultados-only .viewer-links{
+    display:flex !important;
+    flex-direction:row !important;
+    width:auto !important;
+    order:2 !important;
+    gap:6px !important;
+  }
+  body.pro-online.viewer-result-mode:not(.embedded-doc) #topbar .topbar.viewer-topbar.resultados-only .viewer-links a{
+    display:inline-flex !important;
+    min-height:38px !important;
+    padding:8px 10px !important;
+  }
+  body.pro-online.viewer-result-mode:not(.embedded-doc) #topbar .topbar.viewer-topbar.resultados-only .actions{
+    margin-left:auto !important;
+    gap:6px !important;
+  }
+  body.pro-online.viewer-result-mode:not(.embedded-doc) #topbar .topbar.viewer-topbar.resultados-only .badge.soft{
+    display:none !important;
+  }
+}
