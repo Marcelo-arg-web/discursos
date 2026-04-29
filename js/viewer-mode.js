@@ -11,6 +11,7 @@ const RESULTADOS_LINKS = [
   ["tablero-acomodadores.html", "Acomodadores"],
   ["doc-presi.html", "Presidente"],
   ["imprimir.html", "Descargar/PDF"],
+  ["perfil.html", "Mi perfil"],
 ];
 
 const ADMIN_ONLY = new Set([
@@ -24,6 +25,7 @@ const ADMIN_ONLY = new Set([
   "importar-asignaciones.html",
   "importar-visitantes.html",
   "usuarios.html",
+  "directorio-discursos.html",
   "app.html",
 ]);
 

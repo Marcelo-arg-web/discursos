@@ -30,7 +30,9 @@ function renderAdminTopbar(){
         <a href="salientes.html">Salientes</a>
         <a href="personas.html">Personas</a>
         <a href="funciones.html">Funciones</a>
+        <a href="directorio-discursos.html">PDF discursantes</a>
         <a href="usuarios.html">Usuarios</a>
+        <a href="perfil.html">Mi perfil</a>
       </div>
       <div class="actions"><button id="btnSalir" class="btn danger sm" type="button">Salir</button></div>
     </div>`;
@@ -50,6 +52,7 @@ function renderViewerTopbar(name="Usuario"){
         <a href="tablero-acomodadores.html">Acomodadores</a>
         <a href="doc-presi.html">Presidente</a>
         <a href="imprimir.html">Descargar/PDF</a>
+        <a href="perfil.html">Mi perfil</a>
       </div>
       <div class="actions">
         <span class="badge">Solo lectura</span>

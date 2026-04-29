@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>PDF discursantes · Arreglos Discursos</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
+</head>
+<body class="has-topbar">
+<div id="topbar"></div>
+<div class="container print-container">
+  <div id="toastHost"></div>
+  <div class="card pad no-print">
+    <div class="section-title">
+      <div>
+        <h1 class="h1" style="margin:0;">Discursantes para enviar</h1>
+        <div class="muted">Compila los perfiles cargados para imprimir o guardar en PDF.</div>
+      </div>
+      <span class="pill">Administración</span>
+    </div>
+    <hr class="sep"/>
+    <div class="grid two">
+      <label>Buscar
+        <input class="input" id="q" placeholder="Nombre, teléfono, bosquejo..." type="search"/>
+      </label>
+      <div class="field">
+        <div class="label">Acciones</div>
+        <div class="row">
+          <button class="btn primary" id="btnImprimir" type="button">Imprimir / Guardar PDF</button>
+          <button class="btn" id="btnRefrescar" type="button">Refrescar</button>
+        </div>
+        <div class="help">Al imprimir, elegí “Guardar como PDF” para enviarlo a otras congregaciones.</div>
+      </div>
+    </div>
+  </div>
+
+  <section class="card pad printable-directory" id="printArea" style="margin-top:14px;">
+    <div class="print-head">
+      <div>
+        <h1>Discursantes disponibles</h1>
+        <p>Congregación Villa Fiad</p>
+      </div>
+      <div class="print-date" id="fechaPDF"></div>
+    </div>
+    <div id="directorioStatus" class="muted">Cargando perfiles…</div>
+    <div id="directorio"></div>
+  </section>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing; if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){ nw.postMessage({type:'SKIP_WAITING'}); }
+        });
+      });
+    }).catch(function(e){ console.log('SW error', e); });
+    navigator.serviceWorker.addEventListener('controllerchange', function(){ if(refreshing) return; refreshing = true; location.reload(); });
+  });
+})();
+</script>
+<script src="js/pages/directorio-discursos.js?v=20260429b39" type="module"></script>
+<script src="js/nav-mobile.js"></script>
+<script src="js/pro-shell.js"></script>
+<script src="js/viewer-mode.js?v=20260429b39" type="module"></script>
+</body>
+</html>

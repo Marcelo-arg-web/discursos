@@ -1071,3 +1071,94 @@ body.login-page{
 @media (max-width: 900px){
   .funciones-wrap{max-height: calc(100vh - 300px);}
 }
+
+
+/* Build 39 - Perfil de usuarios y PDF de discursantes */
+.textarea-tall{ min-height:180px; }
+.speaker-card{
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:16px;
+  margin:14px 0;
+  background:#fff;
+  break-inside: avoid;
+}
+.speaker-head{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  align-items:flex-start;
+  border-bottom:1px solid var(--border);
+  padding-bottom:10px;
+  margin-bottom:12px;
+}
+.speaker-head h2{ margin:0; font-size:20px; color:#0f172a; }
+.speaker-head p{ margin:4px 0 0; color:var(--muted); font-weight:700; }
+.speaker-contact{
+  text-align:right;
+  color:#334155;
+  font-size:14px;
+}
+.speaker-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+.speaker-grid h3{
+  margin:0 0 8px 0;
+  font-size:15px;
+  color:#1e40af;
+}
+.speaker-grid ul{
+  margin:0;
+  padding-left:20px;
+}
+.speaker-grid li{ margin:4px 0; }
+.speaker-notes{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#f8fafc;
+  border:1px solid var(--border);
+}
+.print-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  border-bottom:3px solid #1e40af;
+  margin-bottom:14px;
+  padding-bottom:10px;
+}
+.print-head h1{ margin:0; font-size:28px; color:#0f172a; }
+.print-head p{ margin:4px 0 0; color:#334155; }
+.print-date{ color:#475569; font-weight:700; }
+
+@media (max-width: 760px){
+  .speaker-head{ flex-direction:column; }
+  .speaker-contact{ text-align:left; }
+  .speaker-grid{ grid-template-columns:1fr; }
+}
+
+@media print{
+  .no-print, #topbar, .topbar, .viewer-topbar, #toastHost{ display:none !important; }
+  body{
+    background:#fff !important;
+    color:#111827 !important;
+  }
+  .container, .print-container{
+    max-width:none !important;
+    margin:0 !important;
+    padding:0 !important;
+  }
+  .card, .printable-directory{
+    border:none !important;
+    box-shadow:none !important;
+    border-radius:0 !important;
+    padding:0 !important;
+  }
+  .speaker-card{
+    box-shadow:none !important;
+    page-break-inside:avoid;
+  }
+}

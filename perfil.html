@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Mi perfil · Arreglos Discursos</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
+</head>
+<body class="has-topbar">
+<div id="topbar"></div>
+<div class="container">
+  <div id="toastHost"></div>
+  <div class="card pad">
+    <div class="section-title">
+      <div>
+        <h1 class="h1" style="margin:0;">Perfil de discursante</h1>
+        <div class="muted">Datos que se usarán para preparar el PDF que se puede enviar a otras congregaciones.</div>
+      </div>
+      <span id="modoPerfil" class="pill">Perfil</span>
+    </div>
+    <hr class="sep"/>
+    <form id="formPerfil" autocomplete="off">
+      <div class="grid two">
+        <label>Nombre y apellido
+          <input class="input" id="nombreCompleto" placeholder="Nombre Apellido" type="text"/>
+        </label>
+        <label>Correo
+          <input class="input" id="emailPerfil" disabled type="email"/>
+        </label>
+        <label>Teléfono
+          <input class="input" id="telefono" placeholder="+54 9 381..." type="tel"/>
+        </label>
+        <label>Privilegio
+          <select class="input" id="responsabilidad">
+            <option value="">Seleccionar</option>
+            <option value="Anciano">Anciano</option>
+            <option value="Siervo ministerial">Siervo ministerial</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="grid two" style="margin-top:10px; align-items:start;">
+        <label>Discursos que ya tiene
+          <textarea id="discursosTiene" class="input textarea-tall" placeholder="Ejemplo:
+42 - ¿Puede el amor vencer al odio?
+87 - Andemos con Dios"></textarea>
+          <span class="help">Un bosquejo por línea. Podés poner número y título.</span>
+        </label>
+        <label>Discursos que quiere preparar
+          <textarea id="discursosPreparar" class="input textarea-tall" placeholder="Ejemplo:
+10 - Usemos bien nuestro tiempo
+181 - ¿Anda usted con Dios?"></textarea>
+          <span class="help">Esta lista ayuda a saber qué bosquejos puede preparar próximamente.</span>
+        </label>
+      </div>
+
+      <label>Observaciones
+        <textarea id="observacionesPerfil" class="input" placeholder="Disponibilidad, horarios, congregaciones cercanas, etc."></textarea>
+      </label>
+
+      <div class="row" style="margin-top:14px; gap:10px;">
+        <button class="btn primary" id="btnGuardarPerfil" type="submit">Guardar perfil</button>
+        <a class="btn" href="resultados.html">Volver</a>
+        <a class="btn admin-only" href="directorio-discursos.html">Ver PDF de discursantes</a>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing; if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){ nw.postMessage({type:'SKIP_WAITING'}); }
+        });
+      });
+    }).catch(function(e){ console.log('SW error', e); });
+    navigator.serviceWorker.addEventListener('controllerchange', function(){ if(refreshing) return; refreshing = true; location.reload(); });
+  });
+})();
+</script>
+<script src="js/pages/perfil.js?v=20260429b39" type="module"></script>
+<script src="js/nav-mobile.js"></script>
+<script src="js/pro-shell.js"></script>
+<script src="js/viewer-mode.js?v=20260429b39" type="module"></script>
+</body>
+</html>

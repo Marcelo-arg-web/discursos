@@ -1,6 +1,6 @@
 import { auth, db, firebaseConfig } from "../firebase-config.js";
 import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, getAuth, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { collection, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
@@ -113,6 +113,7 @@ async function listUsuarios(){
         <td>${activo ? "sí" : "no"}</td>
         <td>
           <button class="btn ${activo?"":"ok"}" data-action="toggle" data-id="${u.id}" data-activo="${activo}">${activo?"Desactivar":"Activar"}</button>
+          <button class="btn" data-action="perfil" data-id="${u.id}">Perfil</button>
           <button class="btn" data-action="reset" data-email="${escapeHtml(u.email||"")}">Reset clave</button>
         </td>
       </tr>
@@ -133,6 +134,36 @@ async function listUsuarios(){
       }
     });
   });
+
+  tbody.querySelectorAll("button[data-action='perfil']").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const id = btn.getAttribute("data-id");
+      if(id) window.location.href = `perfil.html?uid=${encodeURIComponent(id)}`;
+    });
+  });
+
+  tbody.querySelectorAll("button[data-action='reset']").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const email = String(btn.getAttribute("data-email") || "").trim();
+      if(!email){ toast("Ese usuario no tiene email cargado.", true); return; }
+      if(!confirm(`Enviar correo para restablecer la clave a:\n${email}?`)) return;
+      try{
+        btn.disabled = true;
+        btn.textContent = "Enviando…";
+        await sendPasswordResetEmail(auth, email);
+        toast(`Correo de recuperación enviado a ${email} ✅`);
+      }catch(e){
+        console.error(e);
+        const code = String(e?.code || e?.message || "");
+        if(code.includes("user-not-found")) toast("Ese correo figura en /usuarios, pero no existe en Authentication.", true);
+        else if(code.includes("unauthorized-domain")) toast("Firebase no permite enviar el correo desde este dominio. Revisá Authentication > Settings > Authorized domains.", true);
+        else toast("No pude enviar el correo de recuperación. Revisá Authentication y el dominio autorizado.", true);
+      }finally{
+        btn.disabled = false;
+        btn.textContent = "Reset clave";
+      }
+    });
+  });
 }
 
 function escapeHtml(s){
@@ -146,7 +177,9 @@ function escapeHtml(s){
 
 async function createUserSecondary({nombre, email, password, rol, activo}){
   // Crear usuario en un auth separado para NO cerrar la sesión del admin actual.
-  const secondaryApp = initializeApp(firebaseConfig, "secondary");
+  const secondaryApp = getApps().some(app => app.name === "secondary")
+    ? getApp("secondary")
+    : initializeApp(firebaseConfig, "secondary");
   const secondaryAuth = getAuth(secondaryApp);
 
   const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);

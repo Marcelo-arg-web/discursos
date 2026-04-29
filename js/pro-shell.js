@@ -18,6 +18,10 @@
     'imprimir': '⎙',
     'importar': '⇩',
     'usuarios': '⚙',
+    'perfil': '👤',
+    'mi perfil': '👤',
+    'pdf discursantes': '📄',
+    'discursantes pdf': '📄',
     'doc presidente': '☰'
   };
 
@@ -37,6 +41,8 @@
     if(href.includes('doc-presi')) return 'visitas/salidas';
     if(href.includes('imprimir')) return 'imprimir';
     if(href.includes('importar')) return 'importar';
+    if(href.includes('directorio-discursos')) return 'pdf discursantes';
+    if(href.includes('perfil')) return 'perfil';
     if(href.includes('usuarios')) return 'usuarios';
     return txt;
   }
@@ -63,6 +69,25 @@
         if(location.pathname.endsWith('/funciones.html')) a.className = 'active';
         personasLink.insertAdjacentElement('afterend', a);
       }
+    }
+
+    if(linkContainer && !linkContainer.querySelector('a[href="directorio-discursos.html"]')){
+      const usuariosLink = linkContainer.querySelector('a[href="usuarios.html"]');
+      if(usuariosLink){
+        const a = document.createElement('a');
+        a.href = 'directorio-discursos.html';
+        a.textContent = 'PDF discursantes';
+        if(location.pathname.endsWith('/directorio-discursos.html')) a.className = 'active';
+        usuariosLink.insertAdjacentElement('beforebegin', a);
+      }
+    }
+
+    if(linkContainer && !linkContainer.querySelector('a[href="perfil.html"]')){
+      const a = document.createElement('a');
+      a.href = 'perfil.html';
+      a.textContent = 'Mi perfil';
+      if(location.pathname.endsWith('/perfil.html')) a.className = 'active';
+      linkContainer.appendChild(a);
     }
 
     const links = topbar.querySelectorAll('.links a, .nav a');
