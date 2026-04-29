@@ -1,7 +1,8 @@
 import { auth, db, firebaseConfig } from "../firebase-config.js";
-import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, getAuth, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, getAuth } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { collection, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { collection, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { sendPasswordRecoveryEmail, recoveryOkMessage } from "../shared/password-reset.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -114,7 +115,7 @@ async function listUsuarios(){
         <td>
           <button class="btn ${activo?"":"ok"}" data-action="toggle" data-id="${u.id}" data-activo="${activo}">${activo?"Desactivar":"Activar"}</button>
           <button class="btn" data-action="perfil" data-id="${u.id}">Perfil</button>
-          <button class="btn" data-action="reset" data-email="${escapeHtml(u.email||"")}">Reset clave</button>
+          <button class="btn" data-action="reset" data-id="${u.id}" data-email="${escapeHtml(u.email||"")}">Enviar reset</button>
         </td>
       </tr>
     `;
@@ -145,22 +146,29 @@ async function listUsuarios(){
   tbody.querySelectorAll("button[data-action='reset']").forEach(btn=>{
     btn.addEventListener("click", async ()=>{
       const email = String(btn.getAttribute("data-email") || "").trim();
+      const id = String(btn.getAttribute("data-id") || "").trim();
       if(!email){ toast("Ese usuario no tiene email cargado.", true); return; }
-      if(!confirm(`Enviar correo para restablecer la clave a:\n${email}?`)) return;
+      if(!confirm(`Enviar un enlace NUEVO para restablecer la clave a:\n${email}?\n\nImportante: debe usar el último correo recibido. Si pidió varios, los anteriores pueden quedar vencidos.`)) return;
       try{
         btn.disabled = true;
         btn.textContent = "Enviando…";
-        await sendPasswordResetEmail(auth, email);
-        toast(`Correo de recuperación enviado a ${email} ✅`);
+        const result = await sendPasswordRecoveryEmail(auth, email);
+        if(id){
+          await setDoc(doc(db,"usuarios",id), {
+            resetSolicitadoEn: serverTimestamp(),
+            resetSolicitadoPor: auth.currentUser?.email || "admin"
+          }, { merge:true });
+        }
+        toast(recoveryOkMessage(email, result));
       }catch(e){
         console.error(e);
-        const code = String(e?.code || e?.message || "");
+        const code = String(e?.code || e?.message || "").toLowerCase();
         if(code.includes("user-not-found")) toast("Ese correo figura en /usuarios, pero no existe en Authentication.", true);
-        else if(code.includes("unauthorized-domain")) toast("Firebase no permite enviar el correo desde este dominio. Revisá Authentication > Settings > Authorized domains.", true);
-        else toast("No pude enviar el correo de recuperación. Revisá Authentication y el dominio autorizado.", true);
+        else if(code.includes("too-many-requests")) toast("Firebase bloqueó temporalmente los envíos por seguridad. Esperá unos minutos y volvé a intentar.", true);
+        else toast("No pude enviar el correo de recuperación. Revisá que el usuario exista en Authentication y que el dominio esté autorizado.", true);
       }finally{
         btn.disabled = false;
-        btn.textContent = "Reset clave";
+        btn.textContent = "Enviar reset";
       }
     });
   });

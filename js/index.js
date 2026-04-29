@@ -1,9 +1,9 @@
 import { auth, db } from "./firebase-config.js";
 import { allowedUids } from "./data/allowedUids.js";
+import { sendPasswordRecoveryEmail, recoveryOkMessage } from "./shared/password-reset.js";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
@@ -178,8 +178,8 @@ async function reset(){
   const email = ($("email").value || "").trim();
   if(!email) return toast("Escribí tu correo primero.", true);
   try{
-    await sendPasswordResetEmail(auth, email);
-    toast("Te envié un correo para recuperar la contraseña.");
+    const result = await sendPasswordRecoveryEmail(auth, email);
+    toast(recoveryOkMessage(email, result));
   }catch(e){
     console.error(e);
     toast("No pude enviar el correo de restablecimiento. Revisá que el correo esté bien escrito.", true);

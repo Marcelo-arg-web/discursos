@@ -1162,3 +1162,8 @@ body.login-page{
     page-break-inside:avoid;
   }
 }
+
+/* Build 40 - Recuperación de clave más clara */
+.login-card.reset-card{max-width:460px;}
+.login-card.reset-card .login-form{gap:10px;}
+.login-card.reset-card .small{font-size:12px;}

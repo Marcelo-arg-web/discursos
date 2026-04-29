@@ -16,9 +16,9 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// Network-first para HTML/JS/CSS - build 39 (siempre traer lo último).
+// Network-first para HTML/JS/CSS - build 40 (siempre traer lo último).
 // Para imágenes y otros assets: cache-first (opcional).
-const ASSET_CACHE = "assets-v39-perfil-reset-clave";
+const ASSET_CACHE = "assets-v40-reset-clave-personalizado";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -71,14 +71,16 @@ self.addEventListener("fetch", (event) => {
   // Default: passthrough
 });
 
-// build 39: formulario de inicio profesional y textos limpios
+// build 40: formulario de inicio profesional y textos limpios
 
-// build 39: tablero mensual agrega Plataforma junto a Microfonistas
+// build 40: tablero mensual agrega Plataforma junto a Microfonistas
 
-// build 39: modo resultados para usuarios no admin
+// build 40: modo resultados para usuarios no admin
 
-// build 39: página Funciones agrega Audio\/Video para filtrar sugerencias de multimedia.
+// build 40: página Funciones agrega Audio\/Video para filtrar sugerencias de multimedia.
 
-// build 39: Funciones agrega columna Activo y encabezado fijo para ver Presidente/Oración/etc al bajar.
+// build 40: Funciones agrega columna Activo y encabezado fijo para ver Presidente/Oración/etc al bajar.
 
-// build 39: reset de clave desde Usuarios, perfil de discursante y PDF para enviar a otras congregaciones.
+// build 40: reset de clave desde Usuarios, perfil de discursante y PDF para enviar a otras congregaciones.
+
+// build 40: recuperación de clave más clara, enlace nuevo y página restablecer-clave.html.

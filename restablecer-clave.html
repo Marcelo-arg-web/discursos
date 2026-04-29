@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Restablecer clave · Villa Fiad</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
+</head>
+<body class="login-page">
+  <main class="login-shell" aria-label="Restablecer contraseña">
+    <section class="login-card reset-card">
+      <div class="login-brand">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <div>
+          <strong>Villa Fiad</strong>
+          <span>Discursos y asignaciones</span>
+        </div>
+      </div>
+
+      <div class="login-header">
+        <h1>Nueva clave</h1>
+        <p id="resetIntro">Validando el enlace…</p>
+      </div>
+
+      <div id="toastHost" class="login-toast"></div>
+
+      <form id="formNuevaClave" class="login-form" autocomplete="off" style="display:none;">
+        <label>Correo</label>
+        <input class="input" id="emailReset" type="email" disabled/>
+
+        <label for="nuevaClave">Nueva contraseña</label>
+        <input class="input" id="nuevaClave" type="password" autocomplete="new-password" minlength="6" placeholder="Mínimo 6 caracteres"/>
+
+        <label for="repetirClave">Repetir nueva contraseña</label>
+        <input class="input" id="repetirClave" type="password" autocomplete="new-password" minlength="6" placeholder="Repetí la nueva contraseña"/>
+
+        <button class="btn primary login-submit" id="btnGuardarClave" type="submit">Guardar nueva clave</button>
+      </form>
+
+      <div id="pedirNuevo" class="login-form" style="display:none;">
+        <label for="emailPedirNuevo">Correo</label>
+        <input class="input" id="emailPedirNuevo" type="email" placeholder="tu@correo.com"/>
+        <button class="btn primary login-submit" id="btnPedirNuevo" type="button">Enviar enlace nuevo</button>
+        <div class="small muted" style="margin-top:10px;line-height:1.45;">
+          Usá siempre el último correo recibido. Si pediste varios enlaces, los anteriores pueden aparecer como vencidos.
+        </div>
+      </div>
+
+      <a class="login-public" href="index.html">Volver al ingreso</a>
+    </section>
+  </main>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing; if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){ nw.postMessage({type:'SKIP_WAITING'}); }
+        });
+      });
+    }).catch(function(e){ console.log('SW error', e); });
+    navigator.serviceWorker.addEventListener('controllerchange', function(){ if(refreshing) return; refreshing = true; location.reload(); });
+  });
+})();
+</script>
+<script src="js/pages/restablecer-clave.js?v=20260429b40" type="module"></script>
+</body>
+</html>
