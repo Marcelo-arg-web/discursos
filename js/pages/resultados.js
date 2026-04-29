@@ -42,17 +42,10 @@ function renderViewerTopbar(name="Usuario"){
   const el = document.getElementById("topbar");
   if(!el) return;
   el.innerHTML = `
-    <div class="topbar viewer-topbar">
+    <div class="topbar viewer-topbar resultados-only">
       <div class="brand"><span class="brand-dot"></span>Villa Fiad</div>
       <div class="links viewer-links">
         <a href="resultados.html" class="active">Resultados</a>
-        <a href="visitantes.html">Visitantes</a>
-        <a href="salientes.html">Salientes</a>
-        <a href="programa-mensual.html">Programa mensual</a>
-        <a href="tablero-acomodadores.html">Acomodadores</a>
-        <a href="doc-presi.html">Presidente</a>
-        <a href="imprimir.html">Descargar/PDF</a>
-        <a href="perfil.html">Mi perfil</a>
       </div>
       <div class="actions">
         <span class="badge">Solo lectura</span>
@@ -83,6 +76,64 @@ function formatDate(iso){
   if(!y || !m || !d) return iso;
   return new Date(y, m-1, d).toLocaleDateString("es-AR", { weekday:"short", day:"2-digit", month:"2-digit" });
 }
+
+const LOCALES_VILLA_FIAD = [
+  "Marcelo Palavecino",
+  "Sergio Saldaña",
+  "Luis Navarro",
+  "Leonardo Araya",
+  "Marcelo Rodríguez",
+  "Marcelo Rodriguez"
+];
+let clavesDiscursantesLocales = new Set(LOCALES_VILLA_FIAD.map(n => normalKey(n)));
+function normalKey(s){
+  return String(s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function canonicalLocalName(nombre){
+  const k = normalKey(nombre);
+  if(k === "marcelo rodriguez" || k === "marcelo rodrigez") return "Marcelo Rodríguez";
+  if(k === "marcelo palevecino") return "Marcelo Palavecino";
+  const found = LOCALES_VILLA_FIAD.find(n => normalKey(n) === k);
+  return found || String(nombre||"").trim();
+}
+function isLocalSaliente(row){
+  const nombre = canonicalLocalName(row?.orador || row?.oradorNombre || row?.hermano || row?.nombre || "");
+  if(!nombre) return false;
+  return clavesDiscursantesLocales.has(normalKey(nombre));
+}
+function addLocalSpeaker(nombre){
+  const k = normalKey(nombre);
+  if(k) clavesDiscursantesLocales.add(k);
+}
+async function cargarDiscursantesLocales(){
+  // Refuerza el filtro con los conferenciantes/personas cargados por el administrador.
+  try{
+    const snap = await getDocs(collection(db,"conferenciantesLocales"));
+    snap.docs.map(d=>d.data()).forEach(r=>{
+      if(r?.activo === false) return;
+      if(r?.nombre) addLocalSpeaker(r.nombre);
+    });
+  }catch(e){ console.warn("No pude leer conferenciantesLocales para resultados.", e); }
+  try{
+    const snap = await getDocs(collection(db,"personas"));
+    snap.docs.map(d=>d.data()).forEach(p=>{
+      if(p?.activo === false) return;
+      const roles = Array.isArray(p?.roles) ? p.roles.map(r=>String(r).toLowerCase()) : [];
+      const tieneBosquejos = Array.isArray(p?.bosquejos) && p.bosquejos.length;
+      if(roles.includes("discursante") || tieneBosquejos) addLocalSpeaker(p?.nombre);
+    });
+  }catch(e){ console.warn("No pude leer personas para resultados.", e); }
+}
+function salienteFecha(row){
+  return String(row?.fecha || row?.id || row?.date || "").slice(0,10);
+}
+function salienteNombre(row){
+  return canonicalLocalName(row?.orador || row?.oradorNombre || row?.hermano || row?.nombre || "");
+}
+function salienteDestino(row){
+  return row?.destino || row?.congregacionDestino || row?.congregacion || row?.lugar || "";
+}
+
 function syncLinks(){
   const ym = $("mesResultados")?.value || currentYM();
   const q = `?mes=${encodeURIComponent(ym)}`;
@@ -123,18 +174,20 @@ async function previewSalientes(){
   if(!box) return;
   try{
     const min = todayISO();
+    await cargarDiscursantesLocales();
     const snap = await getDocs(collection(db,"salientes"));
     const rows = snap.docs.map(d=>({ id:d.id, ...d.data() }))
-      .filter(s=>String(s.fecha||s.id||"") >= min)
-      .sort((a,b)=>String(a.fecha||a.id||"").localeCompare(String(b.fecha||b.id||"")))
-      .slice(0,6);
-    if(!rows.length){ box.innerHTML = `<div class="muted">No hay salidas próximas cargadas.</div>`; return; }
+      .filter(isLocalSaliente)
+      .filter(s=>salienteFecha(s) >= min)
+      .sort((a,b)=>salienteFecha(a).localeCompare(salienteFecha(b)))
+      .slice(0,8);
+    if(!rows.length){ box.innerHTML = `<div class="muted">No hay salidas próximas cargadas para discursantes locales.</div>`; return; }
     box.innerHTML = `<div class="result-list">${rows.map(s=>{
-      const fecha = s.fecha || s.id;
+      const fecha = salienteFecha(s);
       const n = Number(s.bosquejo || s.discurso || s.numero);
       const titulo = s.titulo || (Number.isFinite(n) ? bosquejos[n] : "") || "";
-      const nombre = s.nombre || s.orador || s.hermano || "";
-      const cong = s.congregacion || s.destino || s.congregacionDestino || "";
+      const nombre = salienteNombre(s);
+      const cong = salienteDestino(s);
       return `<div class="result-line">
         <div><strong>${escapeHtml(formatDate(fecha))}</strong> · ${escapeHtml(nombre)}</div>
         <div class="muted small">${escapeHtml(cong)} ${n ? `· Bosquejo ${escapeHtml(n)}` : ""} ${titulo ? `· ${escapeHtml(titulo)}` : ""}</div>
@@ -142,9 +195,10 @@ async function previewSalientes(){
     }).join("")}</div>`;
   }catch(e){
     console.error(e);
-    box.innerHTML = `<div class="muted">No pude cargar las salidas.</div>`;
+    box.innerHTML = `<div class="muted">No pude cargar las salidas locales.</div>`;
   }
 }
+
 async function requireAccess(){
   if(hasPublicAccess()){
     renderViewerTopbar("Modo consulta");
