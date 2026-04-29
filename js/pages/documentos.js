@@ -156,7 +156,10 @@ function refreshFrame(){
   updateVisibility();
   const { url, help } = buildSrc();
   const frame = $("docFrame");
-  if(frame) frame.src = url;
+  if(frame){
+    prepareScrollablePreviewFrame(frame);
+    frame.src = url;
+  }
   const open = $("btnAbrirDoc");
   if(open) open.href = url.replace(/[?&]embed=1/, "").replace(/\?$/, "");
   const h = $("docHelp");
@@ -176,6 +179,75 @@ function printFrame(){
     window.open($("btnAbrirDoc")?.href || buildSrc().url, "_blank");
   }
 }
+
+function isTouchPreviewScreen(){
+  return window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
+}
+function prepareScrollablePreviewFrame(frame){
+  if(!frame) return;
+  const wrap = frame.closest(".documentos-preview-wrap");
+  if(wrap){
+    wrap.classList.add("touch-scroll-preview");
+    wrap.setAttribute("tabindex", "0");
+    wrap.setAttribute("aria-label", "Vista previa desplazable. En celular deslizá hacia los lados, arriba o abajo para revisar todo el documento.");
+  }
+  const mobileWidth = window.innerWidth <= 520 ? 1080 : 1100;
+  if(isTouchPreviewScreen()){
+    frame.style.width = mobileWidth + "px";
+    frame.style.minWidth = mobileWidth + "px";
+    frame.style.minHeight = "920px";
+  }else{
+    frame.style.width = "100%";
+    frame.style.minWidth = "0";
+    frame.style.minHeight = "72vh";
+  }
+}
+function fitScrollablePreviewFrame(frame){
+  if(!frame) return;
+  prepareScrollablePreviewFrame(frame);
+  try{
+    const doc = frame.contentDocument || frame.contentWindow?.document;
+    if(!doc) return;
+    const root = doc.documentElement;
+    const body = doc.body;
+    const wrap = frame.closest(".documentos-preview-wrap");
+    const minW = isTouchPreviewScreen() ? (window.innerWidth <= 520 ? 1080 : 1100) : Math.max(900, wrap?.clientWidth || 900);
+    const minH = isTouchPreviewScreen() ? 920 : Math.max(720, Math.round((window.innerHeight || 900) * 0.72));
+    const contentW = Math.max(root?.scrollWidth || 0, body?.scrollWidth || 0, minW);
+    const contentH = Math.max(root?.scrollHeight || 0, body?.scrollHeight || 0, minH);
+    if(isTouchPreviewScreen()){
+      frame.style.width = Math.ceil(contentW + 20) + "px";
+      frame.style.minWidth = Math.ceil(contentW + 20) + "px";
+      frame.style.height = Math.ceil(contentH + 24) + "px";
+      frame.style.minHeight = Math.ceil(contentH + 24) + "px";
+    }else{
+      frame.style.width = "100%";
+      frame.style.minWidth = "0";
+      frame.style.height = Math.ceil(Math.max(contentH + 24, minH)) + "px";
+    }
+  }catch(e){
+    // Si el navegador no permite leer el iframe, queda el ancho táctil por CSS.
+  }
+}
+function attachScrollablePreviewFrame(frame, helpEl){
+  if(!frame || frame.dataset.touchPreviewReady === "1") return;
+  frame.dataset.touchPreviewReady = "1";
+  frame.addEventListener("load", ()=>{
+    fitScrollablePreviewFrame(frame);
+    setTimeout(()=>fitScrollablePreviewFrame(frame), 250);
+    setTimeout(()=>fitScrollablePreviewFrame(frame), 900);
+  });
+  window.addEventListener("resize", ()=>setTimeout(()=>fitScrollablePreviewFrame(frame), 120));
+  window.addEventListener("orientationchange", ()=>setTimeout(()=>fitScrollablePreviewFrame(frame), 350));
+  if(helpEl && !document.getElementById(helpEl.id + "TouchHint")){
+    const span = document.createElement("span");
+    span.id = helpEl.id + "TouchHint";
+    span.className = "preview-scroll-hint";
+    span.textContent = "En Android podés deslizar la vista previa hacia los lados, arriba y abajo.";
+    helpEl.insertAdjacentElement("afterend", span);
+  }
+}
+
 (async function(){
   await requireAccess();
   const params = new URLSearchParams(location.search);
@@ -188,6 +260,7 @@ function printFrame(){
   tipoEl?.addEventListener("change", refreshFrame);
   mesEl?.addEventListener("change", refreshFrame);
   semEl?.addEventListener("change", refreshFrame);
+  attachScrollablePreviewFrame($("docFrame"), $("docHelp"));
   $("btnActualizarDoc")?.addEventListener("click", refreshFrame);
   $("btnImprimirDoc")?.addEventListener("click", printFrame);
   refreshFrame();
