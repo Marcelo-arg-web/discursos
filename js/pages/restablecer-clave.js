@@ -1,4 +1,4 @@
-import { auth } from "../firebase-config.js?v=20260429b68";
+import { auth } from "../firebase-config.js?v=20260429b69";
 import { verifyPasswordResetCode, confirmPasswordReset } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { sendPasswordRecoveryEmail, recoveryOkMessage } from "../shared/password-reset.js";
 

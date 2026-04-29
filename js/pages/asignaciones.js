@@ -2,7 +2,7 @@
 // Admin: carga personas, guarda asignaciones semanales, y autocompleta visitante/títulos.
 // NO modifica Firebase.
 
-import { auth, db } from "../firebase-config.js?v=20260429b68";
+import { auth, db } from "../firebase-config.js?v=20260429b69";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection,

@@ -42,8 +42,8 @@ Los scripts de páginas están en `js/pages/`.
 Corrección de menú para usuarios comunes: Resultados + Mi perfil visibles y carga inmediata del mes.
 
 
-## Build 68
+## Build 69
 Corrección fuerte para usuario común congelado en Resultados/Mi perfil, cierre de sesión real y limpieza de caché.
 
-## Build 68
+## Build 69
 Corrección de usuario común: Resultados y Mi perfil sin bloqueo, Firebase SDK estable y reglas Firestore actualizadas. Ver LEER_IMPORTANTE_BUILD68_USUARIO_RESULTADOS_PERFIL.txt.

@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Acceso Lectura - Villa Fiad</title>
-<link href="css/styles.css?v=20260429b68" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b69" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -38,35 +38,6 @@
 </div>
 </main>
 </div>
-<script>
-(function(){
-  if(!('serviceWorker' in navigator)) return;
-  let refreshing = false;
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js').then(function(reg){
-      // Si hay una versión esperando, activala
-      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
-
-      reg.addEventListener('updatefound', function(){
-        var nw = reg.installing;
-        if(!nw) return;
-        nw.addEventListener('statechange', function(){
-          if(nw.state === 'installed' && navigator.serviceWorker.controller){
-            nw.postMessage({type:'SKIP_WAITING'});
-          }
-        });
-      });
-    }).catch(function(e){
-      console.log('SW error', e);
-    });
-
-    navigator.serviceWorker.addEventListener('controllerchange', function(){
-      if(refreshing) return;
-      refreshing = true;
-      location.reload();
-    });
-  });
-})();
-</script><script src="js/pages/public-login.js?v=20260429b68" type="module"></script>
+<script src="js/no-sw-cleanup-b69.js?v=20260429b69"></script><script src="js/pages/public-login.js?v=20260429b69" type="module"></script>
 </body>
 </html>

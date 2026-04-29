@@ -201,7 +201,10 @@ function syncLinks(){
   const q = `?mes=${encodeURIComponent(ym)}`;
   const a = $("linkDocumentos");
   if(a) a.href = "documentos.html" + q;
-  refreshDocumentosResultados();
+  refreshDocumentosResultados(false);
+}
+function onMesResultadosChange(){
+  syncLinks();
   renderAsignacionesMes();
 }
 
@@ -255,27 +258,50 @@ function updateDocVisibility(){
   if(wf) wf.style.display = (tipo === "presidente-semana" || tipo === "resumen") ? "block" : "none";
 }
 let lastResultadosDocSrc = "";
-function refreshDocumentosResultados(){
+let resultadosDocPreviewLoaded = false;
+function refreshDocumentosResultados(loadPreview=false){
   updateDocVisibility();
   const built = buildDocSrc();
   const frame = $("docFrameResultados");
-  if(frame){
-    prepareScrollablePreviewFrame(frame);
-    if(lastResultadosDocSrc !== built.url){
-      lastResultadosDocSrc = built.url;
-      frame.src = built.url;
-    }
-  }
   const open = $("btnAbrirDocResultados");
   if(open) open.href = built.url.replace(/[?&]embed=1/, "").replace(/\?$/, "");
   const h = $("docHelpResultados");
-  if(h) h.textContent = built.help;
+
+  // Build 69: NO se carga el iframe automáticamente al abrir Resultados.
+  // En algunos navegadores/PC el iframe + service worker anterior dejaba la página "no responde".
+  // Primero cargan los datos reales; la vista previa se carga solo cuando el usuario toca Actualizar.
+  if(frame){
+    prepareScrollablePreviewFrame(frame);
+    if(loadPreview === true){
+      resultadosDocPreviewLoaded = true;
+      if(lastResultadosDocSrc !== built.url || frame.getAttribute("src") !== built.url){
+        lastResultadosDocSrc = built.url;
+        frame.removeAttribute("srcdoc");
+        frame.src = built.url;
+      }
+      if(h) h.textContent = built.help + " Vista previa cargada.";
+    }else if(!resultadosDocPreviewLoaded){
+      frame.removeAttribute("src");
+      frame.srcdoc = `<!doctype html><html><body style="font-family:Arial,sans-serif;margin:0;padding:24px;background:#fff;color:#1f2937;"><div style="border:1px solid #cbd5e1;border-radius:14px;padding:22px;max-width:720px;margin:30px auto;background:#f8fafc;"><h2 style="margin:0 0 8px;">Vista previa lista para cargar</h2><p style="margin:0 0 10px;line-height:1.45;">Para evitar bloqueos del navegador, primero se cargan los datos del mes. Tocá <b>Actualizar</b> para cargar esta vista previa, o <b>Abrir</b> para verla en una pestaña nueva.</p><p style="margin:0;color:#64748b;">Documento seleccionado: ${escapeHtml(built.help)}</p></div></body></html>`;
+      if(h) h.textContent = built.help + " Para ver el documento dentro de esta página, tocá Actualizar.";
+    }else if(h){
+      h.textContent = built.help;
+    }
+  }else if(h){
+    h.textContent = built.help;
+  }
 }
 function printDocumentosResultados(){
   const frame = $("docFrameResultados");
   try{
-    frame?.contentWindow?.focus();
-    frame?.contentWindow?.print();
+    // Si todavía no se cargó la vista previa, abrimos el documento directo.
+    // Esto evita forzar el iframe en equipos donde estaba congelando la página.
+    if(!resultadosDocPreviewLoaded || !frame?.contentWindow){
+      window.open($("btnAbrirDocResultados")?.href || buildDocSrc().url, "_blank");
+      return;
+    }
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
   }catch(e){
     window.open($("btnAbrirDocResultados")?.href || buildDocSrc().url, "_blank");
   }
@@ -478,9 +504,10 @@ async function requireAccess(){
         if(isAdminRole(u?.rol)) renderAdminTopbar(); else renderViewerTopbar(u?.nombre || cu.email || "Usuario");
         finish({ user:cu, usuario:u, public:false, authTimeoutRecovered:true });
       }else{
-        renderViewerTopbar("Esperando sesión…");
+        renderViewerTopbar("Sesión no confirmada");
         const box = $("asignacionesMesList");
-        if(box) box.innerHTML = `<div class="muted">Esperando que el navegador confirme la sesión. Si tarda mucho, tocá Salir y entrá otra vez.</div>`;
+        if(box) box.innerHTML = `<div class="empty-state error">El navegador no confirmó la sesión de Firebase. La página queda activa, pero los datos no se pueden leer hasta entrar nuevamente. Tocá Salir e iniciá sesión otra vez.</div>`;
+        finish({ user:null, usuario:{rol:"viewer"}, public:false, authMissing:true });
       }
     }, 7000);
   });
@@ -562,12 +589,12 @@ function attachScrollablePreviewFrame(frame, helpEl){
       const value = params.get("mes") || currentYM();
       mes.value = value;
       if(!mes.value) mes.setAttribute("value", value);
-      mes.addEventListener("change", syncLinks);
+      mes.addEventListener("change", onMesResultadosChange);
     }
     attachScrollablePreviewFrame($("docFrameResultados"), $("docHelpResultados"));
-    $("tipoDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
-    $("semanaDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
-    $("btnActualizarDocResultados")?.addEventListener("click", refreshDocumentosResultados);
+    $("tipoDocumentoResultados")?.addEventListener("change", ()=>refreshDocumentosResultados(false));
+    $("semanaDocumentoResultados")?.addEventListener("change", ()=>refreshDocumentosResultados(false));
+    $("btnActualizarDocResultados")?.addEventListener("click", ()=>refreshDocumentosResultados(true));
     $("btnImprimirDocResultados")?.addEventListener("click", printDocumentosResultados);
 
     // Cargar lo visible primero. Antes esto esperaba la lectura del perfil en Firestore;

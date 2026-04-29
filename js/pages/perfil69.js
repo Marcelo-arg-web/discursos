@@ -32,6 +32,12 @@ async function getUsuario(uid){
 function timeoutValue(ms, value){
   return new Promise(resolve => setTimeout(() => resolve(value), ms));
 }
+function timeoutReject(ms, message){
+  return new Promise((_, reject) => setTimeout(() => reject(new Error(message || "La lectura tardó demasiado")), ms));
+}
+async function readWithTimeout(promise, ms=6500, label="Firestore"){
+  return Promise.race([promise, timeoutReject(ms, label + " tardó demasiado")]);
+}
 async function getUsuarioSeguro(user){
   if(!user) return null;
   try{
@@ -84,17 +90,35 @@ function renderTopbar(rol, nombre){
 }
 async function requireActiveUser(){
   return new Promise(resolve=>{
-    let perfilAuthTimeout = setTimeout(()=>{
-      toast("No pude confirmar la sesión todavía. Probá tocar Salir y volver a entrar.", true);
+    let settled = false;
+    const finish = (value)=>{ if(settled) return; settled = true; resolve(value); };
+    let perfilAuthTimeout = setTimeout(async ()=>{
+      const cu = auth.currentUser;
+      if(cu){
+        try{ setPublicAccess(false); }catch{}
+        const u = await getUsuarioSeguro(cu);
+        renderTopbar(u?.rol, u?.nombre || cu.email);
+        finish({ user:cu, usuario:u, authTimeoutRecovered:true });
+        return;
+      }
+      renderTopbar("viewer", "Sesión no confirmada");
+      toast("El navegador no confirmó la sesión de Firebase. Tocá Salir e iniciá sesión otra vez.", true);
+      finish({ user:null, usuario:{rol:"viewer"}, authMissing:true });
     }, 7000);
     onAuthStateChanged(auth, async user=>{
+      if(settled) return;
       clearTimeout(perfilAuthTimeout);
-      if(!user){ location.href="index.html"; return; }
+      if(!user){
+        renderTopbar("viewer", "Sesión no confirmada");
+        toast("No hay sesión activa. Tocá Salir e iniciá sesión otra vez.", true);
+        finish({ user:null, usuario:{rol:"viewer"}, authMissing:true });
+        return;
+      }
       try{ setPublicAccess(false); }catch{}
       const u = await getUsuarioSeguro(user);
       if(u && u.activo === false){ await signOut(auth); location.href="index.html"; return; }
       renderTopbar(u?.rol, u?.nombre || user.email);
-      resolve({ user, usuario:u });
+      finish({ user, usuario:u });
     });
   });
 }
@@ -111,7 +135,7 @@ async function getTituloBosquejo(num){
   if(!n) return "";
   const local = bosquejosMap.get(n) || "";
   try{
-    const snap = await getDoc(doc(db, "discursos", n));
+    const snap = await readWithTimeout(getDoc(doc(db, "discursos", n)), 4500, "Catálogo de bosquejos");
     if(snap.exists()){
       const d = snap.data() || {};
       if(d.deleted || d.eliminado) return "";
@@ -441,14 +465,12 @@ async function loadTarget(user, usuario){
   const isAdmin = isAdminRole(usuario?.rol);
   TARGET_UID = (isAdmin && requested) ? requested : user.uid;
   try{
-    const snap = await Promise.race([
-      getDoc(doc(db,"usuarios",TARGET_UID)),
-      timeoutValue(2500, null)
-    ]);
+    const snap = await readWithTimeout(getDoc(doc(db,"usuarios",TARGET_UID)), 6500, "Perfil de usuario");
     CURRENT = snap && snap.exists && snap.exists() ? snap.data() : {};
   }catch(e){
     console.warn("No pude cargar el perfil destino; se habilita formulario vacío para guardar.", e);
-    CURRENT = {};
+    CURRENT = { email:user?.email || "", nombre:user?.displayName || user?.email || "", nombreCompleto:user?.displayName || "", congregacionPerfil:"Villa Fiad" };
+    toast("No pude leer los datos guardados todavía. El formulario queda abierto para cargar/guardar.", true);
   }
   if(TARGET_UID === user.uid){
     CURRENT = { email:user.email || CURRENT.email || "", nombre:user.displayName || CURRENT.nombre || CURRENT.nombreCompleto || user.email || "", ...CURRENT };
@@ -549,9 +571,14 @@ async function saveProfile(ev){
 (async function(){
   try{
     const { user, usuario } = await requireActiveUser();
-    await loadTarget(user, usuario);
     setupConsultaBosquejo();
     setupPerfilBosquejos();
+    if(!user){
+      const btn = $("btnGuardarPerfil");
+      if(btn){ btn.disabled = true; btn.textContent = "Iniciá sesión para guardar"; }
+      return;
+    }
+    await loadTarget(user, usuario);
     setupAdminBosquejos(isAdminRole(usuario?.rol));
     $("btnEliminarPerfilAdmin")?.addEventListener("click", eliminarPerfilDiscursanteAdmin);
     $("formPerfil")?.addEventListener("submit", saveProfile);
