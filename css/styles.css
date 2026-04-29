@@ -1688,3 +1688,82 @@ body.has-topbar .profile-section{
   .perfil-bosquejo-grid{grid-template-columns:96px minmax(0, 1fr)!important;}
   #btnUsarConsultaPerfil{grid-column:1 / -1;}
 }
+
+
+/* =========================================================
+   Build 49 - Documentos/PDF sin menú dentro de la vista previa
+   y navegación profesional unificada.
+   ========================================================= */
+html.embedded-doc-root body.embedded-doc,
+html.embedded-doc-root body.embedded-doc.pro-online,
+html.embedded-doc-root body.embedded-doc.has-topbar,
+html.embedded-doc-root body.embedded-doc.pro-online.has-topbar{
+  padding-left:0 !important;
+  padding-top:0 !important;
+  margin:0 !important;
+  background:#fff !important;
+}
+html.embedded-doc-root body.embedded-doc #topbar,
+html.embedded-doc-root body.embedded-doc .topbar,
+html.embedded-doc-root body.embedded-doc .viewer-topbar,
+html.embedded-doc-root body.embedded-doc .nav,
+html.embedded-doc-root body.embedded-doc .links,
+html.embedded-doc-root body.embedded-doc .actions.no-print{
+  display:none !important;
+  visibility:hidden !important;
+  width:0 !important;
+  height:0 !important;
+  overflow:hidden !important;
+}
+html.embedded-doc-root body.embedded-doc .container,
+html.embedded-doc-root body.embedded-doc.pro-online .container,
+html.embedded-doc-root body.embedded-doc.has-topbar .container{
+  max-width:none !important;
+  width:100% !important;
+  padding:10px !important;
+  margin:0 !important;
+}
+html.embedded-doc-root body.embedded-doc .card,
+html.embedded-doc-root body.embedded-doc.has-topbar .card,
+html.embedded-doc-root body.embedded-doc.pro-online .card{
+  box-shadow:none !important;
+  border-radius:18px !important;
+}
+html.embedded-doc-root body.embedded-doc .section-title.no-print,
+html.embedded-doc-root body.embedded-doc .no-print{
+  display:none !important;
+}
+.documentos-preview-wrap{
+  position:relative;
+  background:#fff;
+}
+.documentos-preview-wrap::before{
+  content:'Vista previa del documento';
+  position:absolute;
+  top:10px;
+  right:14px;
+  z-index:2;
+  font-size:12px;
+  font-weight:900;
+  color:#24548f;
+  background:#eef6ff;
+  border:1px solid #d5e8ff;
+  border-radius:999px;
+  padding:5px 10px;
+  pointer-events:none;
+}
+.documentos-frame{background:#fff !important;}
+@media print{
+  .documentos-preview-wrap::before{display:none!important;}
+}
+
+/* La página Resultados también usa el mismo menú profesional lateral en PC */
+body.pro-online.viewer-result-mode .results-container{
+  max-width:1180px !important;
+}
+body.pro-online.viewer-result-mode .topbar .links a:not([href="resultados.html"]){
+  display:none !important;
+}
+body.pro-online.viewer-result-mode .topbar .links a[href="resultados.html"]{
+  display:flex !important;
+}

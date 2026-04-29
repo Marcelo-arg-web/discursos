@@ -91,10 +91,15 @@
   }
 
   function enhanceTopbar(topbar){
+    if(isEmbeddedDocument){
+      document.body.classList.add('embedded-doc');
+      document.body.classList.remove('pro-online');
+      if(topbar) topbar.style.display = 'none';
+      return;
+    }
     if(!topbar || topbar.dataset.proShell === '1') return;
     topbar.dataset.proShell = '1';
     document.body.classList.add('pro-online');
-    if(isEmbeddedDocument) document.body.classList.add('embedded-doc');
 
     const brand = topbar.querySelector('.brand');
     if(brand && !brand.querySelector('.brand-title')){
