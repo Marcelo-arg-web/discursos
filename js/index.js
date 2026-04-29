@@ -16,6 +16,14 @@ import {
 
 const $ = (id) => document.getElementById(id);
 
+const LOGOUT_MODE = new URLSearchParams(location.search).get("logout") === "1";
+if(LOGOUT_MODE){
+  try { sessionStorage.removeItem("vf_public"); } catch {}
+  try { localStorage.removeItem("vf_public"); } catch {}
+  signOut(auth).catch(()=>{});
+  try { history.replaceState(null, "", "index.html"); } catch {}
+}
+
 function clearConsultaPublica(){
   try { sessionStorage.removeItem("vf_public"); } catch {}
 }
@@ -192,7 +200,7 @@ async function reset(){
 }
 
 onAuthStateChanged(auth, async (user)=>{
-  if(user){
+  if(user && !LOGOUT_MODE){
     try{
       clearConsultaPublica();
       const u = await ensureUsuarioDoc(user);

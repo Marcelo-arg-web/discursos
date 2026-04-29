@@ -39,7 +39,7 @@
       + '<div class="actions"><span class="badge">Solo lectura</span><span class="badge soft" id="forceUserBadge">Usuario</span><button class="btn danger sm" id="forceLogoutBtn" type="button">Salir</button></div>'
       + '</div>';
     var btn=document.getElementById('forceLogoutBtn');
-    if(btn) btn.onclick=function(){ try{sessionStorage.removeItem('vf_public')}catch(e){}; location.href='index.html'; };
+    if(btn) btn.onclick=function(){ try{sessionStorage.removeItem('vf_public')}catch(e){}; location.href='index.html?logout=1'; };
     setMonth();
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', shell);

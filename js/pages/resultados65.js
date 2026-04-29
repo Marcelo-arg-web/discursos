@@ -12,7 +12,7 @@ async function loadPersonasMap(){
   personasMapLoaded = true;
   personasMap = new Map();
   try{
-    const snap = await getDocs(collection(db, "personas"));
+    const snap = await readWithTimeout(getDocs(collection(db, "personas")), 6500, "Personas");
     snap.docs.forEach(d=>{
       const x = d.data() || {};
       const nombre = String(x.nombre || x.name || x.apellidoNombre || "").trim();
@@ -63,6 +63,12 @@ async function getUsuario(uid){
 }
 function timeoutValue(ms, value){
   return new Promise(resolve => setTimeout(() => resolve(value), ms));
+}
+function timeoutReject(ms, message){
+  return new Promise((_, reject) => setTimeout(() => reject(new Error(message || "La lectura tardó demasiado")), ms));
+}
+async function readWithTimeout(promise, ms=6500, label="Firestore"){
+  return Promise.race([promise, timeoutReject(ms, label + " tardó demasiado. Revisá conexión o permisos.")]);
 }
 async function getUsuarioSeguro(user){
   if(!user) return null;
@@ -248,13 +254,17 @@ function updateDocVisibility(){
   const wf = $("weekFieldResultados");
   if(wf) wf.style.display = (tipo === "presidente-semana" || tipo === "resumen") ? "block" : "none";
 }
+let lastResultadosDocSrc = "";
 function refreshDocumentosResultados(){
   updateDocVisibility();
   const built = buildDocSrc();
   const frame = $("docFrameResultados");
   if(frame){
     prepareScrollablePreviewFrame(frame);
-    frame.src = built.url;
+    if(lastResultadosDocSrc !== built.url){
+      lastResultadosDocSrc = built.url;
+      frame.src = built.url;
+    }
   }
   const open = $("btnAbrirDocResultados");
   if(open) open.href = built.url.replace(/[?&]embed=1/, "").replace(/\?$/, "");
@@ -279,7 +289,7 @@ async function loadAsignacionesMes(mesISO){
     startAt(mesISO),
     endAt(mesISO + "\uf8ff")
   );
-  const snap = await getDocs(qy);
+  const snap = await readWithTimeout(getDocs(qy), 7500, "Asignaciones del mes");
   return snap.docs.map(d=>{
     const raw = d.data() || {};
     const a = raw.asignaciones || {};
@@ -343,16 +353,20 @@ function renderAsignacionesMesRows(items, mesISO){
   </table></div>`;
 }
 
+let asignacionesMesToken = 0;
 async function renderAsignacionesMes(){
+  const myToken = ++asignacionesMesToken;
   const box = $("asignacionesMesList");
   const mesISO = $("mesResultados")?.value || currentYM();
   if(box) box.innerHTML = `<div class="muted">Cargando asignaciones de ${escapeHtml(mesTitulo(mesISO))}…</div>`;
   try{
     await loadPersonasMap();
     const items = await loadAsignacionesMes(mesISO);
+    if(myToken !== asignacionesMesToken) return;
     renderAsignacionesMesRows(items, mesISO);
   }catch(e){
     console.error(e);
+    if(myToken !== asignacionesMesToken) return;
     if(box) box.innerHTML = `<div class="empty-state error">No pude cargar las asignaciones del mes. Revisá permisos o conexión.</div>`;
   }
 }
@@ -363,7 +377,7 @@ async function previewVisitantes(){
   if(!box) return;
   try{
     const min = todayISO();
-    const snap = await getDocs(collection(db,"visitas"));
+    const snap = await readWithTimeout(getDocs(collection(db,"visitas")), 6500, "Visitantes");
     const rows = snap.docs.map(d=>({ id:d.id, ...d.data() }))
       .filter(v=>String(v.id) >= min)
       .sort((a,b)=>String(a.id).localeCompare(String(b.id)))
@@ -388,7 +402,7 @@ async function previewSalientes(){
   try{
     const min = todayISO();
     await cargarDiscursantesLocales();
-    const snap = await getDocs(collection(db,"salientes"));
+    const snap = await readWithTimeout(getDocs(collection(db,"salientes")), 6500, "Salientes");
     const rows = snap.docs.map(d=>({ id:d.id, ...d.data() }))
       .filter(isLocalSaliente)
       .filter(s=>salienteFecha(s) >= min)
@@ -452,6 +466,16 @@ async function requireAccess(){
         finish({ user:null, usuario:{rol:"viewer"}, public:true, timeout:true });
       }
     }, 4500);
+
+    setTimeout(()=>{
+      if(settled) return;
+      renderViewerTopbar("Usuario");
+      if(profileBtn){
+        profileBtn.style.display = "inline-flex";
+        profileBtn.href = "perfil.html";
+      }
+      finish({ user:null, usuario:{rol:"viewer", activo:true}, public:false, authTimeout:true });
+    }, 7000);
   });
 }
 

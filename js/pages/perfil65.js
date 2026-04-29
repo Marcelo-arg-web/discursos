@@ -80,11 +80,15 @@ function renderTopbar(rol, nombre){
       </div>
     </div>
   `;
-  $("btnSalir")?.addEventListener("click", async()=>{ await signOut(auth); location.href="index.html"; });
+  $("btnSalir")?.addEventListener("click", async()=>{ try{ await signOut(auth); }catch{} location.href="index.html?logout=1"; });
 }
 async function requireActiveUser(){
   return new Promise(resolve=>{
+    let perfilAuthTimeout = setTimeout(()=>{
+      toast("No pude confirmar la sesión todavía. Probá tocar Salir y volver a entrar.", true);
+    }, 7000);
     onAuthStateChanged(auth, async user=>{
+      clearTimeout(perfilAuthTimeout);
       if(!user){ location.href="index.html"; return; }
       try{ setPublicAccess(false); }catch{}
       const u = await getUsuarioSeguro(user);

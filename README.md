@@ -40,3 +40,7 @@ Los scripts de páginas están en `js/pages/`.
 
 ## Build 63
 Corrección de menú para usuarios comunes: Resultados + Mi perfil visibles y carga inmediata del mes.
+
+
+## Build 67
+Corrección fuerte para usuario común congelado en Resultados/Mi perfil, cierre de sesión real y limpieza de caché.
