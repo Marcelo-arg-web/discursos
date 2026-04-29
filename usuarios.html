@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Usuarios · Arreglos Discursos</title>
 <link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="css/styles.css?v=20260429b55" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b56" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
 <div id="topbar"></div>
@@ -79,9 +79,13 @@
     <option value="false">No</option>
   </select>
 </label>
-<button class="btn primary" id="btnVincularAuth" type="submit">Crear perfil para ese UID</button>
+<div class="row" style="gap:10px; align-items:center; margin-top:10px;">
+  <button class="btn primary" id="btnVincularAuth" type="submit">Crear / vincular perfil</button>
+  <button class="btn" id="btnLimpiarVincular" type="button">Limpiar vínculo</button>
+</div>
 </form>
-<div class="small muted" style="margin-top:10px;">Esto no crea una cuenta nueva: solo crea el perfil faltante en <span class="pill">/usuarios/{UID}</span> para que el usuario aparezca y pueda habilitarse.</div>
+<div id="vincularStatus" class="small muted" style="margin-top:10px;">Esto no crea una cuenta nueva: solo crea el perfil faltante en <span class="pill">/usuarios/{UID}</span> para que el usuario aparezca y pueda habilitarse.</div>
+<div class="small muted" style="margin-top:6px;">Importante: el UID debe copiarse completo desde Firebase Authentication. Si el vínculo no se confirma, el sistema mostrará el motivo exacto.</div>
 </div>
 </div>
 <div class="col">
@@ -148,9 +152,9 @@
     });
   });
 })();
-</script><script src="js/pages/usuarios.js?v=20260429b55" type="module"></script>
+</script><script src="js/pages/usuarios.js?v=20260429b56" type="module"></script>
   <script src="js/nav-mobile.js"></script>
-  <script src="js/pro-shell.js?v=20260429b55"></script>
-  <script src="js/viewer-mode.js?v=20260429b55" type="module"></script>
+  <script src="js/pro-shell.js?v=20260429b56"></script>
+  <script src="js/viewer-mode.js?v=20260429b56" type="module"></script>
 </body>
 </html>

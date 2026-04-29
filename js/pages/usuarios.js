@@ -95,6 +95,37 @@ function displayEmail(u){
   return String(u?.email || u?.correo || "").trim();
 }
 
+function setVincularStatus(msg, isError=false){
+  const el = $("vincularStatus");
+  if(!el) return;
+  el.innerHTML = `<span class="${isError ? "text-danger" : ""}">${escapeHtml(msg)}</span>`;
+}
+
+function normalizeUid(uid){
+  return String(uid || "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+}
+
+function firebaseErrorMessage(err){
+  const raw = String(err?.code || err?.message || err || "").toLowerCase();
+  if(raw.includes("permission-denied")){
+    return "Permiso denegado por Firestore. Revisá que tu usuario admin esté activo y que las reglas de Firestore permitan al admin crear documentos en /usuarios.";
+  }
+  if(raw.includes("unavailable") || raw.includes("network")){
+    return "No hay conexión estable con Firestore. Verificá Internet y volvé a intentar.";
+  }
+  if(raw.includes("uid incompleto")){
+    return "El UID parece incompleto. Copialo completo desde Firebase Authentication.";
+  }
+  if(raw.includes("email inválido")){
+    return "El email no parece válido.";
+  }
+  return "No pude vincular ese usuario. Revisá UID, email y permisos de administrador.";
+}
+
+
 async function listUsuarios(){
   const tbody = $("tbodyUsuarios");
   const status = $("usuariosStatus");
@@ -320,27 +351,43 @@ function escapeHtml(s){
 
 
 async function linkExistingAuthProfile({uid, nombre, email, rol, activo}){
-  uid = String(uid || "").trim();
+  uid = normalizeUid(uid);
   email = String(email || "").trim().toLowerCase();
   nombre = String(nombre || "").trim() || email;
   rol = String(rol || "viewer").trim() || "viewer";
-  if(!uid || uid.length < 10) throw new Error("UID incompleto");
+
+  if(!uid || uid.length < 20) throw new Error("UID incompleto");
   if(!email || !email.includes("@")) throw new Error("Email inválido");
 
-  await setDoc(doc(db, "usuarios", uid), {
+  const ref = doc(db, "usuarios", uid);
+  const nowData = {
     uid,
+    authUid: uid,
     nombre,
     nombreCompleto: nombre,
     email,
+    correo: email,
     rol,
     activo: !!activo,
     congregacionPerfil: "Villa Fiad",
+    congregacion: "Villa Fiad",
     perfilDiscursante: true,
     vinculadoDesdeAuth: true,
+    vinculadoPor: auth.currentUser?.email || "",
     vinculadoEn: serverTimestamp(),
     updatedAt: serverTimestamp()
-  }, { merge:true });
+  };
+
+  await setDoc(ref, nowData, { merge:true });
+
+  // Verificación inmediata: si no se puede leer, el admin sabe exactamente que no quedó creado.
+  const check = await getDoc(ref);
+  if(!check.exists()){
+    throw new Error("No se confirmó la creación del perfil en Firestore");
+  }
+  return { id: check.id, data: check.data() || {} };
 }
+
 
 async function createUserSecondary({nombre, email, password, rol, activo}){
   // Crear usuario en un auth separado para NO cerrar la sesión del admin actual.
@@ -392,26 +439,47 @@ async function createUserSecondary({nombre, email, password, rol, activo}){
     await listUsuarios();
   });
 
+  $("btnLimpiarVincular")?.addEventListener("click", ()=>{
+    formVincular?.reset();
+    setVincularStatus("Listo para vincular un usuario existente de Firebase Authentication.");
+  });
+
   formVincular?.addEventListener("submit", async (e)=>{
     e.preventDefault();
-    const uid = $("vincularUid")?.value?.trim();
+    const uid = normalizeUid($("vincularUid")?.value);
     const email = $("vincularEmail")?.value?.trim();
     const nombre = $("vincularNombre")?.value?.trim();
     const rol = $("vincularRol")?.value || "viewer";
     const activo = $("vincularActivo")?.value === "true";
 
-    if(!uid || !email){ toast("Pegá el UID completo y el email del usuario registrado en Authentication.", true); return; }
+    if($("vincularUid")) $("vincularUid").value = uid;
+    if(!uid || !email){
+      setVincularStatus("Pegá el UID completo y el email del usuario registrado en Authentication.", true);
+      toast("Pegá el UID completo y el email del usuario registrado en Authentication.", true);
+      return;
+    }
+    if(uid.length < 26 && !confirm("El UID parece corto. Firebase suele mostrar UIDs largos. ¿Querés intentar igual?")){
+      setVincularStatus("Revisá el UID completo antes de vincular.", true);
+      return;
+    }
+
     try{
       if(btnVincular){ btnVincular.disabled = true; btnVincular.textContent = "Vinculando…"; }
-      await linkExistingAuthProfile({uid, nombre, email, rol, activo});
-      toast("Perfil creado en /usuarios. Ahora debería aparecer en la lista ✅");
+      setVincularStatus("Creando perfil en /usuarios y verificando…");
+      const result = await linkExistingAuthProfile({uid, nombre, email, rol, activo});
+      setVincularStatus(`Perfil vinculado y verificado: ${result.id}. Ya debería aparecer en la lista.`);
+      toast("Perfil creado en /usuarios y verificado ✅");
       formVincular.reset();
       await listUsuarios();
+      const q = $("q");
+      if(q){ q.value = email; await listUsuarios(); }
     }catch(err){
       console.error(err);
-      toast("No pude vincular ese usuario. Revisá UID, email y permisos de administrador.", true);
+      const msg = firebaseErrorMessage(err);
+      setVincularStatus(msg, true);
+      toast(msg, true);
     }finally{
-      if(btnVincular){ btnVincular.disabled = false; btnVincular.textContent = "Crear perfil para ese UID"; }
+      if(btnVincular){ btnVincular.disabled = false; btnVincular.textContent = "Crear / vincular perfil"; }
     }
   });
 

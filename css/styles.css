@@ -2001,3 +2001,8 @@ html.embedded-doc-root body.embedded-doc .documentos-preview-wrap{
     box-shadow:none !important;
   }
 }
+
+/* build 56: estado claro para vincular usuario de Authentication */
+.text-danger{ color:#b42318; font-weight:800; }
+#vincularStatus{ padding:10px 12px; border:1px solid rgba(37,99,235,.24); border-radius:12px; background:rgba(239,246,255,.85); }
+#vincularStatus .text-danger{ display:block; }
