@@ -1,7 +1,7 @@
 import { auth, db } from "../firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import {
-  doc, getDoc, setDoc, serverTimestamp, collection, getDocs
+  doc, getDoc, setDoc, updateDoc, deleteField, serverTimestamp, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { bosquejos } from "../data/bosquejos.js";
 
@@ -421,6 +421,52 @@ async function loadTarget(user, usuario){
   fillForm(CURRENT, user);
 }
 
+async function eliminarPerfilDiscursanteAdmin(){
+  if(!esAdminActual || !TARGET_UID){ toast("Solo el administrador puede eliminar perfiles.", true); return; }
+  const nombre = val("nombreCompleto") || CURRENT?.nombre || CURRENT?.email || "este usuario";
+  if(!confirm(`¿Eliminar el perfil de discursante de ${nombre}?
+
+Se mantiene el usuario y su acceso, pero se quitan teléfono, privilegio, congregación, bosquejos, observaciones y aprobación para salir.`)) return;
+  const btn = $("btnEliminarPerfilAdmin");
+  try{
+    if(btn){ btn.disabled = true; btn.textContent = "Eliminando…"; }
+    await updateDoc(doc(db,"usuarios",TARGET_UID), {
+      telefono: "",
+      telefonoPerfil: deleteField(),
+      responsabilidad: "",
+      privilegio: deleteField(),
+      congregacionPerfil: "Villa Fiad",
+      perfilBosquejos: [],
+      bosquejosPerfil: deleteField(),
+      discursosTiene: deleteField(),
+      discursosQuierePreparar: deleteField(),
+      observacionesPerfil: "",
+      perfilDiscursante: false,
+      aprobadoSalida: false,
+      aprobadoParaSalir: false,
+      soloLocalmente: false,
+      soloLocal: deleteField(),
+      perfilActualizadoEn: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    CURRENT = { ...(CURRENT || {}), telefono:"", responsabilidad:"", congregacionPerfil:"Villa Fiad", perfilBosquejos:[], observacionesPerfil:"", perfilDiscursante:false, aprobadoSalida:false, aprobadoParaSalir:false, soloLocalmente:false };
+    perfilBosquejos = [];
+    setVal("telefono", "");
+    setVal("responsabilidad", "");
+    setVal("congregacionPerfil", "Villa Fiad");
+    setChecked("aprobadoSalida", false);
+    setChecked("soloLocalmente", false);
+    setVal("observacionesPerfil", "");
+    renderPerfilBosquejos();
+    toast("Perfil de discursante eliminado. El usuario sigue existiendo.");
+  }catch(e){
+    console.error(e);
+    toast("No pude eliminar el perfil. Revisá permisos de administrador.", true);
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = "Eliminar perfil de discursante"; }
+  }
+}
+
 async function saveProfile(ev){
   ev.preventDefault();
   const nombreCompleto = val("nombreCompleto");
@@ -471,5 +517,6 @@ async function saveProfile(ev){
   setupConsultaBosquejo();
   setupPerfilBosquejos();
   setupAdminBosquejos(isAdminRole(usuario?.rol));
+  $("btnEliminarPerfilAdmin")?.addEventListener("click", eliminarPerfilDiscursanteAdmin);
   $("formPerfil")?.addEventListener("submit", saveProfile);
 })();

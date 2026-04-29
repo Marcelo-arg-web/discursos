@@ -16,9 +16,9 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// Network-first para HTML/JS/CSS - build 49 (siempre traer lo último).
+// Network-first para HTML/JS/CSS - build 50 (siempre traer lo último).
 // Para imágenes y otros assets: cache-first (opcional).
-const ASSET_CACHE = "assets-v49-menu-pdf-estilo";
+const ASSET_CACHE = "assets-v50-perfiles-usuarios";
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -93,11 +93,13 @@ self.addEventListener("fetch", (event) => {
 
 // build 44: perfil simplificado; número de bosquejo compacto, título más largo y sin canciones/listas extra.
 
-// build 49: modo Preparar semana, usuarios limitados a Resultados y salientes filtrados solo a locales Villa Fiad.
-// build 49: Mi perfil agrega alta, edición y eliminación de bosquejos desde el catálogo admin.
+// build 50: modo Preparar semana, usuarios limitados a Resultados y salientes filtrados solo a locales Villa Fiad.
+// build 50: Mi perfil agrega alta, edición y eliminación de bosquejos desde el catálogo admin.
 
-// build 49: revisión estética general, tarjetas, formularios, tablas, navegación y modo móvil.
+// build 50: revisión estética general, tarjetas, formularios, tablas, navegación y modo móvil.
 
-// build 49: perfiles con aprobación para salir, solo local y PDF de discursantes filtrado por ancianos/siervos ministeriales aprobados.
+// build 50: perfiles con aprobación para salir, solo local y PDF de discursantes filtrado por ancianos/siervos ministeriales aprobados.
 
-// build 49: vista previa de documentos sin menú interno y estilo profesional unificado.
+// build 50: vista previa de documentos sin menú interno y estilo profesional unificado.
+
+// build 50: usuarios comunes acceden a Mi perfil; admin puede cambiar o limpiar perfiles de discursante.

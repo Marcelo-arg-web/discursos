@@ -1,7 +1,7 @@
 import { auth, db, firebaseConfig } from "../firebase-config.js";
 import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, getAuth } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { collection, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { collection, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc, deleteField, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { sendPasswordRecoveryEmail, recoveryOkMessage } from "../shared/password-reset.js";
 
 const $ = (id) => document.getElementById(id);
@@ -123,7 +123,8 @@ async function listUsuarios(){
         </td>
         <td>
           <button class="btn ${activo?"":"ok"}" data-action="toggle" data-id="${u.id}" data-activo="${activo}">${activo?"Desactivar":"Activar"}</button>
-          <button class="btn" data-action="perfil" data-id="${u.id}">Perfil</button>
+          <button class="btn" data-action="perfil" data-id="${u.id}">Cambiar perfil</button>
+          <button class="btn danger" data-action="eliminarPerfil" data-id="${u.id}" data-nombre="${escapeHtml(u.nombre||u.email||"usuario")}">Eliminar perfil</button>
           <button class="btn" data-action="reset" data-id="${u.id}" data-email="${escapeHtml(u.email||"")}">Enviar reset</button>
         </td>
       </tr>
@@ -186,6 +187,47 @@ async function listUsuarios(){
     btn.addEventListener("click", ()=>{
       const id = btn.getAttribute("data-id");
       if(id) window.location.href = `perfil.html?uid=${encodeURIComponent(id)}`;
+    });
+  });
+
+  tbody.querySelectorAll("button[data-action='eliminarPerfil']").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const id = btn.getAttribute("data-id");
+      const nombre = btn.getAttribute("data-nombre") || "este usuario";
+      if(!id) return;
+      if(!confirm(`¿Eliminar el perfil de discursante de ${nombre}?
+
+Se mantiene el usuario y su acceso, pero se quitan teléfono, privilegio, congregación, bosquejos, observaciones y aprobación para salir.`)) return;
+      try{
+        btn.disabled = true;
+        btn.textContent = "Eliminando…";
+        await updateDoc(doc(db,"usuarios",id), {
+          telefono: "",
+          telefonoPerfil: deleteField(),
+          responsabilidad: "",
+          privilegio: deleteField(),
+          congregacionPerfil: "Villa Fiad",
+          perfilBosquejos: [],
+          bosquejosPerfil: deleteField(),
+          discursosTiene: deleteField(),
+          discursosQuierePreparar: deleteField(),
+          observacionesPerfil: "",
+          perfilDiscursante: false,
+          aprobadoSalida: false,
+          aprobadoParaSalir: false,
+          soloLocalmente: false,
+          soloLocal: deleteField(),
+          perfilActualizadoEn: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        toast("Perfil eliminado. El usuario sigue activo si no lo desactivás.");
+        await listUsuarios();
+      }catch(e){
+        console.error(e);
+        toast("No pude eliminar el perfil. Revisá permisos de administrador.", true);
+        btn.disabled = false;
+        btn.textContent = "Eliminar perfil";
+      }
     });
   });
 

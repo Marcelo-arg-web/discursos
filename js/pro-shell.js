@@ -111,11 +111,39 @@
     const linkContainer = topbar.querySelector('.links, .nav');
     const isViewerNav = topbar.classList.contains('viewer-topbar') || topbar.classList.contains('resultados-only') || document.body.classList.contains('viewer-result-mode');
     if(isViewerNav && linkContainer){
+      const current = (location.pathname.split('/').pop() || '').toLowerCase();
+      let hasResultados = false;
+      let hasPerfil = false;
       Array.from(linkContainer.querySelectorAll('a')).forEach(a=>{
         const href = (a.getAttribute('href') || '').toLowerCase();
-        if(!href.includes('resultados.html')) a.remove();
-        else { a.href = 'resultados.html'; a.textContent = 'Resultados'; a.className = 'active'; }
+        if(href.includes('resultados.html')){
+          hasResultados = true;
+          a.href = 'resultados.html';
+          a.textContent = 'Resultados';
+          a.className = current === 'resultados.html' ? 'active' : '';
+        }else if(href.includes('perfil.html')){
+          hasPerfil = true;
+          a.href = 'perfil.html';
+          a.textContent = 'Mi perfil';
+          a.className = current === 'perfil.html' ? 'active' : '';
+        }else{
+          a.remove();
+        }
       });
+      if(!hasResultados){
+        const a = document.createElement('a');
+        a.href = 'resultados.html';
+        a.textContent = 'Resultados';
+        a.className = current === 'resultados.html' ? 'active' : '';
+        linkContainer.appendChild(a);
+      }
+      if(!hasPerfil && !document.body.classList.contains('public-view')){
+        const a = document.createElement('a');
+        a.href = 'perfil.html';
+        a.textContent = 'Mi perfil';
+        a.className = current === 'perfil.html' ? 'active' : '';
+        linkContainer.appendChild(a);
+      }
     }
     if(linkContainer && !isViewerNav && !linkContainer.querySelector('a[href="funciones.html"]')){
       const personasLink = linkContainer.querySelector('a[href="personas.html"]');

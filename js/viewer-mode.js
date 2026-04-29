@@ -4,7 +4,8 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const VIEWER_ALLOWED = new Set([
-  "resultados.html"
+  "resultados.html",
+  "perfil.html"
 ]);
 const VIEWER_EMBED_ALLOWED = new Set([
   "programa-mensual.html",
@@ -50,7 +51,8 @@ function renderViewerTopbar(){
     <div class="topbar viewer-topbar resultados-only">
       <div class="brand"><span class="brand-dot"></span><span>Villa Fiad</span></div>
       <div class="links viewer-links">
-        <a href="resultados.html" class="active">Resultados</a>
+        <a href="resultados.html" class="${pageName() === 'resultados.html' ? 'active' : ''}">Resultados</a>
+        <a href="perfil.html" class="${pageName() === 'perfil.html' ? 'active' : ''}">Mi perfil</a>
       </div>
       <div class="actions">
         <span class="badge">Solo lectura</span>

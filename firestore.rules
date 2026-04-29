@@ -47,11 +47,38 @@ service cloud.firestore {
       return role() in ["superadmin", "Superadmin", "SUPERADMIN"];
     }
 
-    // Usuarios: cada uno puede leer su doc; admins pueden leer y editar; superadmin todo.
+    // Usuarios: cada uno puede leer y actualizar solo su perfil de discursante.
+    // Admin puede editar cualquier perfil y superadmin puede borrar el documento completo.
+    function selfProfileFieldsOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        "nombre", "nombreCompleto", "email",
+        "telefono", "telefonoPerfil",
+        "responsabilidad", "privilegio",
+        "congregacionPerfil", "congregacion",
+        "perfilBosquejos", "bosquejosPerfil",
+        "discursosTiene", "discursosQuierePreparar",
+        "observacionesPerfil", "perfilDiscursante",
+        "perfilActualizadoEn", "updatedAt"
+      ]);
+    }
+
+    function selfCreateProfileFieldsOnly() {
+      return request.resource.data.keys().hasOnly([
+        "nombre", "nombreCompleto", "email",
+        "telefono", "telefonoPerfil",
+        "responsabilidad", "privilegio",
+        "congregacionPerfil", "congregacion",
+        "perfilBosquejos", "bosquejosPerfil",
+        "discursosTiene", "discursosQuierePreparar",
+        "observacionesPerfil", "perfilDiscursante",
+        "perfilActualizadoEn", "updatedAt"
+      ]);
+    }
+
     match /usuarios/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if signedIn() && request.auth.uid == uid;
-      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create: if isAdmin() || (signedIn() && request.auth.uid == uid && selfCreateProfileFieldsOnly());
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid && selfProfileFieldsOnly());
       allow delete: if isSuperadmin();
     }
 
