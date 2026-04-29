@@ -1,6 +1,6 @@
 import { auth, db } from "../firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-import { collection, getDocs, doc, getDoc, orderBy, query } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 const $ = (id)=>document.getElementById(id);
 let CACHE = [];
@@ -162,8 +162,8 @@ function render(){
 async function cargar(){
   const status = $("directorioStatus");
   if(status) status.textContent = "Cargando perfiles aprobados…";
-  const qy = query(collection(db,"usuarios"), orderBy("nombre"));
-  const snap = await getDocs(qy);
+  // No usamos orderBy("nombre") para no excluir perfiles sin nombre cargado.
+  const snap = await getDocs(collection(db,"usuarios"));
   CACHE = snap.docs.map(d=>({ id:d.id, ...d.data() }));
   render();
 }

@@ -1,7 +1,7 @@
 import { auth, db, firebaseConfig } from "../firebase-config.js";
 import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, getAuth } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { collection, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc, deleteField, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { sendPasswordRecoveryEmail, recoveryOkMessage } from "../shared/password-reset.js";
 
 const $ = (id) => document.getElementById(id);
@@ -87,23 +87,46 @@ function boolValue(v){
   return v === true || String(v || "").toLowerCase() === "true" || String(v || "").toLowerCase() === "sí" || String(v || "").toLowerCase() === "si";
 }
 
+let CURRENT_IS_SUPERADMIN = false;
+function displayName(u){
+  return String(u?.nombreCompleto || u?.nombre || u?.displayName || u?.email || u?.id || "Sin nombre").trim();
+}
+function displayEmail(u){
+  return String(u?.email || u?.correo || "").trim();
+}
+
 async function listUsuarios(){
   const tbody = $("tbodyUsuarios");
+  const status = $("usuariosStatus");
   if(tbody) tbody.innerHTML = `<tr><td colspan="6" class="muted">Cargando…</td></tr>`;
-  const qy = query(collection(db, "usuarios"), orderBy("nombre"));
-  const snap = await getDocs(qy);
-  const rows = [];
-  snap.forEach((d)=>{
-    const u = d.data();
-    rows.push({ id:d.id, ...u });
-  });
+  if(status) status.textContent = "Leyendo todos los perfiles guardados en Firestore…";
+
+  let rows = [];
+  try{
+    // No usamos orderBy("nombre"): Firestore excluye documentos sin ese campo.
+    // Así aparecen también perfiles antiguos o incompletos que tengan nombreCompleto, email o solo UID.
+    const snap = await getDocs(collection(db, "usuarios"));
+    snap.forEach((d)=> rows.push({ id:d.id, ...(d.data() || {}) }));
+  }catch(e){
+    console.error(e);
+    if(tbody) tbody.innerHTML = `<tr><td colspan="6" class="muted">No pude leer /usuarios. Revisá permisos.</td></tr>`;
+    if(status) status.textContent = "Error al leer perfiles.";
+    return;
+  }
+
+  rows.sort((a,b)=>displayName(a).localeCompare(displayName(b), "es", {sensitivity:"base"}));
 
   const qtxt = String($("q")?.value||"").trim().toLowerCase();
-  const filtered = qtxt ? rows.filter(r=> (String(r.nombre||"").toLowerCase().includes(qtxt) || String(r.email||"").toLowerCase().includes(qtxt))) : rows;
+  const filtered = qtxt ? rows.filter(r=> ([displayName(r), displayEmail(r), r.id, r.rol, r.responsabilidad, r.privilegio, r.congregacionPerfil].join(" ").toLowerCase().includes(qtxt))) : rows;
+
+  if(status){
+    const incompletos = rows.filter(r=>!r.nombre && !r.nombreCompleto).length;
+    status.textContent = `Perfiles encontrados en Firestore: ${rows.length}. Mostrando: ${filtered.length}${incompletos ? ` · ${incompletos} sin nombre cargado` : ""}.`;
+  }
 
   if(!tbody) return;
   if(filtered.length === 0){
-    tbody.innerHTML = `<tr><td colspan="6" class="muted">No hay usuarios.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="muted">No hay usuarios/perfiles para mostrar.</td></tr>`;
     return;
   }
 
@@ -111,11 +134,14 @@ async function listUsuarios(){
     const activo = !!u.activo;
     const aprobado = boolValue(u.aprobadoSalida || u.aprobadoParaSalir);
     const soloLocal = boolValue(u.soloLocalmente || u.soloLocal);
+    const nombre = displayName(u);
+    const email = displayEmail(u) || "—";
+    const superActions = CURRENT_IS_SUPERADMIN ? `<button class="btn danger" data-action="borrarRegistro" data-id="${u.id}" data-nombre="${escapeHtml(nombre)}">Borrar registro</button>` : "";
     return `
       <tr>
-        <td>${escapeHtml(u.nombre||"—")}</td>
-        <td>${escapeHtml(u.email||"—")}</td>
-        <td><span class="badge">${escapeHtml(u.rol||"usuario")}</span></td>
+        <td>${escapeHtml(nombre)}${(!u.nombre && !u.nombreCompleto) ? `<br/><span class="muted small">Sin nombre cargado</span>` : ""}</td>
+        <td>${escapeHtml(email)}</td>
+        <td><span class="badge">${escapeHtml(u.rol||"viewer")}</span></td>
         <td>${activo ? "sí" : "no"}</td>
         <td>
           <label class="inline-check"><input type="checkbox" data-action="aprobadoSalida" data-id="${u.id}" ${aprobado?"checked":""}/> Aprobado salida</label><br/>
@@ -124,8 +150,9 @@ async function listUsuarios(){
         <td>
           <button class="btn ${activo?"":"ok"}" data-action="toggle" data-id="${u.id}" data-activo="${activo}">${activo?"Desactivar":"Activar"}</button>
           <button class="btn" data-action="perfil" data-id="${u.id}">Cambiar perfil</button>
-          <button class="btn danger" data-action="eliminarPerfil" data-id="${u.id}" data-nombre="${escapeHtml(u.nombre||u.email||"usuario")}">Eliminar perfil</button>
-          <button class="btn" data-action="reset" data-id="${u.id}" data-email="${escapeHtml(u.email||"")}">Enviar reset</button>
+          <button class="btn danger" data-action="eliminarPerfil" data-id="${u.id}" data-nombre="${escapeHtml(nombre)}">Eliminar perfil</button>
+          ${superActions}
+          <button class="btn" data-action="reset" data-id="${u.id}" data-email="${escapeHtml(displayEmail(u))}">Enviar reset</button>
         </td>
       </tr>
     `;
@@ -136,7 +163,7 @@ async function listUsuarios(){
       const id = btn.getAttribute("data-id");
       const activo = btn.getAttribute("data-activo") === "true";
       try{
-        await updateDoc(doc(db,"usuarios",id), { activo: !activo });
+        await setDoc(doc(db,"usuarios",id), { activo: !activo, updatedAt: serverTimestamp() }, { merge:true });
         toast(!activo ? "Usuario activado ✅" : "Usuario desactivado ✅");
         await listUsuarios();
       }catch(e){
@@ -171,6 +198,7 @@ async function listUsuarios(){
       try{
         await setDoc(doc(db,"usuarios",id), {
           soloLocalmente: chk.checked,
+          soloLocal: chk.checked,
           perfilActualizadoEn: serverTimestamp(),
           updatedAt: serverTimestamp()
         }, { merge:true });
@@ -195,13 +223,11 @@ async function listUsuarios(){
       const id = btn.getAttribute("data-id");
       const nombre = btn.getAttribute("data-nombre") || "este usuario";
       if(!id) return;
-      if(!confirm(`¿Eliminar el perfil de discursante de ${nombre}?
-
-Se mantiene el usuario y su acceso, pero se quitan teléfono, privilegio, congregación, bosquejos, observaciones y aprobación para salir.`)) return;
+      if(!confirm(`¿Eliminar el perfil de discursante de ${nombre}?\n\nSe mantiene el usuario y su acceso, pero se quitan teléfono, privilegio, congregación, bosquejos, observaciones y aprobación para salir.`)) return;
       try{
         btn.disabled = true;
         btn.textContent = "Eliminando…";
-        await updateDoc(doc(db,"usuarios",id), {
+        await setDoc(doc(db,"usuarios",id), {
           telefono: "",
           telefonoPerfil: deleteField(),
           responsabilidad: "",
@@ -216,10 +242,10 @@ Se mantiene el usuario y su acceso, pero se quitan teléfono, privilegio, congre
           aprobadoSalida: false,
           aprobadoParaSalir: false,
           soloLocalmente: false,
-          soloLocal: deleteField(),
+          soloLocal: false,
           perfilActualizadoEn: serverTimestamp(),
           updatedAt: serverTimestamp()
-        });
+        }, { merge:true });
         toast("Perfil eliminado. El usuario sigue activo si no lo desactivás.");
         await listUsuarios();
       }catch(e){
@@ -227,6 +253,28 @@ Se mantiene el usuario y su acceso, pero se quitan teléfono, privilegio, congre
         toast("No pude eliminar el perfil. Revisá permisos de administrador.", true);
         btn.disabled = false;
         btn.textContent = "Eliminar perfil";
+      }
+    });
+  });
+
+  tbody.querySelectorAll("button[data-action='borrarRegistro']").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const id = btn.getAttribute("data-id");
+      const nombre = btn.getAttribute("data-nombre") || "este registro";
+      if(!id || !CURRENT_IS_SUPERADMIN) return;
+      if(!confirm(`¿Borrar el registro de Firestore de ${nombre}?\n\nEsto quita el documento /usuarios/${id}. No borra la cuenta de Firebase Authentication, pero ese usuario ya no podrá entrar hasta que se le cree otro perfil.`)) return;
+      if(!confirm("Confirmá una segunda vez: ¿borrar definitivamente este registro de /usuarios?")) return;
+      try{
+        btn.disabled = true;
+        btn.textContent = "Borrando…";
+        await deleteDoc(doc(db,"usuarios",id));
+        toast("Registro de Firestore borrado.");
+        await listUsuarios();
+      }catch(e){
+        console.error(e);
+        toast("No pude borrar el registro. Solo superadmin puede hacerlo.", true);
+        btn.disabled = false;
+        btn.textContent = "Borrar registro";
       }
     });
   });
@@ -261,7 +309,6 @@ Se mantiene el usuario y su acceso, pero se quitan teléfono, privilegio, congre
     });
   });
 }
-
 function escapeHtml(s){
   return String(s||"")
     .replace(/&/g,"&amp;")
@@ -302,6 +349,7 @@ async function createUserSecondary({nombre, email, password, rol, activo}){
   }
 
   const canCreate = isSuperadmin(usuario?.rol);
+  CURRENT_IS_SUPERADMIN = canCreate;
   const form = $("formAlta");
   const btnCrear = $("btnCrear");
 

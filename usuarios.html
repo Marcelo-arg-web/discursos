@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Usuarios · Arreglos Discursos</title>
 <link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="css/styles.css?v=20260429b50" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b51" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
 <div id="topbar"></div>
@@ -57,10 +57,11 @@
 <div class="row" style="justify-content:space-between;align-items:center;">
 <div>
 <div class="h2">Usuarios existentes</div>
-<div class="muted small">Listado desde <span class="pill">/usuarios</span>.</div>
+<div class="muted small">Listado desde <span class="pill">/usuarios</span>. Muestra también perfiles incompletos, aunque no tengan nombre cargado.</div>
 </div>
 <div class="row" style="gap:10px; align-items:center;"><input class="input" id="q" placeholder="Buscar nombre o email…" style="max-width:260px;" type="search"/><button class="btn" id="btnRefrescar" type="button">Refrescar</button></div>
 </div>
+<div id="usuariosStatus" class="muted small" style="margin-top:8px;">Cargando perfiles…</div>
 <hr class="sep"/>
 <div style="overflow:auto;">
 <table class="table" style="min-width:980px;">
@@ -71,7 +72,7 @@
 <th>Rol</th>
 <th>Activo</th>
 <th>Aprobación discursos</th>
-<th style="width:520px;">Acciones</th>
+<th style="width:680px;">Acciones</th>
 </tr>
 </thead>
 <tbody id="tbodyUsuarios">
@@ -80,7 +81,7 @@
 </table>
 </div>
 <div class="small muted" style="margin-top:10px;">
-            Podés desactivar un usuario, abrir su perfil o enviarle un correo para restablecer la clave.
+            Podés desactivar un usuario, cambiar o eliminar su perfil de discursante, enviar reset de clave o, como superadmin, borrar el registro de Firestore.
           </div>
 </div>
 </div>
@@ -115,9 +116,9 @@
     });
   });
 })();
-</script><script src="js/pages/usuarios.js?v=20260429b50" type="module"></script>
+</script><script src="js/pages/usuarios.js?v=20260429b51" type="module"></script>
   <script src="js/nav-mobile.js"></script>
-  <script src="js/pro-shell.js?v=20260429b50"></script>
-  <script src="js/viewer-mode.js?v=20260429b50" type="module"></script>
+  <script src="js/pro-shell.js?v=20260429b51"></script>
+  <script src="js/viewer-mode.js?v=20260429b51" type="module"></script>
 </body>
 </html>
