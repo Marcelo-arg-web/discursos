@@ -2212,7 +2212,7 @@ body.pro-online.has-topbar:not(.embedded-doc) .viewer-links a[href="perfil.html"
 body.pro-online.public-view.viewer-result-mode:not(.embedded-doc) .viewer-links a[href="perfil.html"]{display:none !important;}
 
 
-/* Build 69 - usuario común sin bloqueo: menú visible y botones utilizables */
+/* Build 70 - usuario común sin bloqueo: menú visible y botones utilizables */
 body.pro-online.viewer-result-mode:not(.embedded-doc) #topbar .topbar.viewer-topbar.resultados-only{
   pointer-events:auto !important;
 }

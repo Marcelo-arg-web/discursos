@@ -79,7 +79,7 @@ service cloud.firestore {
       allow delete: if isSuperadmin();
     }
 
-    // Build 69: todo usuario autenticado puede LEER Resultados/documentos.
+    // Build 70: todo usuario autenticado puede LEER Resultados/documentos.
     // La escritura sigue limitada a editor/admin para que el usuario común no modifique asignaciones.
     match /personas/{id} {
       allow read: if signedIn();

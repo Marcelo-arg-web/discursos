@@ -1,4 +1,4 @@
-import { auth, db } from "../firebase-config.js?v=20260429b69";
+import { auth, db } from "../firebase-config.js?v=20260429b70";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { canciones } from "../data/canciones.js";

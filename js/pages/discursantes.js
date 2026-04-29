@@ -1,7 +1,7 @@
 // Discursantes (visitas (visitantes + salidas)) y Conferenciantes locales
 // Requiere: firebase-config.js exporte { auth, db }
 
-import { auth, db } from "../firebase-config.js?v=20260429b69";
+import { auth, db } from "../firebase-config.js?v=20260429b70";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection,

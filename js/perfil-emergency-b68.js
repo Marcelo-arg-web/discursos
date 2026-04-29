@@ -1,4 +1,4 @@
-/* build 69 - Mi perfil no queda congelado mientras Firebase confirma la sesión. */
+/* build 70 - Mi perfil no queda congelado mientras Firebase confirma la sesión. */
 (function(){
   function $(id){return document.getElementById(id);}
   function ready(){

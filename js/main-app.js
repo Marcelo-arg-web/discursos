@@ -1,4 +1,4 @@
-import { auth } from "./firebase.js?v=20260429b69";
+import { auth } from "./firebase.js?v=20260429b70";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { ensureUserDoc } from "./db.js";
 import { roleFromEmail, canEdit } from "./roles.js";

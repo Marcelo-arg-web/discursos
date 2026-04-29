@@ -1,4 +1,4 @@
-/* build 69 - Arranque inmediato de Resultados aunque Firebase/Auth tarde.
+/* build 70 - Arranque inmediato de Resultados aunque Firebase/Auth tarde.
    Activa mes, botones y vista previa sin esperar módulos. */
 (function(){
   function $(id){ return document.getElementById(id); }
