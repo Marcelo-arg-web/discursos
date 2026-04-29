@@ -4,8 +4,6 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
 
-    // Rescate de superadmin por email. Esto permite vincular usuarios existentes
-    // aunque el documento /usuarios del administrador haya quedado incompleto.
     function bootstrapSuperadminEmail() {
       return signedIn() && request.auth.token.email in [
         "marceyyesi@gmail.com",
@@ -17,8 +15,6 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid));
     }
 
-    // Acepta activo como booleano o como texto, porque algunos usuarios antiguos
-    // pueden haber quedado guardados como "true", "si", "sí", "activo", etc.
     function activeValue() {
       return signedIn() ? userDoc().data.activo : false;
     }
@@ -34,7 +30,6 @@ service cloud.firestore {
       return activeUser() ? (userDoc().data.rol) : "none";
     }
 
-    // Acepta roles antiguos/nuevos y variantes en español.
     function isEditor() {
       return bootstrapSuperadminEmail() || role() in [
         "editor", "Editor", "EDITOR",
@@ -56,10 +51,8 @@ service cloud.firestore {
       return bootstrapSuperadminEmail() || role() in ["superadmin", "Superadmin", "SUPERADMIN"];
     }
 
-    // Usuarios: cada uno puede leer y actualizar solo su perfil de discursante.
-    // Admin puede editar cualquier perfil y superadmin puede borrar el documento completo.
-    function selfProfileFieldsOnly() {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+    function selfProfileFields() {
+      return [
         "nombre", "nombreCompleto", "email",
         "telefono", "telefonoPerfil",
         "responsabilidad", "privilegio",
@@ -68,20 +61,15 @@ service cloud.firestore {
         "discursosTiene", "discursosQuierePreparar",
         "observacionesPerfil", "perfilDiscursante",
         "perfilActualizadoEn", "updatedAt"
-      ]);
+      ];
+    }
+
+    function selfProfileFieldsOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(selfProfileFields());
     }
 
     function selfCreateProfileFieldsOnly() {
-      return request.resource.data.keys().hasOnly([
-        "nombre", "nombreCompleto", "email",
-        "telefono", "telefonoPerfil",
-        "responsabilidad", "privilegio",
-        "congregacionPerfil", "congregacion",
-        "perfilBosquejos", "bosquejosPerfil",
-        "discursosTiene", "discursosQuierePreparar",
-        "observacionesPerfil", "perfilDiscursante",
-        "perfilActualizadoEn", "updatedAt"
-      ]);
+      return request.resource.data.keys().hasOnly(selfProfileFields());
     }
 
     match /usuarios/{uid} {
@@ -91,62 +79,60 @@ service cloud.firestore {
       allow delete: if isSuperadmin();
     }
 
-    // Personas, asignaciones, visitas: lectura para usuarios activos; escritura para editores/admins.
+    // Build 68: todo usuario autenticado puede LEER Resultados/documentos.
+    // La escritura sigue limitada a editor/admin para que el usuario común no modifique asignaciones.
     match /personas/{id} {
-      allow read: if activeUser();
+      allow read: if signedIn();
       allow write: if isEditor();
     }
 
     match /asignaciones/{id} {
-      allow read: if activeUser();
+      allow read: if signedIn();
       allow write: if isEditor();
     }
 
-    // Asignaciones mensuales para tablero.
     match /asignaciones_mensuales/{id} {
-      allow read: if activeUser() || request.auth == null;
+      allow read: if signedIn() || request.auth == null;
       allow write: if isEditor();
     }
 
     match /visitas/{id} {
-      allow read: if activeUser();
+      allow read: if signedIn();
       allow write: if isEditor();
     }
 
-    // Conferenciantes locales y turnos internos de suplencia.
     match /conferenciantesLocales/{id} {
-      allow read: if activeUser();
+      allow read: if signedIn();
       allow write: if isEditor();
     }
 
     match /suplenciasDiscursantes/{id} {
-      allow read: if activeUser();
+      allow read: if signedIn();
       allow write: if isEditor();
     }
 
-    // Hospitalidad: config de rotación y excepciones por fecha.
     match /hospitalidad_config/{id} {
-      allow read: if activeUser();
+      allow read: if signedIn();
       allow write: if isEditor();
     }
 
     match /hospitalidad_excepciones/{id} {
-      allow read: if activeUser();
+      allow read: if signedIn();
       allow write: if isEditor();
     }
 
     match /salientes/{id} {
-      allow read: if activeUser() || request.auth == null;
+      allow read: if signedIn() || request.auth == null;
       allow write: if isEditor();
     }
 
-    // Catálogos: solo lectura a activos; escritura admin.
     match /discursos/{id} {
-      allow read: if activeUser();
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
+
     match /canciones/{id} {
-      allow read: if activeUser();
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
   }
