@@ -2194,3 +2194,19 @@ body.pro-online.viewer-result-mode .topbar.viewer-topbar.resultados-only .links 
 body.pro-online.public-view.viewer-result-mode .topbar.viewer-topbar.resultados-only .links a[href="perfil.html"]{
   display:none !important;
 }
+
+/* build 65 - Menú de usuario siempre visible en Resultados/Mi perfil */
+body.pro-online.has-topbar:not(.embedded-doc) #topbar{display:block !important; visibility:visible !important; opacity:1 !important;}
+body.pro-online.has-topbar:not(.embedded-doc) #topbar > .topbar{visibility:visible !important; opacity:1 !important;}
+@media (min-width:1024px){
+  body.pro-online.has-topbar:not(.embedded-doc) #topbar > .topbar{
+    display:flex !important;
+    position:fixed !important;
+    inset:0 auto 0 0 !important;
+    width:292px !important;
+    min-height:100vh !important;
+  }
+}
+body.pro-online.has-topbar:not(.embedded-doc) .viewer-links a[href="resultados.html"],
+body.pro-online.has-topbar:not(.embedded-doc) .viewer-links a[href="perfil.html"]{display:flex !important;}
+body.pro-online.public-view.viewer-result-mode:not(.embedded-doc) .viewer-links a[href="perfil.html"]{display:none !important;}
