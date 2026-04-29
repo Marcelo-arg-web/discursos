@@ -22,6 +22,9 @@ import { visitantes as visitantesLocal } from "../data/visitantes.js";
 import {
   getAncianosOSiervos,
   getAncianos,
+  getPresidentes,
+  getOradoresOracion,
+  getConductoresAtalaya,
   getAcomodadores,
   getPlataforma,
   getMultimedia,
@@ -288,6 +291,7 @@ const candidates = {
 const SUPPORT_SELECT_IDS = [
   "multimedia1",
   "multimedia2",
+  "plataforma",
   "acomodadorEntrada",
   "acomodadorAuditorio1",
   "microfonista1",
@@ -297,6 +301,7 @@ const SUPPORT_SELECT_IDS = [
 const SUPPORT_HISTORY_FIELDS = [
   "multimedia1Id",
   "multimedia2Id",
+  "plataformaId",
   "acomodadorEntradaId",
   "acomodadorAuditorio1Id",
   "microfonista1Id",
@@ -568,6 +573,7 @@ function getSupportSelectedIds(exceptSelectId = "") {
 function getSupportCandidateIds() {
   return Array.from(new Set([
     ...(candidates.multimedia || []),
+    ...(candidates.plataforma || []),
     ...(candidates.acomodadores || []),
     ...(candidates.microfonistas || []),
   ].filter(Boolean)));
@@ -639,6 +645,7 @@ function supportRoleKeyForSelectId(selectId) {
   return ({
     multimedia1: "multimedia1",
     multimedia2: "multimedia2",
+    plataforma: "plataforma",
     acomodadorEntrada: "acomodadorEntrada",
     acomodadorAuditorio1: "acomodadorAuditorio1",
     microfonista1: "microfonista1",
@@ -1300,7 +1307,7 @@ function nextFromRotation(key, ids){
 }
 
 function suggestSelect(selectId, key, ids){
-  if (["multimedia1","multimedia2","acomodadorEntrada","acomodadorAuditorio1","microfonista1","microfonista2"].includes(selectId)) {
+  if (["multimedia1","multimedia2","plataforma","acomodadorEntrada","acomodadorAuditorio1","microfonista1","microfonista2"].includes(selectId)) {
     return suggestSupportSelect(selectId, ids);
   }
   if (selectId === "plataforma") {
@@ -1442,10 +1449,10 @@ function pickNextFrom(ids, storageKey) {
 
 async function sugerirPresidente(){
   if(!window.__personasCache) return "";
-  const ancSiervos = getAncianosOSiervos(window.__personasCache) || [];
+  const presidentes = getPresidentes(window.__personasCache) || [];
   const exclNames = new Set([normalize(MARCELO_CONDUCTOR_NOMBRE)]);
-  const excl = [getVal("conductorAtalaya"), getVal("lectorAtalaya")];
-  const candidatos = ancSiervos
+  const excl = [getVal("conductorAtalaya"), getVal("lectorAtalaya"), getVal("oracionInicial")];
+  const candidatos = presidentes
     .filter(p => p && p.id && p.nombre)
     // Marcelo se reserva para conducir La Atalaya, salvo asignación manual del usuario.
     .filter(p => !exclNames.has(normalize(p.nombre || "")))
@@ -1455,9 +1462,11 @@ async function sugerirPresidente(){
 
 async function sugerirConductorAtalaya(){
   if(!window.__personasCache) return "";
+  const conductores = getConductoresAtalaya(window.__personasCache) || [];
   const anc = getAncianos(window.__personasCache) || [];
-  const candidatos = anc.filter(p=>p && p.id && p.nombre).map(p=>p.id);
-  const marcelo = anc.find(p => normalize(p?.nombre || "") === normalize(MARCELO_CONDUCTOR_NOMBRE));
+  const baseConductores = conductores.length ? conductores : anc;
+  const candidatos = baseConductores.filter(p=>p && p.id && p.nombre).map(p=>p.id);
+  const marcelo = baseConductores.find(p => normalize(p?.nombre || "") === normalize(MARCELO_CONDUCTOR_NOMBRE)) || anc.find(p => normalize(p?.nombre || "") === normalize(MARCELO_CONDUCTOR_NOMBRE));
   const salidaMarcelo = marcelo ? await marceloTieneSalidaFinDeSemana(semanaISO() || upcomingSaturdayISO()) : false;
   const marceloUsadoEnOtraAsignacion = marcelo ? selectedIdsThisWeek("conductorAtalaya").has(marcelo.id) : false;
 
@@ -1510,7 +1519,7 @@ function autoPresidenteIfNeeded(){
 
 async function sugerirOracionInicial(){
   if(!window.__personasCache) return "";
-  const pool = (getAncianosOSiervos(window.__personasCache) || []);
+  const pool = (getOradoresOracion(window.__personasCache) || []);
   const candidatos = pool
     .filter(p=>p && p.id && p.nombre)
     .map(p=>p.id);
@@ -1520,7 +1529,7 @@ async function sugerirOracionInicial(){
     "oracionInicial",
     "oracionInicial",
     candidatos,
-    [getVal("lectorAtalaya"), getVal("conductorAtalaya")],
+    [getVal("lectorAtalaya"), getVal("conductorAtalaya"), getVal("presidente")],
     salidaMarcelo && marcelo?.id ? [marcelo.id] : []
   );
 }
@@ -1817,8 +1826,13 @@ function validateRequired() {
 function validateNoDuplicates() {
   if (isSemanaEspecial()) return null;
   const fields = [
+    { id: "presidente", label: "Presidente" },
+    { id: "oracionInicial", label: "Oración inicial" },
+    { id: "conductorAtalaya", label: "Conductor La Atalaya" },
+    { id: "lectorAtalaya", label: "Lector La Atalaya" },
     { id: "multimedia1", label: "Multimedia 1" },
     { id: "multimedia2", label: "Multimedia 2" },
+    { id: "plataforma", label: "Acomodador de plataforma" },
     { id: "acomodadorEntrada", label: "Acomodador Entrada" },
     { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
     { id: "microfonista1", label: "Microfonista 1" },
@@ -1855,11 +1869,11 @@ async function cargarSemana() {
       try{ autoPresidenteIfNeeded(); }catch(_e){}
       // refresca aviso
       try{ await generarAviso(); }catch(_e){}
-      setStatus("Datos cargados.");
+      setStatus("Datos cargados. Si había campos vacíos, se completaron sugerencias automáticas sin repetir funciones.");
     } else {
       hydrateToUI(blankAssignmentsData({ tipoSemana: "normal" }));
       updateSemanaEspecialUI();
-      setStatus("No hay datos guardados para esta semana. Hice una precarga automática. Revisá y guardá.");
+      setStatus("No hay datos guardados para esta semana. Hice una precarga automática sin repetir funciones. Revisá y guardá.");
       await aplicarAutoVisitante(s, { force: true });
       try{ await precargarAsignacionesAutomaticas({ soloVacios: true }); }catch(_e){}
       try{ autoPresidenteIfNeeded(); }catch(_e){}

@@ -1002,3 +1002,23 @@ body.login-page{
   .login-card{padding:22px; border-radius:20px;}
   .login-actions{grid-template-columns:1fr;}
 }
+
+/* build 35 - página Funciones con tildes */
+#tblFunciones input[type="checkbox"]{
+  width:18px;
+  height:18px;
+  accent-color:#2563eb;
+  cursor:pointer;
+}
+#tblFunciones th,
+#tblFunciones td{
+  vertical-align:middle;
+}
+#tblFunciones tbody tr:hover{
+  background:#f8fafc;
+}
+.table-wrap{
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  background:#fff;
+}

@@ -248,6 +248,7 @@ function render(mesISO, pairs){
       <tr>
         <td class="td-center">${p.semana}</td>
         <td>${escapeHtml(p.fechaLabel)}</td>
+        <td>${escapeHtml(textoAsignado(p.fin.plataforma) || "—")}</td>
         <td>${escapeHtml(textoAsignado(p.finMic.mic1) || "—")}</td>
         <td>${escapeHtml(textoAsignado(p.finMic.mic2) || "—")}</td>
       </tr>
@@ -282,13 +283,13 @@ function render(mesISO, pairs){
     </div>
 
     <div class="board-wrap" id="mic" style="margin-top:14px;">
-      <div class="board-section-title">Microfonistas</div>
+      <div class="board-section-title">Plataforma y microfonistas</div>
       <table class="table board" style="width:100%;">
         <thead>
-          <tr><th class="td-center">Sem</th><th>Fecha</th><th>Mic. 1</th><th>Mic. 2</th></tr>
-          <tr><th></th><th></th><th>Asignado</th><th>Asignado</th></tr>
+          <tr><th class="td-center">Sem</th><th>Fecha</th><th>Plataforma</th><th>Mic. 1</th><th>Mic. 2</th></tr>
+          <tr><th></th><th></th><th>Asignado</th><th>Asignado</th><th>Asignado</th></tr>
         </thead>
-        <tbody>${rowsMic || `<tr><td colspan="4" class="muted">Sin datos.</td></tr>`}</tbody>
+        <tbody>${rowsMic || `<tr><td colspan="5" class="muted">Sin datos.</td></tr>`}</tbody>
       </table>
     </div>
   `;

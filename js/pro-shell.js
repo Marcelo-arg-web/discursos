@@ -11,6 +11,7 @@
     'visitantes': '⇢',
     'salientes': '⇠',
     'personas': '👥',
+    'funciones': '☑',
     'discursantes': '🎙',
     'estadísticas': '◈',
     'visitas/salidas': '↔',
@@ -29,6 +30,7 @@
     if(href.includes('tablero-acomodadores')) return 'asignaciones villa fiad';
     if(href.includes('visitantes')) return 'visitantes';
     if(href.includes('salientes')) return 'salientes';
+    if(href.includes('funciones')) return 'funciones';
     if(href.includes('personas')) return 'personas';
     if(href.includes('discursantes')) return 'discursantes';
     if(href.includes('estadisticas')) return 'estadísticas';
@@ -49,6 +51,18 @@
       const raw = brand.textContent.trim() || 'Villa Fiad';
       brand.innerHTML = '<span class="brand-dot"></span><span class="brand-copy"><span class="brand-title">Asignaciones</span><span class="brand-sub">Villa Fiad · online</span></span>';
       brand.setAttribute('title', raw);
+    }
+
+    const linkContainer = topbar.querySelector('.links, .nav');
+    if(linkContainer && !linkContainer.querySelector('a[href="funciones.html"]')){
+      const personasLink = linkContainer.querySelector('a[href="personas.html"]');
+      if(personasLink){
+        const a = document.createElement('a');
+        a.href = 'funciones.html';
+        a.textContent = 'Funciones';
+        if(location.pathname.endsWith('/funciones.html')) a.className = 'active';
+        personasLink.insertAdjacentElement('afterend', a);
+      }
     }
 
     const links = topbar.querySelectorAll('.links a, .nav a');

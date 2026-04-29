@@ -1,5 +1,6 @@
 // js/roles/getRoleCandidates.js
-// Construye "candidatos" para cada dropdown desde la lista blanca + (opcional) roles en base.
+// Construye candidatos para cada lista usando los tildes de Personas/Funciones
+// y mantiene listas de respaldo para no perder lo ya cargado.
 
 import {
   uniqueById,
@@ -19,7 +20,6 @@ import {
 } from "./rolesLists.js";
 
 export function getAncianos(personas){
-  // Si en tu base guardás rol "anciano", también se suma
   const porLista = filterByWhitelist(personas, ANCIANOS);
   const porRol = filterByRole(personas, "anciano");
   return uniqueById([...porLista, ...porRol]);
@@ -36,38 +36,66 @@ export function getAncianosOSiervos(personas){
   return uniqueById([...getAncianos(personas), ...getSiervos(personas)]);
 }
 
-export function getAcomodadores(personas){
-  // Acomodadores = lista + ancianos/siervos (por si hay cambios)
-  const porLista = filterByWhitelist(personas, ACOMODADORES);
+function preferConfigured(configured, fallback){
+  const c = uniqueById(configured || []);
+  return c.length ? c : uniqueById(fallback || []);
+}
+
+export function getPresidentes(personas){
+  // Prioriza el tilde "Presidente". El respaldo ancianos/siervos mantiene compatibilidad.
+  const porRol = filterByAnyRole(personas, ["presidente"]);
   const base = getAncianosOSiervos(personas);
-  return uniqueById([...porLista, ...base]);
+  return preferConfigured(porRol, base);
+}
+
+export function getOradoresOracion(personas){
+  // Tilde "Oración". El respaldo ancianos/siervos mantiene compatibilidad.
+  const porRol = filterByAnyRole(personas, ["oracion", "oración"]);
+  const base = getAncianosOSiervos(personas);
+  return preferConfigured(porRol, base);
+}
+
+export function getConductoresAtalaya(personas){
+  // Tilde "Conductor La Atalaya". Respaldo: ancianos.
+  const porRol = filterByAnyRole(personas, ["conductor", "conductor atalaya", "conductor la atalaya"]);
+  const base = getAncianos(personas);
+  return preferConfigured(porRol, base);
+}
+
+export function getAcomodadores(personas){
+  // Acomodadores = tildes + lista + ancianos/siervos (por compatibilidad).
+  const porRol = filterByAnyRole(personas, ["acomodador", "acomodadores"]);
+  const porLista = filterByWhitelist(personas, ACOMODADORES);
+  const base = uniqueById([...porLista, ...getAncianosOSiervos(personas)]);
+  return preferConfigured(porRol, base);
 }
 
 export function getPlataforma(personas){
-  // Plataforma = SOLO lista
-  return filterByWhitelist(personas, PLATAFORMA);
+  // Acomodador de plataforma = tilde "plataforma" + lista de respaldo.
+  const porRol = filterByAnyRole(personas, ["plataforma", "acomodador plataforma", "acomodador de plataforma"]);
+  const porLista = filterByWhitelist(personas, PLATAFORMA);
+  return preferConfigured(porRol, porLista);
 }
 
 export function getMultimedia(personas){
-  // Multimedia = lista + ancianos/siervos
+  // Multimedia = tildes + lista + ancianos/siervos.
+  const porRol = filterByAnyRole(personas, ["multimedia", "audio", "video"]);
   const porLista = filterByWhitelist(personas, MULTIMEDIA);
-  const base = getAncianosOSiervos(personas);
-  return uniqueById([...porLista, ...base]);
+  const base = uniqueById([...porLista, ...getAncianosOSiervos(personas)]);
+  return preferConfigured(porRol, base);
 }
 
 export function getMicrofonistas(personas){
-  // Microfonistas = lista + ancianos/siervos
+  // Microfonistas = tildes + lista + ancianos/siervos.
+  const porRol = filterByAnyRole(personas, ["microfonista", "microfonistas"]);
   const porLista = filterByWhitelist(personas, MICROFONISTAS);
-  const base = getAncianosOSiervos(personas);
-  return uniqueById([...porLista, ...base]);
+  const base = uniqueById([...porLista, ...getAncianosOSiervos(personas)]);
+  return preferConfigured(porRol, base);
 }
 
 export function getLectoresAtalaya(personas){
-  // Lectores = ancianos/siervos + rol "lector" + lista extra (Maxi)
-  const base = getAncianosOSiervos(personas);
-  const porRol = filterByRole(personas, "lector");
-  const extra = filterByWhitelist(personas, LECTORES_ATALAYA_EXTRA);
-  // Muchos lectores también son microfonistas; si querés, habilita esta línea:
-  // const micros = getMicrofonistas(personas);
-  return uniqueById([...base, ...porRol, ...extra]);
+  // Lector de La Atalaya = ancianos/siervos + tildes + lista extra.
+  const base = uniqueById([...getAncianosOSiervos(personas), ...filterByWhitelist(personas, LECTORES_ATALAYA_EXTRA)]);
+  const porRol = filterByAnyRole(personas, ["lector", "lector atalaya", "lector la atalaya"]);
+  return preferConfigured(porRol, base);
 }

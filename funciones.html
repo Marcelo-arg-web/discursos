@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Funciones · Arreglos Discursos</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css" rel="stylesheet"/>
+</head>
+<body class="has-topbar">
+<div id="topbar"></div>
+<div class="container">
+  <div id="toastHost"></div>
+  <div class="card pad">
+    <div class="section-title">
+      <div>
+        <h2 class="h1" style="margin-bottom:6px;">Funciones permitidas</h2>
+        <div class="muted">Marcá con tilde qué puede hacer cada hermano. Las sugerencias usan estos permisos y evitan repetir a la misma persona en la semana.</div>
+      </div>
+      <span class="pill">Configuración</span>
+    </div>
+    <hr class="sep"/>
+    <div class="row" style="align-items:end;">
+      <div class="col">
+        <label>Buscar persona</label>
+        <input class="input" id="q" placeholder="Escribí un nombre..."/>
+      </div>
+      <div class="col" style="max-width:260px;">
+        <label>Mostrar</label>
+        <select id="filtro">
+          <option value="">Todas</option>
+          <option value="activos">Solo activos</option>
+          <option value="inactivos">Solo inactivos</option>
+        </select>
+      </div>
+      <div class="col no-print" style="max-width:240px;">
+        <button class="btn primary" id="btnGuardarFunciones" type="button" style="width:100%;">Guardar funciones</button>
+      </div>
+    </div>
+    <div class="notice" id="status" style="display:none; margin-top:10px;"></div>
+    <hr class="sep"/>
+    <div class="table-wrap" style="overflow:auto;">
+      <table class="table compact" id="tblFunciones">
+        <thead>
+          <tr>
+            <th>Persona</th>
+            <th class="td-center">Presidente</th>
+            <th class="td-center">Oración</th>
+            <th class="td-center">Conductor<br/>Atalaya</th>
+            <th class="td-center">Lector<br/>Atalaya</th>
+            <th class="td-center">Microfonista</th>
+            <th class="td-center">Acomodador</th>
+            <th class="td-center">Acomodador<br/>plataforma</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="small muted" style="margin-top:12px;">
+      Nota: si nadie tiene un tilde en una función, el sistema usa las listas de respaldo actuales para no dejar el programa vacío. Cuando marques tildes, las sugerencias priorizan esos permisos.
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  let refreshing = false;
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            nw.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+    }).catch(function(e){ console.log('SW error', e); });
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+  });
+})();
+</script>
+<script src="js/pages/funciones.js?v=20260428b35" type="module"></script>
+<script src="js/nav-mobile.js"></script>
+<script src="js/pro-shell.js"></script>
+</body>
+</html>
