@@ -27,7 +27,7 @@ function renderAdminTopbar(){
         <a href="documentos.html">Documentos/PDF</a>
         <a href="visitantes.html">Visitantes</a>
         <a href="salientes.html">Salientes</a>
-        <a href="personas.html">Personas</a>
+        <a href="funciones.html">Funciones</a>
         <a href="funciones.html">Funciones</a>
         <a href="usuarios.html">Usuarios</a>
         <a href="perfil.html">Mi perfil</a>

@@ -5,7 +5,7 @@
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Funciones · Arreglos Discursos</title>
 <link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="css/styles.css?v=20260429b51" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b52" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
 <div id="topbar"></div>
@@ -14,36 +14,75 @@
   <div class="card pad">
     <div class="section-title">
       <div>
-        <h2 class="h1" style="margin-bottom:6px;">Funciones permitidas</h2>
-        <div class="muted">Marcá con tilde qué puede hacer cada hermano. Las sugerencias usan estos permisos y evitan repetir a la misma persona en la semana.</div>
+        <h2 class="h1" style="margin-bottom:6px;">Personas y funciones</h2>
+        <div class="muted">Desde esta sola página podés agregar hermanos, editar datos, activar/desactivar, eliminar y marcar qué funciones puede cumplir cada uno.</div>
       </div>
       <span class="pill">Configuración</span>
     </div>
     <hr class="sep"/>
-    <div class="row" style="align-items:end;">
-      <div class="col">
-        <label>Buscar persona</label>
-        <input class="input" id="q" placeholder="Escribí un nombre..."/>
+
+    <div class="person-function-grid">
+      <div class="card pad soft-card admin-only" id="personaFormCard">
+        <h3 style="margin-top:0;margin-bottom:8px;">Agregar / editar persona</h3>
+        <input type="hidden" id="p_id"/>
+        <div class="row">
+          <div class="col">
+            <label>Nombre y apellido</label>
+            <input class="input" id="p_nombre" placeholder="Ej: Juan Pérez" autocomplete="off"/>
+          </div>
+          <div class="col">
+            <label>Teléfono</label>
+            <input class="input" id="p_tel" placeholder="Ej: 381 123-4567" autocomplete="tel"/>
+          </div>
+          <div class="col" style="max-width:180px;">
+            <label>Estado</label>
+            <label class="switch-line"><input type="checkbox" id="p_activo" checked/> Activo</label>
+          </div>
+        </div>
+        <div class="role-checks" aria-label="Roles base">
+          <label><input type="checkbox" data-base-role="anciano"/> Anciano</label>
+          <label><input type="checkbox" data-base-role="siervo"/> Siervo ministerial</label>
+          <label><input type="checkbox" data-base-role="discursante"/> Discursante</label>
+          <label><input type="checkbox" data-base-role="visitante"/> Visitante</label>
+        </div>
+        <div class="row no-print" style="margin-top:14px; gap:10px;">
+          <button class="btn primary" id="btnGuardarPersona" type="button">Guardar persona</button>
+          <button class="btn" id="btnLimpiarPersona" type="button">Limpiar</button>
+          <button class="btn danger" id="btnEliminarPersona" type="button" disabled>Eliminar persona</button>
+        </div>
+        <div class="small muted" style="margin-top:10px;">Los tildes de Presidente, Oración, Atalaya, Audio/Video, Microfonista y Acomodadores se editan directamente en la tabla de abajo.</div>
       </div>
-      <div class="col" style="max-width:260px;">
-        <label>Mostrar</label>
-        <select id="filtro">
-          <option value="">Todas</option>
-          <option value="activos">Solo activos</option>
-          <option value="inactivos">Solo inactivos</option>
-        </select>
-      </div>
-      <div class="col no-print" style="max-width:240px;">
-        <button class="btn primary" id="btnGuardarFunciones" type="button" style="width:100%;">Guardar funciones</button>
+
+      <div class="card pad soft-card">
+        <h3 style="margin-top:0;margin-bottom:8px;">Buscar y filtrar</h3>
+        <div class="row" style="align-items:end;">
+          <div class="col">
+            <label>Buscar persona</label>
+            <input class="input" id="q" placeholder="Escribí un nombre..."/>
+          </div>
+          <div class="col" style="max-width:260px;">
+            <label>Mostrar</label>
+            <select id="filtro">
+              <option value="">Todas</option>
+              <option value="activos">Solo activos</option>
+              <option value="inactivos">Solo inactivos</option>
+            </select>
+          </div>
+        </div>
+        <div class="notice" id="status" style="display:none; margin-top:12px;"></div>
+        <div class="row no-print" style="margin-top:14px;">
+          <button class="btn primary" id="btnGuardarFunciones" type="button" style="width:100%;">Guardar funciones</button>
+        </div>
       </div>
     </div>
-    <div class="notice" id="status" style="display:none; margin-top:10px;"></div>
+
     <hr class="sep"/>
     <div class="table-wrap funciones-wrap" style="overflow:auto;">
       <table class="table compact funciones-table" id="tblFunciones">
         <thead>
           <tr>
             <th class="sticky-name">Persona</th>
+            <th>Teléfono</th>
             <th class="td-center">Activo</th>
             <th class="td-center">Presidente</th>
             <th class="td-center">Oración</th>
@@ -53,13 +92,14 @@
             <th class="td-center">Microfonista</th>
             <th class="td-center">Acomodador</th>
             <th class="td-center">Acomodador<br/>plataforma</th>
+            <th class="no-print">Acciones</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
     </div>
     <div class="small muted" style="margin-top:12px;">
-      Nota: dejá marcado <b>Activo</b> solo en quienes pueden aparecer en las sugerencias. Si nadie tiene un tilde en una función, el sistema usa las listas de respaldo actuales para no dejar el programa vacío. Cuando marques tildes, las sugerencias priorizan esos permisos.
+      Nota: dejá marcado <b>Activo</b> solo en quienes pueden aparecer en las sugerencias. Si nadie tiene un tilde en una función, el sistema usa las listas de respaldo actuales para no dejar el programa vacío.
     </div>
   </div>
 </div>
@@ -88,9 +128,9 @@
   });
 })();
 </script>
-<script src="js/pages/funciones.js?v=20260429b38" type="module"></script>
+<script src="js/pages/funciones.js?v=20260429b52" type="module"></script>
 <script src="js/nav-mobile.js"></script>
-<script src="js/pro-shell.js?v=20260429b51"></script>
-  <script src="js/viewer-mode.js?v=20260429b51" type="module"></script>
+<script src="js/pro-shell.js?v=20260429b52"></script>
+<script src="js/viewer-mode.js?v=20260429b52" type="module"></script>
 </body>
 </html>

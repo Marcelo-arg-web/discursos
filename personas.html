@@ -1,118 +1,21 @@
 <!DOCTYPE html>
-
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Personas · Arreglos Discursos</title>
+<meta http-equiv="refresh" content="0; url=funciones.html"/>
 <link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="css/styles.css?v=20260429b51" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b52" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
-<div id="topbar"></div>
 <div class="container">
-<div id="toastHost"></div>
-<div class="row">
-<div class="col">
-<div class="card pad">
-<h2 class="h1" style="margin-bottom:6px;">Personas</h2>
-<div class="muted">Cargá hermanos y editá sus datos. Para permisos por función usá la página con tildes.</div>
-<div class="row no-print" style="margin-top:10px;"><a class="btn" href="funciones.html">Abrir funciones con tildes</a></div>
-<hr class="sep"/>
-<div class="row">
-<div class="col">
-<label>Nombre y apellido</label>
-<input class="input" id="p_nombre" placeholder="Ej: Juan Pérez"/>
+  <div class="card pad" style="max-width:640px;margin:40px auto;">
+    <h1>Personas ahora está dentro de Funciones</h1>
+    <p class="muted">Para agregar, editar, eliminar o activar hermanos, usá la página Funciones.</p>
+    <a class="btn primary" href="funciones.html">Abrir Funciones</a>
+  </div>
 </div>
-<div class="col">
-<label>Teléfono (opcional)</label>
-<input class="input" id="p_tel" placeholder="Ej: 381 123-4567"/>
-</div>
-</div>
-<label>Roles (separados por coma)</label>
-<input class="input" id="p_roles" placeholder="Ej: anciano, discursante, microfonista"/>
-<div class="row" style="margin-top:12px;">
-<button class="btn primary" id="btnGuardar">Guardar</button>
-<button class="btn" id="btnLimpiar">Limpiar</button>
-</div>
-<hr class="sep"/>
-<div class="small muted">
-            Roles sugeridos: anciano, siervo, discursante, visitante. Para Presidente, Oración, Conductor, Lector, Audio/Video, Microfonista, Acomodador y Plataforma conviene usar la página Funciones.
-          </div>
-</div>
-</div>
-<div class="col-2">
-<div class="card pad">
-<div class="row" style="align-items:end;">
-<div class="col">
-<label>Buscar</label>
-<input class="input" id="q" placeholder="escribí para filtrar..."/>
-</div>
-<div class="col" style="max-width:260px;">
-<label>Mostrar</label>
-<select id="filtroRol">
-<option value="">Todas</option>
-<option value="anciano">Ancianos</option>
-<option value="siervo">Siervos</option>
-<option value="discursante">Discursantes</option>
-<option value="microfonista">Microfonistas</option>
-<option value="acomodador">Acomodadores</option>
-<option value="audio">Audio</option>
-<option value="video">Video</option>
-</select>
-</div>
-</div>
-<hr class="sep"/>
-<table class="table" id="tbl">
-<thead>
-<tr>
-<th>Nombre</th>
-<th>Tel</th>
-<th>Roles</th>
-<th class="no-print">Acciones</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
-<div class="small muted" style="margin-top:10px;">
-            Tip: si querés evitar duplicados, usá nombres consistentes (Ej: “Eduardo Rivadeneira” siempre igual).
-          </div>
-</div>
-</div>
-</div>
-</div>
-<script>
-(function(){
-  if(!('serviceWorker' in navigator)) return;
-  let refreshing = false;
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js').then(function(reg){
-      // Si hay una versión esperando, activala
-      if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
-
-      reg.addEventListener('updatefound', function(){
-        var nw = reg.installing;
-        if(!nw) return;
-        nw.addEventListener('statechange', function(){
-          if(nw.state === 'installed' && navigator.serviceWorker.controller){
-            nw.postMessage({type:'SKIP_WAITING'});
-          }
-        });
-      });
-    }).catch(function(e){
-      console.log('SW error', e);
-    });
-
-    navigator.serviceWorker.addEventListener('controllerchange', function(){
-      if(refreshing) return;
-      refreshing = true;
-      location.reload();
-    });
-  });
-})();
-</script><script src="js/pages/personas.js?v=20260428b35" type="module"></script>
-  <script src="js/nav-mobile.js"></script>
-  <script src="js/pro-shell.js?v=20260429b51"></script>
-  <script src="js/viewer-mode.js?v=20260429b51" type="module"></script>
+<script>location.replace('funciones.html');</script>
 </body>
 </html>

@@ -8,7 +8,7 @@ export function renderTopbar({ auth, active="panel", showAdminLinks=true }){
   const links = showAdminLinks ? `
     <a href="panel.html" class="${active==='panel'?'active':''}">Panel</a>
     <a href="asignaciones.html" class="${active==='asignaciones'?'active':''}">Asignaciones</a>
-    <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
+    <a href="funciones.html" class="${active==='personas'?'active':''}">Funciones</a>
     <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
     <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
     <a href="documentos.html" class="${active==='documentos'?'active':''}">Documentos/PDF</a>

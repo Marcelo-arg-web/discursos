@@ -149,7 +149,7 @@ function renderTopbar(active){
         <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Asignaciones Villa Fiad</a>
         <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
-        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
+        <a href="funciones.html" class="${active==='personas'?'active':''}">Funciones</a>
         <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
         <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
         <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>
@@ -409,7 +409,7 @@ async function cargarLocales() {
     const snap = await getDocs(qy);
     const dedicados = snap.docs.map((d) => ({ id: d.id, ...d.data(), origenPersonas:false }));
     let desdePersonas = [];
-    try { desdePersonas = await leerLocalesDesdePersonas(); } catch(ePersonas) { console.warn("No pude sumar locales desde Personas.", ePersonas); }
+    try { desdePersonas = await leerLocalesDesdePersonas(); } catch(ePersonas) { console.warn("No pude sumar locales desde Funciones.", ePersonas); }
     cacheLoc = mergeLocalesPorNombre(mergeLocalesPorNombre(LOCALES_FIJOS_VILLA_FIAD, dedicados), desdePersonas)
       .filter((l) => l.activo !== false)
       .sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"", "es"));
@@ -442,7 +442,7 @@ async function cargarLocales() {
     document.getElementById("btnGuardarLocal")?.removeAttribute("disabled");
     document.getElementById("btnLimpiarLocal")?.removeAttribute("disabled");
     document.getElementById("btnMsgLocales")?.removeAttribute("disabled");
-    toast("Locales: leyendo desde Personas. Si no tenés permisos, podés guardar cambios en este navegador.");
+    toast("Locales: leyendo desde Funciones. Si no tenés permisos, podés guardar cambios en este navegador.");
   } catch (e) {
     console.error(e);
     toast("No pude cargar conferenciantes locales. Revisá permisos.", true);
@@ -472,7 +472,7 @@ function renderLocales() {
         <div class="small">${Array.isArray(l.bosquejos) && l.bosquejos.length ? `Bosquejos: ${l.bosquejos.join(", ")}` : "Bosquejos: —"}</div>
       </td>
       <td class="no-print">
-        ${localesFromPersonasFallback ? `<span class="small muted">Editar desde Personas</span>` : `<button class="btn" data-act="edit" data-id="${l.id}">Editar</button>
+        ${localesFromPersonasFallback ? `<span class="small muted">Editar desde Funciones</span>` : `<button class="btn" data-act="edit" data-id="${l.id}">Editar</button>
         <button class="btn" data-act="toggle" data-id="${l.id}">Desactivar</button>`}
       </td>
     `;
@@ -515,7 +515,7 @@ async function guardarLocal() {
     updatedAt: serverTimestamp()
   };
 
-  // Si estamos en modo fallback (sin permisos/lectura desde Personas), guardamos en este navegador
+  // Si estamos en modo fallback (sin permisos/lectura desde Funciones), guardamos en este navegador
   if (localesFromPersonasFallback) {
     upsertLocalesLocal({ ...l, activo: true, updatedAt: new Date().toISOString() });
     toast("Local guardado (este navegador).");

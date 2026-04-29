@@ -90,6 +90,29 @@
     matches.forEach(a=>{ if(a !== keep) a.remove(); });
   }
 
+
+
+  function consolidatePeopleLinks(linkContainer){
+    if(!linkContainer) return;
+    const current = (location.pathname.split('/').pop() || '').toLowerCase();
+    const personasLinks = Array.from(linkContainer.querySelectorAll('a')).filter(a => (a.getAttribute('href') || '').toLowerCase().includes('personas.html'));
+    const funcionesLinks = Array.from(linkContainer.querySelectorAll('a')).filter(a => (a.getAttribute('href') || '').toLowerCase().includes('funciones.html'));
+    let keep = funcionesLinks[0];
+    if(!keep){
+      keep = document.createElement('a');
+      keep.href = 'funciones.html';
+      keep.textContent = 'Funciones';
+      const salientes = linkContainer.querySelector('a[href="salientes.html"]');
+      if(salientes) salientes.insertAdjacentElement('afterend', keep);
+      else linkContainer.appendChild(keep);
+    }
+    keep.href = 'funciones.html';
+    keep.textContent = 'Funciones';
+    keep.className = (current === 'funciones.html' || current === 'personas.html') ? 'active' : (keep.className || '');
+    personasLinks.forEach(a => a.remove());
+    funcionesLinks.forEach(a => { if(a !== keep) a.remove(); });
+  }
+
   function enhanceTopbar(topbar){
     if(isEmbeddedDocument){
       document.body.classList.add('embedded-doc');
@@ -146,14 +169,13 @@
       }
     }
     if(linkContainer && !isViewerNav && !linkContainer.querySelector('a[href="funciones.html"]')){
-      const personasLink = linkContainer.querySelector('a[href="personas.html"]');
-      if(personasLink){
-        const a = document.createElement('a');
-        a.href = 'funciones.html';
-        a.textContent = 'Funciones';
-        if(location.pathname.endsWith('/funciones.html')) a.className = 'active';
-        personasLink.insertAdjacentElement('afterend', a);
-      }
+      const ref = linkContainer.querySelector('a[href="salientes.html"]') || linkContainer.querySelector('a[href="personas.html"]');
+      const a = document.createElement('a');
+      a.href = 'funciones.html';
+      a.textContent = 'Funciones';
+      if(location.pathname.endsWith('/funciones.html') || location.pathname.endsWith('/personas.html')) a.className = 'active';
+      if(ref) ref.insertAdjacentElement('afterend', a);
+      else linkContainer.appendChild(a);
     }
 
     if(linkContainer && !isViewerNav && !linkContainer.querySelector('a[href="directorio-discursos.html"]')){
@@ -175,6 +197,7 @@
       linkContainer.appendChild(a);
     }
 
+    if(!isViewerNav) consolidatePeopleLinks(linkContainer);
     if(!isViewerNav) consolidateDocumentLinks(linkContainer);
 
     const links = topbar.querySelectorAll('.links a, .nav a');

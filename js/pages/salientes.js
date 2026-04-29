@@ -81,7 +81,7 @@ function renderTopbar(active){
         <a href="tablero-acomodadores.html" class="${active==='acomodadores'?'active':''}">Asignaciones Villa Fiad</a>
         <a href="visitantes.html" class="${active==='visitantes'?'active':''}">Visitantes</a>
         <a href="salientes.html" class="${active==='salientes'?'active':''}">Salientes</a>
-        <a href="personas.html" class="${active==='personas'?'active':''}">Personas</a>
+        <a href="funciones.html" class="${active==='personas'?'active':''}">Funciones</a>
         <a href="discursantes.html" class="${active==='discursantes'?'active':''}">Discursantes</a>
         <a href="estadisticas.html" class="${active==='estadisticas'?'active':''}">Estadísticas</a>
         <a href="doc-presi.html" class="${active==='docpresi'?'active':''}">Visitas/Salidas</a>
@@ -332,7 +332,7 @@ async function cargarOradoresLocalesElegibles(){
     const snap = await getDocs(query(collection(db, "conferenciantesLocales"), orderBy("nombre", "asc")));
     const dedicados = snap.docs.map(d => ({ id:d.id, ...d.data(), origenLocales:true }));
     let desdePersonas = [];
-    try{ desdePersonas = await leerLocalesDesdePersonas(); }catch(e){ console.warn("No pude sumar locales desde Personas.", e); }
+    try{ desdePersonas = await leerLocalesDesdePersonas(); }catch(e){ console.warn("No pude sumar locales desde Funciones.", e); }
     const desdeLocal = readLocalesLocal();
     const fijos = localesFijosConHistorial();
     oradoresLocalesElegibles = mergeLocalesPorNombre(mergeLocalesPorNombre(mergeLocalesPorNombre(fijos, dedicados), desdePersonas), desdeLocal)

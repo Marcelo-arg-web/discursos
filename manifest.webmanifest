@@ -1,7 +1,7 @@
 {
   "name": "Asignaciones Villa Fiad Pro",
   "short_name": "Villa Fiad Pro",
-  "start_url": "./asignaciones.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#eef5ff",
   "theme_color": "#0e2342",

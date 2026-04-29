@@ -42,7 +42,7 @@ export async function renderInvitaciones(root, ctx){
         <button class="btn" id="btnRefresh" type="button">Actualizar</button>
       </div>
 
-      <p class="muted tiny">Tip: si guardás teléfonos en “Personas”, después podemos autocompletar automáticamente.</p>
+      <p class="muted tiny">Tip: si guardás teléfonos en “Funciones”, después podemos autocompletar automáticamente.</p>
     </div>
   `;
 

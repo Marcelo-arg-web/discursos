@@ -1,5 +1,5 @@
 // js/roles/getRoleCandidates.js
-// Construye candidatos para cada lista usando los tildes de Personas/Funciones
+// Construye candidatos para cada lista usando los tildes de Funciones
 // y mantiene listas de respaldo para no perder lo ya cargado.
 
 import {

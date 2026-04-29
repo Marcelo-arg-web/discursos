@@ -21,7 +21,7 @@ async function getUsuario(uid){ const snap = await getDoc(doc(db,"usuarios",uid)
 function renderTopbar(){
   const el=$("topbar"); if(!el) return;
   el.innerHTML = `<div class="topbar"><div class="brand"><span class="brand-dot"></span>Villa Fiad</div><div class="links">
-    <a href="preparar-semana.html" class="active">Preparar semana</a><a href="panel.html">Panel</a><a href="asignaciones.html">Asignaciones</a><a href="resultados.html">Resultados</a><a href="documentos.html">Documentos/PDF</a><a href="visitantes.html">Visitantes</a><a href="salientes.html">Salientes</a><a href="personas.html">Personas</a><a href="funciones.html">Funciones</a><a href="usuarios.html">Usuarios</a>
+    <a href="preparar-semana.html" class="active">Preparar semana</a><a href="panel.html">Panel</a><a href="asignaciones.html">Asignaciones</a><a href="resultados.html">Resultados</a><a href="documentos.html">Documentos/PDF</a><a href="visitantes.html">Visitantes</a><a href="salientes.html">Salientes</a><a href="funciones.html">Funciones</a><a href="funciones.html">Funciones</a><a href="usuarios.html">Usuarios</a>
   </div><div class="actions"><button id="btnSalir" class="btn danger sm" type="button">Salir</button></div></div>`;
   $("btnSalir")?.addEventListener("click", async()=>{ await signOut(auth); location.href="index.html"; });
 }

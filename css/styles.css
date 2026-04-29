@@ -1767,3 +1767,57 @@ body.pro-online.viewer-result-mode .topbar .links a:not([href="resultados.html"]
 body.pro-online.viewer-result-mode .topbar .links a[href="resultados.html"]{
   display:flex !important;
 }
+
+/* build 52 - Personas fusionado dentro de Funciones */
+.person-function-grid{
+  display:grid;
+  grid-template-columns:minmax(360px, 1.15fr) minmax(300px, .85fr);
+  gap:16px;
+  align-items:stretch;
+}
+.soft-card{
+  box-shadow:0 10px 26px rgba(15,37,68,.06) !important;
+  background:#fbfdff !important;
+}
+.role-checks{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(130px, 1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.role-checks label,
+.switch-line{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-height:40px;
+  padding:8px 10px;
+  border:1px solid #dbe7f5;
+  border-radius:13px;
+  background:#fff;
+  color:#18304f !important;
+  font-weight:900 !important;
+}
+.role-checks input,
+.switch-line input{
+  width:18px;
+  height:18px;
+  accent-color:#2563eb;
+}
+.funciones-table td.actions-cell{
+  min-width:160px;
+  white-space:nowrap;
+}
+.funciones-table td.actions-cell .btn{
+  margin:2px;
+}
+@media (max-width: 900px){
+  .person-function-grid{grid-template-columns:1fr;}
+  .role-checks{grid-template-columns:1fr 1fr;}
+  .funciones-table{min-width:1180px;}
+  .funciones-wrap{max-height:calc(100vh - 380px);}
+}
+@media (max-width: 520px){
+  .role-checks{grid-template-columns:1fr;}
+  .funciones-wrap{max-height:calc(100vh - 420px);}
+}

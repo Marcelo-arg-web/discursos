@@ -16,7 +16,7 @@ export function mountTopbar(active){
 
   const links = [
     ["panel.html","Inicio","panel"],
-    ["personas.html","Personas","personas"],
+    ["funciones.html","Funciones","funciones"],
     ["asignaciones.html","Asignaciones","asignaciones"],
     ["discursantes.html","Discursantes","discursantes"],
     ["importar.html","Importar Excel","importar"],
