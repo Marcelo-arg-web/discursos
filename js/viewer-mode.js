@@ -39,6 +39,8 @@ function logout(){
   signOut(auth).finally(()=>{ location.href = "index.html"; });
 }
 function renderViewerTopbar(){
+  document.body.classList.add("pro-online", "has-topbar", "viewer-result-mode");
+  document.body.classList.toggle("public-view", hasPublicAccess());
   const topbar = document.getElementById("topbar");
   if(!topbar) return;
   const stamp = pageName() + "|viewer-resultados-only";
@@ -52,7 +54,7 @@ function renderViewerTopbar(){
       <div class="brand"><span class="brand-dot"></span><span>Villa Fiad</span></div>
       <div class="links viewer-links">
         <a href="resultados.html" class="${pageName() === 'resultados.html' ? 'active' : ''}">Resultados</a>
-        <a href="perfil.html" class="${pageName() === 'perfil.html' ? 'active' : ''}">Mi perfil</a>
+        ${hasPublicAccess() ? "" : `<a href="perfil.html" class="${pageName() === 'perfil.html' ? 'active' : ''}">Mi perfil</a>`}
       </div>
       <div class="actions">
         <span class="badge">Solo lectura</span>
@@ -67,6 +69,7 @@ function redirectIfNeeded(){
   if(!viewerMode) return;
   const isEmbedded = new URLSearchParams(location.search).get("embed") === "1";
   if(isEmbedded && VIEWER_EMBED_ALLOWED.has(pageName())) return;
+  if(hasPublicAccess() && pageName() === "perfil.html"){ location.replace("resultados.html"); return; }
   if(!VIEWER_ALLOWED.has(pageName())) location.replace("resultados.html");
 }
 function apply(){
@@ -94,7 +97,12 @@ if(hasPublicAccess()){
       currentUserDoc = snap.exists() ? snap.data() : { email:user.email, rol:"viewer" };
       viewerMode = !isAdminRole(currentUserDoc?.rol);
       if(viewerMode) apply();
-    }catch(e){ console.warn("No pude determinar el rol para modo lectura:", e); }
+    }catch(e){
+      console.warn("No pude determinar el rol para modo lectura:", e);
+      currentUserDoc = { email:user.email, nombre:user.email, rol:"viewer" };
+      viewerMode = true;
+      apply();
+    }
   });
 }
 window.addEventListener("DOMContentLoaded", apply);

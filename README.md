@@ -36,3 +36,7 @@ Generado: 2026-02-27
 
 ## Nota
 Los scripts de páginas están en `js/pages/`.
+
+
+## Build 63
+Corrección de menú para usuarios comunes: Resultados + Mi perfil visibles y carga inmediata del mes.

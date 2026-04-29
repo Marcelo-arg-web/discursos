@@ -1761,12 +1761,14 @@ html.embedded-doc-root body.embedded-doc .no-print{
 body.pro-online.viewer-result-mode .results-container{
   max-width:1180px !important;
 }
-body.pro-online.viewer-result-mode .topbar .links a:not([href="resultados.html"]){
+body.pro-online.viewer-result-mode .topbar .links a:not([href="resultados.html"]):not([href="perfil.html"]){
   display:none !important;
 }
-body.pro-online.viewer-result-mode .topbar .links a[href="resultados.html"]{
+body.pro-online.viewer-result-mode .topbar .links a[href="resultados.html"],
+body.pro-online.viewer-result-mode .topbar .links a[href="perfil.html"]{
   display:flex !important;
 }
+body.pro-online.public-view.viewer-result-mode .topbar .links a[href="perfil.html"]{display:none !important;}
 
 /* build 52 - Personas fusionado dentro de Funciones */
 .person-function-grid{
@@ -2098,7 +2100,7 @@ html.embedded-doc-root body.embedded-doc .documentos-preview-wrap{
   }
 }
 
-/* build 62 - Android: dar más espacio al nombre en las asignaciones.
+/* build 63 - Android: dar más espacio al nombre en las asignaciones.
    En pantallas chicas el botón Sugerir queda compacto y el selector ocupa el espacio principal. */
 @media (max-width: 720px){
   body.has-topbar #multimedia1,
@@ -2164,7 +2166,7 @@ html.embedded-doc-root body.embedded-doc .documentos-preview-wrap{
 }
 
 
-/* build 62 - Resultados: documentos primero, perfil disponible para usuarios y PDF de discursantes más claro. */
+/* build 63 - Resultados: documentos primero, perfil disponible para usuarios y PDF de discursantes más claro. */
 .resultados-documentos{ border-width:2px; }
 .resultados-documentos .section-title h2::before{ content:"Vista previa y descarga"; display:block; font-size:12px; color:#1d5fc2; font-weight:900; text-transform:uppercase; letter-spacing:.04em; margin-bottom:3px; }
 .directory-approved-table{ font-size:13px; }
@@ -2181,4 +2183,14 @@ html.embedded-doc-root body.embedded-doc .documentos-preview-wrap{
   .documentos-controls{ grid-template-columns:1fr !important; }
   .documentos-actions{ display:grid !important; grid-template-columns:1fr 1fr; gap:8px; }
   .documentos-actions .primary{ grid-column:1 / -1; }
+}
+
+
+/* build 63 - usuario común: navegación de Resultados + Mi perfil siempre visible */
+body.pro-online.viewer-result-mode .topbar.viewer-topbar.resultados-only .links a[href="resultados.html"],
+body.pro-online.viewer-result-mode .topbar.viewer-topbar.resultados-only .links a[href="perfil.html"]{
+  display:flex !important;
+}
+body.pro-online.public-view.viewer-result-mode .topbar.viewer-topbar.resultados-only .links a[href="perfil.html"]{
+  display:none !important;
 }

@@ -62,6 +62,8 @@ async function getUsuario(uid){
   return snap.exists() ? snap.data() : null;
 }
 function renderAdminTopbar(){
+  document.body.classList.add("pro-online", "has-topbar");
+  document.body.classList.remove("public-view");
   const el = document.getElementById("topbar");
   if(!el) return;
   el.innerHTML = `
@@ -84,6 +86,8 @@ function renderAdminTopbar(){
   document.getElementById("btnSalir")?.addEventListener("click", async()=>{ await signOut(auth); location.href="index.html"; });
 }
 function renderViewerTopbar(name="Usuario"){
+  document.body.classList.add("pro-online", "has-topbar", "viewer-result-mode");
+  document.body.classList.toggle("public-view", hasPublicAccess());
   const el = document.getElementById("topbar");
   if(!el) return;
   el.innerHTML = `
@@ -91,7 +95,7 @@ function renderViewerTopbar(name="Usuario"){
       <div class="brand"><span class="brand-dot"></span>Villa Fiad</div>
       <div class="links viewer-links">
         <a href="resultados.html" class="active">Resultados</a>
-        <a href="perfil.html">Mi perfil</a>
+        ${hasPublicAccess() ? "" : '<a href="perfil.html">Mi perfil</a>'}
       </div>
       <div class="actions">
         <span class="badge">Solo lectura</span>
@@ -399,8 +403,17 @@ async function requireAccess(){
   return new Promise(resolve=>{
     onAuthStateChanged(auth, async user=>{
       if(!user){ location.href="index.html"; return; }
-      const u = await getUsuario(user.uid);
-      if(!u?.activo){ await signOut(auth); location.href="index.html"; return; }
+      let u = null;
+      try{
+        u = await getUsuario(user.uid);
+      }catch(e){
+        console.warn("No pude leer /usuarios del usuario actual. Se habilita vista segura de consulta.", e);
+        u = { email:user.email, nombre:user.email, rol:"viewer", activo:true, _readError:true };
+      }
+      if(u && u.activo === false){ await signOut(auth); location.href="index.html"; return; }
+      if(!u){
+        u = { email:user.email, nombre:user.email, rol:"viewer", activo:true, _missingProfile:true };
+      }
       if(profileBtn){
         profileBtn.style.display = "inline-flex";
         profileBtn.href = "perfil.html";
@@ -481,13 +494,14 @@ function attachScrollablePreviewFrame(frame, helpEl){
 }
 
 (async function(){
-  await requireAccess();
   const mes = $("mesResultados");
   if(mes){
     const params = new URLSearchParams(location.search);
     mes.value = params.get("mes") || currentYM();
     mes.addEventListener("change", syncLinks);
   }
+  renderViewerTopbar("Usuario");
+  await requireAccess();
   attachScrollablePreviewFrame($("docFrameResultados"), $("docHelpResultados"));
   $("tipoDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
   $("semanaDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
