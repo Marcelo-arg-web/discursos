@@ -20,6 +20,10 @@ function isAdminRole(rol){
 function isSuperadmin(rol){
   return String(rol||"").toLowerCase() === "superadmin";
 }
+function isBootstrapSuperadminEmail(email){
+  const e = String(email || "").trim().toLowerCase();
+  return ["marceyyesi@gmail.com", "marceyyesituc@gmail.com"].includes(e);
+}
 
 async function getUsuario(uid){
   const snap = await getDoc(doc(db,"usuarios",uid));
@@ -94,11 +98,40 @@ function displayName(u){
 function displayEmail(u){
   return String(u?.email || u?.correo || "").trim();
 }
+function displayUid(u){
+  return String(u?.uid || u?.authUid || u?.id || "").trim();
+}
+function shortUid(uid){
+  const v = String(uid || "").trim();
+  if(!v) return "—";
+  return v.length > 18 ? `${v.slice(0,10)}…${v.slice(-6)}` : v;
+}
+function buildManualFirestoreHelp({uid, nombre, email, rol, activo}){
+  uid = normalizeUid(uid);
+  email = String(email || "").trim().toLowerCase();
+  nombre = String(nombre || "").trim() || email;
+  rol = String(rol || "viewer").trim() || "viewer";
+  const obj = {
+    uid,
+    authUid: uid,
+    nombre,
+    nombreCompleto: nombre,
+    email,
+    correo: email,
+    rol,
+    activo: !!activo,
+    congregacionPerfil: "Villa Fiad",
+    congregacion: "Villa Fiad",
+    perfilDiscursante: true,
+    vinculadoDesdeAuth: true
+  };
+  return `Ruta: /usuarios/${uid}\n\nCampos sugeridos:\n${JSON.stringify(obj, null, 2)}`;
+}
 
 function setVincularStatus(msg, isError=false){
   const el = $("vincularStatus");
   if(!el) return;
-  el.innerHTML = `<span class="${isError ? "text-danger" : ""}">${escapeHtml(msg)}</span>`;
+  el.innerHTML = `<pre class="${isError ? "text-danger" : ""}" style="white-space:pre-wrap;margin:0;font-family:inherit;line-height:1.45;">${escapeHtml(msg)}</pre>`;
 }
 
 function normalizeUid(uid){
@@ -108,10 +141,21 @@ function normalizeUid(uid){
     .trim();
 }
 
+
+function renderAdminDiagnostic(user, usuario){
+  const el = document.getElementById("adminDiagnostic");
+  if(!el) return;
+  const email = user?.email || "";
+  const uid = user?.uid || "";
+  const rol = usuario?.rol || "sin rol";
+  const activo = boolValue(usuario?.activo) ? "sí" : "no";
+  el.innerHTML = `Sesión actual: <b>${escapeHtml(email)}</b> · rol: <b>${escapeHtml(rol)}</b> · activo: <b>${activo}</b><br><span class="muted">Si al crear/vincular aparece permiso denegado, falta publicar las reglas de Firestore incluidas en este ZIP. GitHub Pages no publica esas reglas automáticamente.</span>`;
+}
+
 function firebaseErrorMessage(err){
   const raw = String(err?.code || err?.message || err || "").toLowerCase();
   if(raw.includes("permission-denied")){
-    return "Permiso denegado por Firestore. Revisá que tu usuario admin esté activo y que las reglas de Firestore permitan al admin crear documentos en /usuarios.";
+    return "Permiso denegado por Firestore. Aunque la app te vea como superadmin, Firestore usa las reglas publicadas en Firebase. Publicá el archivo firestore.rules incluido en esta versión y volvé a intentar.";
   }
   if(raw.includes("unavailable") || raw.includes("network")){
     return "No hay conexión estable con Firestore. Verificá Internet y volvé a intentar.";
@@ -129,7 +173,7 @@ function firebaseErrorMessage(err){
 async function listUsuarios(){
   const tbody = $("tbodyUsuarios");
   const status = $("usuariosStatus");
-  if(tbody) tbody.innerHTML = `<tr><td colspan="6" class="muted">Cargando…</td></tr>`;
+  if(tbody) tbody.innerHTML = `<tr><td colspan="7" class="muted">Cargando…</td></tr>`;
   if(status) status.textContent = "Leyendo todos los perfiles guardados en Firestore…";
 
   let rows = [];
@@ -140,7 +184,7 @@ async function listUsuarios(){
     snap.forEach((d)=> rows.push({ id:d.id, ...(d.data() || {}) }));
   }catch(e){
     console.error(e);
-    if(tbody) tbody.innerHTML = `<tr><td colspan="6" class="muted">No pude leer /usuarios. Revisá permisos.</td></tr>`;
+    if(tbody) tbody.innerHTML = `<tr><td colspan="7" class="muted">No pude leer /usuarios. Revisá permisos.</td></tr>`;
     if(status) status.textContent = "Error al leer perfiles.";
     return;
   }
@@ -152,12 +196,12 @@ async function listUsuarios(){
 
   if(status){
     const incompletos = rows.filter(r=>!r.nombre && !r.nombreCompleto).length;
-    status.textContent = `Perfiles encontrados en Firestore: ${rows.length}. Mostrando: ${filtered.length}${incompletos ? ` · ${incompletos} sin nombre cargado` : ""}.`;
+    status.textContent = `Perfiles encontrados en Firestore /usuarios: ${rows.length}. Mostrando: ${filtered.length}${incompletos ? ` · ${incompletos} sin nombre cargado` : ""}${qtxt ? " · búsqueda activa" : ""}.`;
   }
 
   if(!tbody) return;
   if(filtered.length === 0){
-    tbody.innerHTML = `<tr><td colspan="6" class="muted">No hay usuarios/perfiles para mostrar.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="muted">No hay usuarios/perfiles para mostrar. Si hay una búsqueda activa, tocá “Mostrar todos”.</td></tr>`;
     return;
   }
 
@@ -172,6 +216,7 @@ async function listUsuarios(){
       <tr>
         <td>${escapeHtml(nombre)}${(!u.nombre && !u.nombreCompleto) ? `<br/><span class="muted small">Sin nombre cargado</span>` : ""}</td>
         <td>${escapeHtml(email)}</td>
+        <td><code class="small">${escapeHtml(shortUid(displayUid(u)))}</code><br/><span class="muted small">${displayUid(u) && displayUid(u) === u.id ? "coincide con documento" : "revisar UID"}</span></td>
         <td><span class="badge">${escapeHtml(u.rol||"viewer")}</span></td>
         <td>${activo ? "sí" : "no"}</td>
         <td>
@@ -412,14 +457,15 @@ async function createUserSecondary({nombre, email, password, rol, activo}){
 }
 
 (async function(){
-  const { usuario } = await requireActiveUser("usuarios");
-  if(!isAdminRole(usuario?.rol)){
+  const sessionInfo = await requireActiveUser("usuarios");
+  const { user, usuario } = sessionInfo;
+  renderAdminDiagnostic(user, usuario);
+  const canCreate = isSuperadmin(usuario?.rol) || isBootstrapSuperadminEmail(user?.email);
+  if(!isAdminRole(usuario?.rol) && !canCreate){
     toast("No tenés permisos para ver esta página.", true);
     window.location.href = "panel.html";
     return;
   }
-
-  const canCreate = isSuperadmin(usuario?.rol);
   CURRENT_IS_SUPERADMIN = canCreate;
   const form = $("formAlta");
   const formVincular = $("formVincularAuth");
@@ -437,6 +483,17 @@ async function createUserSecondary({nombre, email, password, rol, activo}){
 
   $("btnRefrescar")?.addEventListener("click", async ()=>{
     await listUsuarios();
+  });
+
+  $("btnLimpiarBusqueda")?.addEventListener("click", async ()=>{
+    const q = $("q");
+    if(q) q.value = "";
+    await listUsuarios();
+  });
+
+  $("q")?.addEventListener("input", ()=>{
+    clearTimeout(window.__usuariosSearchTimer);
+    window.__usuariosSearchTimer = setTimeout(()=>listUsuarios(), 250);
   });
 
   $("btnLimpiarVincular")?.addEventListener("click", ()=>{
@@ -476,7 +533,13 @@ async function createUserSecondary({nombre, email, password, rol, activo}){
     }catch(err){
       console.error(err);
       const msg = firebaseErrorMessage(err);
-      setVincularStatus(msg, true);
+      const raw = String(err?.code || err?.message || "").toLowerCase();
+      if(raw.includes("permission-denied")){
+        const help = buildManualFirestoreHelp({uid, nombre, email, rol, activo});
+        setVincularStatus(`${msg}\n\nMientras tanto, podés crear manualmente este documento en Firestore:\n${help}`, true);
+      }else{
+        setVincularStatus(msg, true);
+      }
       toast(msg, true);
     }finally{
       if(btnVincular){ btnVincular.disabled = false; btnVincular.textContent = "Crear / vincular perfil"; }

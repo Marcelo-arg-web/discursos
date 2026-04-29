@@ -4,6 +4,15 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
 
+    // Rescate de superadmin por email. Esto permite vincular usuarios existentes
+    // aunque el documento /usuarios del administrador haya quedado incompleto.
+    function bootstrapSuperadminEmail() {
+      return signedIn() && request.auth.token.email in [
+        "marceyyesi@gmail.com",
+        "marceyyesituc@gmail.com"
+      ];
+    }
+
     function userDoc() {
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid));
     }
@@ -27,7 +36,7 @@ service cloud.firestore {
 
     // Acepta roles antiguos/nuevos y variantes en español.
     function isEditor() {
-      return role() in [
+      return bootstrapSuperadminEmail() || role() in [
         "editor", "Editor", "EDITOR",
         "admin", "Admin", "ADMIN",
         "administrador", "Administrador", "ADMINISTRADOR",
@@ -36,7 +45,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return role() in [
+      return bootstrapSuperadminEmail() || role() in [
         "admin", "Admin", "ADMIN",
         "administrador", "Administrador", "ADMINISTRADOR",
         "superadmin", "Superadmin", "SUPERADMIN"
@@ -44,7 +53,7 @@ service cloud.firestore {
     }
 
     function isSuperadmin() {
-      return role() in ["superadmin", "Superadmin", "SUPERADMIN"];
+      return bootstrapSuperadminEmail() || role() in ["superadmin", "Superadmin", "SUPERADMIN"];
     }
 
     // Usuarios: cada uno puede leer y actualizar solo su perfil de discursante.
