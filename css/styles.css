@@ -2195,7 +2195,7 @@ body.pro-online.public-view.viewer-result-mode .topbar.viewer-topbar.resultados-
   display:none !important;
 }
 
-/* build 65 - Menú de usuario siempre visible en Resultados/Mi perfil */
+/* build 66 - Menú de usuario siempre visible en Resultados/Mi perfil */
 body.pro-online.has-topbar:not(.embedded-doc) #topbar{display:block !important; visibility:visible !important; opacity:1 !important;}
 body.pro-online.has-topbar:not(.embedded-doc) #topbar > .topbar{visibility:visible !important; opacity:1 !important;}
 @media (min-width:1024px){
