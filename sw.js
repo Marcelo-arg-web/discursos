@@ -1,4 +1,4 @@
-// build 69 - Service Worker desactivado para evitar bucles de recarga/cache en GitHub Pages.
+// build 70 - Service Worker desactivado para evitar bucles de recarga/cache en GitHub Pages.
 self.addEventListener('install', event => { self.skipWaiting(); });
 self.addEventListener('activate', event => {
   event.waitUntil((async()=>{
