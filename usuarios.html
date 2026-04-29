@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Usuarios · Arreglos Discursos</title>
 <link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="css/styles.css?v=20260429b52" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b53" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
 <div id="topbar"></div>
@@ -50,6 +50,38 @@
 <div class="small muted">
 <b>Nota:</b> El usuario queda creado en <span class="pill">Authentication</span> y su perfil en <span class="pill">/usuarios</span>.
           </div>
+</div>
+
+<div class="card pad" style="margin-top:16px;">
+<h2 class="h2" style="margin-bottom:6px;">Vincular usuario existente</h2>
+<div class="muted small">Usá esto si el correo ya existe en <b>Firebase Authentication</b>, pero no aparece en esta lista. Pegá el UID completo desde Authentication.</div>
+<hr class="sep"/>
+<form autocomplete="off" id="formVincularAuth">
+<label>UID de Authentication
+  <input class="input" id="vincularUid" placeholder="Pegá aquí el UID completo" required="" type="text"/>
+</label>
+<label>Email
+  <input class="input" id="vincularEmail" placeholder="navarroluis@live.com.ar" required="" type="email"/>
+</label>
+<label>Nombre
+  <input class="input" id="vincularNombre" placeholder="Nombre Apellido" type="text"/>
+</label>
+<label>Rol
+  <select class="input" id="vincularRol">
+    <option selected="" value="viewer">viewer / solo lectura</option>
+    <option value="admin">admin</option>
+    <option value="superadmin">superadmin</option>
+  </select>
+</label>
+<label>Activo
+  <select class="input" id="vincularActivo">
+    <option selected="" value="true">Sí</option>
+    <option value="false">No</option>
+  </select>
+</label>
+<button class="btn primary" id="btnVincularAuth" type="submit">Crear perfil para ese UID</button>
+</form>
+<div class="small muted" style="margin-top:10px;">Esto no crea una cuenta nueva: solo crea el perfil faltante en <span class="pill">/usuarios/{UID}</span> para que el usuario aparezca y pueda habilitarse.</div>
 </div>
 </div>
 <div class="col">
@@ -116,9 +148,9 @@
     });
   });
 })();
-</script><script src="js/pages/usuarios.js?v=20260429b52" type="module"></script>
+</script><script src="js/pages/usuarios.js?v=20260429b53" type="module"></script>
   <script src="js/nav-mobile.js"></script>
-  <script src="js/pro-shell.js?v=20260429b52"></script>
-  <script src="js/viewer-mode.js?v=20260429b52" type="module"></script>
+  <script src="js/pro-shell.js?v=20260429b53"></script>
+  <script src="js/viewer-mode.js?v=20260429b53" type="module"></script>
 </body>
 </html>

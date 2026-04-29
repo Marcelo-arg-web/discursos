@@ -318,6 +318,30 @@ function escapeHtml(s){
     .replace(/'/g,"&#039;");
 }
 
+
+async function linkExistingAuthProfile({uid, nombre, email, rol, activo}){
+  uid = String(uid || "").trim();
+  email = String(email || "").trim().toLowerCase();
+  nombre = String(nombre || "").trim() || email;
+  rol = String(rol || "viewer").trim() || "viewer";
+  if(!uid || uid.length < 10) throw new Error("UID incompleto");
+  if(!email || !email.includes("@")) throw new Error("Email inválido");
+
+  await setDoc(doc(db, "usuarios", uid), {
+    uid,
+    nombre,
+    nombreCompleto: nombre,
+    email,
+    rol,
+    activo: !!activo,
+    congregacionPerfil: "Villa Fiad",
+    perfilDiscursante: true,
+    vinculadoDesdeAuth: true,
+    vinculadoEn: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge:true });
+}
+
 async function createUserSecondary({nombre, email, password, rol, activo}){
   // Crear usuario en un auth separado para NO cerrar la sesión del admin actual.
   const secondaryApp = getApps().some(app => app.name === "secondary")
@@ -351,7 +375,9 @@ async function createUserSecondary({nombre, email, password, rol, activo}){
   const canCreate = isSuperadmin(usuario?.rol);
   CURRENT_IS_SUPERADMIN = canCreate;
   const form = $("formAlta");
+  const formVincular = $("formVincularAuth");
   const btnCrear = $("btnCrear");
+  const btnVincular = $("btnVincularAuth");
 
   if(!canCreate){
     if(btnCrear) btnCrear.disabled = true;
@@ -364,6 +390,29 @@ async function createUserSecondary({nombre, email, password, rol, activo}){
 
   $("btnRefrescar")?.addEventListener("click", async ()=>{
     await listUsuarios();
+  });
+
+  formVincular?.addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const uid = $("vincularUid")?.value?.trim();
+    const email = $("vincularEmail")?.value?.trim();
+    const nombre = $("vincularNombre")?.value?.trim();
+    const rol = $("vincularRol")?.value || "viewer";
+    const activo = $("vincularActivo")?.value === "true";
+
+    if(!uid || !email){ toast("Pegá el UID completo y el email del usuario registrado en Authentication.", true); return; }
+    try{
+      if(btnVincular){ btnVincular.disabled = true; btnVincular.textContent = "Vinculando…"; }
+      await linkExistingAuthProfile({uid, nombre, email, rol, activo});
+      toast("Perfil creado en /usuarios. Ahora debería aparecer en la lista ✅");
+      formVincular.reset();
+      await listUsuarios();
+    }catch(err){
+      console.error(err);
+      toast("No pude vincular ese usuario. Revisá UID, email y permisos de administrador.", true);
+    }finally{
+      if(btnVincular){ btnVincular.disabled = false; btnVincular.textContent = "Crear perfil para ese UID"; }
+    }
   });
 
   form?.addEventListener("submit", async (e)=>{
