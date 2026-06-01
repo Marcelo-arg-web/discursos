@@ -6,7 +6,7 @@
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Visitantes · Arreglos Discursos</title>
 <link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="css/styles.css?v=20260429b71" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b75" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
 <div id="topbar"></div>
@@ -75,13 +75,14 @@
 </div>
 </div>
 <div style="height:10px"></div>
+<div id="reglasAlertas" style="margin-bottom:10px;"></div>
 
 <!-- Hospitalidad automática (rotación con excepciones) -->
 <div class="card pad" id="hospBox" style="margin-bottom:10px;">
   <div class="row" style="justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
     <div>
       <b>Hospitalidad (rotación)</b>
-      <div class="small muted">Base: <code>2026-03-07 = Bracho</code>. Podés marcar asamblea para “saltar” una semana o fijar un grupo manualmente.</div>
+      <div class="small muted">Base: <code>2026-03-07 = Bracho</code>. Podés marcar asamblea para “saltar” una semana o fijar un grupo manualmente. Si fijás un grupo manual, la rotación continúa desde ese punto: Santa Rosa → Villa Fiad → Pala Pala → Bracho.</div>
     </div>
   </div>
   <div class="grid" style="grid-template-columns: repeat(6, 1fr); gap:12px; margin-top:10px;">
@@ -144,7 +145,7 @@
 </div>
 </div>
 </div>
-<script src="js/no-sw-cleanup-b71.js?v=20260429b71"></script>
+<script src="js/no-sw-cleanup-b75.js?v=20260429b75"></script>
 <script>
 (function(){
   // Si por algún error el JS no llega a pintar el topbar, mostramos un menú mínimo.
@@ -166,9 +167,9 @@
 })();
 </script>
 
-  <script src="js/pages/visitantes.js?v=20260429b71" type="module"></script>
-  <script src="js/nav-mobile.js?v=20260429b71"></script>
-  <script src="js/pro-shell.js?v=20260429b71"></script>
-  <script src="js/viewer-mode.js?v=20260429b71" type="module"></script>
+  <script src="js/pages/visitantes.js?v=20260429b75" type="module"></script>
+  <script src="js/nav-mobile.js?v=20260429b75"></script>
+  <script src="js/pro-shell.js?v=20260429b75"></script>
+  <script src="js/viewer-mode.js?v=20260429b75" type="module"></script>
 </body>
 </html>

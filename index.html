@@ -5,7 +5,7 @@
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Acceso · Villa Fiad</title>
 <link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="css/styles.css?v=20260429b71" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b79" rel="stylesheet"/>
 </head>
 <body class="login-page">
   <main class="login-shell" aria-label="Inicio de sesión">
@@ -30,7 +30,10 @@
         <input autocomplete="email" class="input" id="email" placeholder="tu@correo.com" type="email" autofocus/>
 
         <label for="password">Contraseña</label>
-        <input autocomplete="current-password" class="input" id="password" placeholder="Contraseña" type="password"/>
+        <div class="password-field">
+          <input autocomplete="current-password" class="input" id="password" placeholder="Contraseña" type="password"/>
+          <button aria-controls="password" aria-label="Mostrar contraseña" aria-pressed="false" class="password-toggle" id="btnTogglePassword" type="button">Ver</button>
+        </div>
 
         <button class="btn primary login-submit" id="btnLogin" type="button">Entrar</button>
       </form>
@@ -43,6 +46,6 @@
       <a class="login-public" href="public-login.html">Entrar en modo consulta</a>
     </section>
   </main>
-<script src="js/no-sw-cleanup-b71.js?v=20260429b71"></script><script src="js/index.js?v=20260429b71" type="module"></script>
+<script src="js/no-sw-cleanup-b79.js?v=20260429b79"></script><script src="js/index.js?v=20260429b79" type="module"></script>
 </body>
 </html>

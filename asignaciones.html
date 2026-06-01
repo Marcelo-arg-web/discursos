@@ -6,7 +6,7 @@
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>Asignaciones · Villa Fiad</title>
 <link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="css/styles.css?v=20260429b71" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b78" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
 <div id="topbar"></div>
@@ -32,6 +32,7 @@
 <option value="normal">Normal</option>
 <option value="asamblea">Asamblea</option>
 <option value="conmemoracion">Conmemoración</option>
+<option value="visita">Visita del viajante</option>
 </select>
 <div class="help" id="semanaEspecialHelp">Normal: se cargan los asignados de la semana.</div>
 </div>
@@ -118,9 +119,11 @@
 </div>
 <div class="field">
 <div class="label">Oración final</div>
-<select id="oracionFinal"></select>
-<div class="row" style="margin-top:8px;">
+<div class="row">
+<select id="oracionFinal" style="flex:1"></select>
+<button class="btn small" id="btnSugerirOracionFinal" type="button">Sugerir</button>
 </div>
+<div class="help">Regla: si el visitante se queda hasta el final, figura Visitante/Presidente; si no, queda el presidente.</div>
 </div>
 </div>
 <div class="hr"></div>
@@ -208,9 +211,9 @@
 </div>
 </div>
 <div class="print-only" id="printSemana"></div>
-<script src="js/no-sw-cleanup-b71.js?v=20260429b71"></script><script src="js/pages/asignaciones.js?v=20260429b71" type="module"></script>
-  <script src="js/nav-mobile.js?v=20260429b71"></script>
-  <script src="js/pro-shell.js?v=20260429b71"></script>
-  <script src="js/viewer-mode.js?v=20260429b71" type="module"></script>
+<script src="js/no-sw-cleanup-b78.js?v=20260429b78"></script><script src="js/pages/asignaciones.js?v=20260429b78" type="module"></script>
+  <script src="js/nav-mobile.js?v=20260429b78"></script>
+  <script src="js/pro-shell.js?v=20260429b78"></script>
+  <script src="js/viewer-mode.js?v=20260429b78" type="module"></script>
 </body>
 </html>

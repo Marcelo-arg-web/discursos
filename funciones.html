@@ -5,7 +5,7 @@
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Funciones · Arreglos Discursos</title>
 <link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="css/styles.css?v=20260429b71" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b75" rel="stylesheet"/>
 </head>
 <body class="has-topbar">
 <div id="topbar"></div>
@@ -20,6 +20,27 @@
       <span class="pill">Configuración</span>
     </div>
     <hr class="sep"/>
+
+    <div class="card pad soft-card admin-only config-general-card" id="config-general" style="margin-bottom:18px;">
+      <div class="section-title" style="margin-bottom:10px;">
+        <div>
+          <h3 style="margin:0 0 6px;">Configuración general</h3>
+          <div class="muted small">Datos que se usan automáticamente en las asignaciones y en los PDF.</div>
+        </div>
+        <span class="pill">Viajante</span>
+      </div>
+      <div class="row" style="align-items:end; gap:12px;">
+        <div class="col">
+          <label>Nombre del viajante</label>
+          <input class="input" id="cfg_viajante_nombre" placeholder="Ej: Hno. Apellido" autocomplete="off"/>
+          <div class="small muted" style="margin-top:6px;">Cuando una semana se marque como Visita del viajante, este nombre se cargará como orador público.</div>
+        </div>
+        <div class="col" style="max-width:220px;">
+          <button class="btn primary" id="btnGuardarConfigGeneral" type="button" style="width:100%;">Guardar configuración</button>
+        </div>
+      </div>
+      <div class="notice" id="configGeneralStatus" style="display:none; margin-top:12px;"></div>
+    </div>
 
     <div class="person-function-grid">
       <div class="card pad soft-card admin-only" id="personaFormCard">
@@ -103,10 +124,10 @@
     </div>
   </div>
 </div>
-<script src="js/no-sw-cleanup-b71.js?v=20260429b71"></script>
-<script src="js/pages/funciones.js?v=20260429b71" type="module"></script>
-<script src="js/nav-mobile.js?v=20260429b71"></script>
-<script src="js/pro-shell.js?v=20260429b71"></script>
-<script src="js/viewer-mode.js?v=20260429b71" type="module"></script>
+<script src="js/no-sw-cleanup-b75.js?v=20260429b75"></script>
+<script src="js/pages/funciones.js?v=20260429b75" type="module"></script>
+<script src="js/nav-mobile.js?v=20260429b75"></script>
+<script src="js/pro-shell.js?v=20260429b75"></script>
+<script src="js/viewer-mode.js?v=20260429b75" type="module"></script>
 </body>
 </html>

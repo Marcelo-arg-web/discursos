@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Configuración · Arreglos Discursos</title>
+<link href="assets/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="css/styles.css?v=20260429b75" rel="stylesheet"/>
+</head>
+<body class="has-topbar">
+<div id="topbar"></div>
+<div class="container">
+  <div id="toastHost"></div>
+  <div class="card pad">
+    <div class="row" style="justify-content:space-between;align-items:flex-start;gap:12px;">
+      <div>
+        <h1 class="h1" style="margin:0 0 6px;">Configuración</h1>
+        <div class="muted">Datos generales usados por las reglas automáticas del programa.</div>
+      </div>
+      <span class="badge soft">Build 75</span>
+    </div>
+    <hr class="sep"/>
+
+    <form id="formConfig" autocomplete="off" class="grid" style="max-width:720px;">
+      <label>Nombre del viajante
+        <input class="input" id="nombreViajante" placeholder="Ej: Juan Pérez" type="text"/>
+      </label>
+      <div class="notice small">
+        Cuando una semana se marque como <strong>Visita del viajante</strong>, el programa colocará este nombre automáticamente como orador público. Si queda vacío, usará “Viajante”.
+      </div>
+      <div class="row" style="gap:10px;margin-top:8px;">
+        <button class="btn primary" id="btnGuardarConfig" type="submit">Guardar configuración</button>
+        <button class="btn" id="btnRecargarConfig" type="button">Recargar</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script src="js/no-sw-cleanup-b75.js?v=20260429b75"></script>
+<script src="js/pages/configuracion.js?v=20260429b75" type="module"></script>
+<script src="js/nav-mobile.js?v=20260429b75"></script>
+<script src="js/pro-shell.js?v=20260429b75"></script>
+<script src="js/viewer-mode.js?v=20260429b75" type="module"></script>
+</body>
+</html>

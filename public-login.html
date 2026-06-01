@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Acceso Lectura - Villa Fiad</title>
-<link href="css/styles.css?v=20260429b71" rel="stylesheet"/>
+<link href="css/styles.css?v=20260429b79" rel="stylesheet"/>
 </head>
 <body>
 <div class="app-shell">
@@ -25,7 +25,10 @@
 <label class="label" for="vfUser">Usuario</label>
 <input autocomplete="username" class="input" id="vfUser" placeholder="VillaFiad"/>
 <label class="label" for="vfPass">Contraseña</label>
+<div class="password-field public-password-field">
 <input autocomplete="current-password" class="input" id="vfPass" placeholder="@2026" type="password"/>
+<button aria-controls="vfPass" aria-label="Mostrar contraseña" aria-pressed="false" class="password-toggle" id="btnTogglePublicPassword" type="button">Ver</button>
+</div>
 <div style="display:flex; gap:10px; margin-top:14px;">
 <button class="btn primary" id="btnLoginPublic" style="flex:1;">Entrar</button>
 <button class="btn" id="btnClearPublic" type="button">Limpiar</button>
@@ -38,6 +41,6 @@
 </div>
 </main>
 </div>
-<script src="js/no-sw-cleanup-b71.js?v=20260429b71"></script><script src="js/pages/public-login.js?v=20260429b71" type="module"></script>
+<script src="js/no-sw-cleanup-b79.js?v=20260429b79"></script><script src="js/pages/public-login.js?v=20260429b79" type="module"></script>
 </body>
 </html>

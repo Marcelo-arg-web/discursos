@@ -1,0 +1,24 @@
+IMPORTANTE - Build 71
+
+Esta versión corrige el congelamiento del usuario común en Resultados y Mi perfil.
+
+Cambios técnicos hechos:
+1) Se reemplazó Firebase SDK 12.9.0 por Firebase SDK 10.12.2 estable. Si el navegador no carga el SDK, la página queda con el menú visible pero sin datos.
+2) Resultados ahora activa mes, botones y vista previa sin esperar Firebase/Auth.
+3) Mi perfil ya no queda oculto ni bloqueado mientras Firebase confirma la sesión.
+4) Se actualizaron las reglas Firestore para que todo usuario autenticado pueda LEER Resultados/documentos, pero solo editor/admin pueda escribir asignaciones.
+5) Se actualizó el service worker a caché v68.
+
+PASO OBLIGATORIO SI EL USUARIO COMÚN SIGUE SIN DATOS:
+Publicar las reglas Firestore incluidas en este ZIP. Están en:
+- firestore.rules
+- docs/firestore.rules.txt
+
+En Firebase Console:
+Firestore Database > Rules > pegar el contenido de firestore.rules > Publish.
+
+Después de subir a GitHub Pages y publicar reglas:
+1. Abrir index.html?logout=1
+2. Iniciar sesión con el usuario común.
+3. Presionar Ctrl + F5 una vez.
+4. Entrar a Resultados y Mi perfil.
