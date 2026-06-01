@@ -1,7 +1,15 @@
-import { auth, db } from "../firebase-config.js?v=20260429b71";
+import { auth, db } from "../firebase-config.js?v=20260429b73";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { bosquejos } from "../data/bosquejos.js";
+import {
+  tipoSemanaForDate,
+  semanaTipoLabel,
+  isSemanaSinReunion,
+  isSemanaVisitaViajante,
+  isSemanaSinSalidasNiVisitantes,
+  isViajanteRecord
+} from "../services/semanaEspecialService.js?v=20260429b73";
 
 const $ = (id)=>document.getElementById(id);
 const LOCALES_VILLA_FIAD = ["Marcelo Palavecino","Sergio Saldaña","Luis Navarro","Leonardo Araya","Marcelo Rodríguez","Marcelo Rodriguez"];
@@ -65,10 +73,20 @@ async function cargarResumen(){
   const fecha = $("fechaSemana")?.value || upcomingSaturdayISO();
   updateLinks();
   const alertas=[];
+  const tipoSemana = await tipoSemanaForDate(db, fecha);
   const visitante = await cargarVisitante(fecha);
   const vBox=$("visitanteBox");
   const badge=$("badgeVisitante");
-  if(visitante){
+
+  if(isSemanaSinReunion(tipoSemana)){
+    if(badge) badge.textContent=semanaTipoLabel(tipoSemana);
+    if(vBox) vBox.innerHTML = `<div class="notice ok">${escapeHtml(semanaTipoLabel(tipoSemana))}: no corresponde cargar visitante para esa semana.</div>`;
+    if(visitante) alertas.push(`${semanaTipoLabel(tipoSemana)}: hay visitante cargado (${visitante.nombre || "sin nombre"}). Revisar o borrar ese arreglo.`);
+  }else if(isSemanaVisitaViajante(tipoSemana)){
+    if(badge) badge.textContent="Viajante";
+    if(vBox) vBox.innerHTML = `<div class="notice ok">Visita del viajante: el discurso público lo da el viajante. No debe venir otro orador visitante.</div>`;
+    if(visitante && !isViajanteRecord(visitante)) alertas.push(`Visita del viajante: hay visitante externo cargado (${visitante.nombre || "sin nombre"}). Revisar o borrar ese arreglo.`);
+  }else if(visitante){
     const n=visitante.bosquejo || visitante.discurso || visitante.numero || "";
     const titulo=visitante.titulo || tituloBosquejo(n);
     if(badge) badge.textContent="Cargado";
@@ -84,7 +102,10 @@ async function cargarResumen(){
     if(!salientes.length) sBox.innerHTML = `<div class="muted">No hay salientes locales en esta semana.</div>`;
     else sBox.innerHTML = `<div class="result-list">${salientes.map(s=>{ const f=String(s.fecha||s.id||"").slice(0,10); const n=s.bosquejo||s.discurso||s.numero||""; const t=s.titulo||tituloBosquejo(n); return `<div class="result-line"><div><strong>${escapeHtml(formatDate(f))}</strong> · ${escapeHtml(canonical(s.orador||s.oradorNombre||s.hermano||s.nombre||""))}</div><div class="muted small">${escapeHtml(s.destino||s.congregacionDestino||s.congregacion||"")} ${n?`· Bosquejo ${escapeHtml(n)}`:""} ${t?`· ${escapeHtml(t)}`:""}</div></div>`; }).join("")}</div>`;
   }
-  if(salientes.some(s=>normalKey(s.orador||s.oradorNombre||s.hermano||s.nombre||"").includes("marcelo palavecino"))) alertas.push("Marcelo Palavecino sale esta semana: revisar conductor de La Atalaya.");
+  if(isSemanaSinSalidasNiVisitantes(tipoSemana) && salientes.length){
+    alertas.push(`${semanaTipoLabel(tipoSemana)}: hay ${salientes.length} salida(s) cargada(s). Esa semana no debe salir nadie a dar discurso.`);
+  }
+  if(!isSemanaSinSalidasNiVisitantes(tipoSemana) && salientes.some(s=>normalKey(s.orador||s.oradorNombre||s.hermano||s.nombre||"").includes("marcelo palavecino"))) alertas.push("Marcelo Palavecino sale esta semana: revisar conductor de La Atalaya.");
   const aBox=$("alertasBox");
   if(aBox) aBox.innerHTML = alertas.length ? `<ul class="muted">${alertas.map(a=>`<li>${escapeHtml(a)}</li>`).join("")}</ul>` : `<div class="toast ok">Sin alertas importantes para esta semana.</div>`;
 }

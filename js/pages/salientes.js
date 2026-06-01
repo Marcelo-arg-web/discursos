@@ -1,4 +1,4 @@
-import { auth, db } from "../firebase-config.js?v=20260429b71";
+import { auth, db } from "../firebase-config.js?v=20260429b73";
 import { hasPublicAccess, requirePublicAccess, setPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -6,6 +6,11 @@ import {
   collection, getDocs, addDoc, updateDoc, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { bosquejos } from "../data/bosquejos.js";
+import {
+  tipoSemanaForDate,
+  semanaTipoLabel,
+  isSemanaSinSalidasNiVisitantes
+} from "../services/semanaEspecialService.js?v=20260429b73";
 
 const $ = (id)=>document.getElementById(id);
 
@@ -437,6 +442,27 @@ function clearForm(){
   $("fecha").focus();
 }
 
+async function marcarReglasEspecialesSalientes(){
+  const alertas = [];
+  for(const r of cache){
+    const tipoSemana = await tipoSemanaForDate(db, r.fecha || r.id);
+    r.tipoSemanaRegla = tipoSemana;
+    r.reglaAlerta = "";
+    const tipoSalida = normalKey(r.tipo || "normal");
+    const esMarcaNoSale = tipoSalida === "asamblea" || tipoSalida === "conmemoracion";
+    if(isSemanaSinSalidasNiVisitantes(tipoSemana) && !esMarcaNoSale){
+      r.reglaAlerta = `Semana marcada como ${semanaTipoLabel(tipoSemana)}: no corresponde salida a dar discurso.`;
+      alertas.push(`${r.fecha || r.id}: ${r.reglaAlerta}`);
+    }
+  }
+  const box = $("reglasAlertas");
+  if(box){
+    box.innerHTML = alertas.length
+      ? `<div class="notice warn"><b>Alertas de reglas</b><br>${alertas.map(escapeHtml).join("<br>")}</div>`
+      : `<div class="notice ok">Sin conflictos detectados con Asamblea o Visita del viajante.</div>`;
+  }
+}
+
 function renderTable(){
   const q = ($("filtro").value||"").trim().toLowerCase();
   const ocultosNoLocales = cache.filter(r => String(r.orador||"").trim() && !esOradorLocalElegible(r.orador)).length;
@@ -463,8 +489,8 @@ function renderTable(){
     return;
   }
   tbody.innerHTML = rows.map(r=>`
-    <tr data-id="${r.id}">
-      <td>${escapeHtml(toDMY(r.fecha||""))}</td>
+    <tr data-id="${r.id}" class="${r.reglaAlerta ? 'row-warning' : ''}">
+      <td>${escapeHtml(toDMY(r.fecha||""))}${r.reglaAlerta ? '<div class="small" style="color:#b45309;font-weight:700;">⚠ ' + escapeHtml(r.reglaAlerta) + '</div>' : ''}</td>
       <td>${escapeHtml(canonicalLocalName(r.orador||""))}</td>
       <td>${(r.bosquejo!=="" && r.bosquejo!=null) ? (r.bosquejo + " — " + escapeHtml(bosquejosMap.get(Number(r.bosquejo))||"")) : ( (r.tipo && r.tipo!=="normal") ? (escapeHtml(tipoLabel(r.tipo)) + (r.detalle?(" — "+escapeHtml(r.detalle)):"")) : (r.detalle?escapeHtml(r.detalle):"") )}</td>
       <td>${escapeHtml(r.destino||"")}</td>
@@ -522,10 +548,16 @@ async function revisarYCargarSalientes2026(usuario, mostrarMensaje=false){
   if(!isAdminRole(usuario?.rol)) return { agregados:0, corregidos:0 };
   let agregados = 0;
   let corregidos = 0;
+  let omitidosPorRegla = 0;
   try{
     const s = await getDocs(query(collection(db,"salientes"), orderBy("fecha","asc")));
     const existentes = s.docs.map(d=>({ id:d.id, ...d.data() }));
     for(const objetivoBase of SALIENTES_2026_CONFIRMADOS){
+      const tipoSemana = await tipoSemanaForDate(db, objetivoBase.fecha);
+      if(isSemanaSinSalidasNiVisitantes(tipoSemana)){
+        omitidosPorRegla++;
+        continue;
+      }
       const objetivo = {
         ...objetivoBase,
         orador: canonicalLocalName(objetivoBase.orador),
@@ -556,7 +588,7 @@ async function revisarYCargarSalientes2026(usuario, mostrarMensaje=false){
       }
     }
     if(agregados || corregidos || mostrarMensaje){
-      toast(`Salientes 2026 revisados. Agregados: ${agregados}. Corregidos: ${corregidos}.`);
+      toast(`Salientes 2026 revisados. Agregados: ${agregados}. Corregidos: ${corregidos}. Omitidos por Asamblea/Visita: ${omitidosPorRegla}.`);
     }
     return { agregados, corregidos };
   }catch(e){
@@ -569,6 +601,7 @@ async function revisarYCargarSalientes2026(usuario, mostrarMensaje=false){
 async function load(){
   const s = await getDocs(query(collection(db,"salientes"), orderBy("fecha","asc")));
   cache = s.docs.map(d=>({ id:d.id, ...d.data() }));
+  await marcarReglasEspecialesSalientes();
   cache.sort((a,b)=>String(a.fecha||"").localeCompare(String(b.fecha||"")));
   renderTable();
 }
@@ -585,6 +618,12 @@ async function save(){
   const detalle = ($("detalle")?.value||"").trim();
   const bosquejo = normNum($("bosquejo").value);
   const notas = ($("notas").value||"").trim();
+
+  const tipoSemana = await tipoSemanaForDate(db, fecha);
+  const tipoSalida = normalKey(tipo || "normal");
+  if(isSemanaSinSalidasNiVisitantes(tipoSemana) && tipoSalida !== "asamblea" && tipoSalida !== "conmemoracion"){
+    return toast(`No se puede cargar salida: esa semana está marcada como ${semanaTipoLabel(tipoSemana)}.`, true);
+  }
 
   const payload = {
     fecha,

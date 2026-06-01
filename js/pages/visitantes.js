@@ -1,4 +1,4 @@
-import { auth, db } from "../firebase-config.js?v=20260429b71";
+import { auth, db } from "../firebase-config.js?v=20260429b73";
 import { hasPublicAccess, requirePublicAccess, setPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -8,6 +8,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { bosquejos } from "../data/bosquejos.js";
 import { canciones } from "../data/canciones.js";
+import {
+  tipoSemanaForDate,
+  semanaTipoLabel,
+  isSemanaSinReunion,
+  isSemanaVisitaViajante,
+  isViajanteRecord
+} from "../services/semanaEspecialService.js?v=20260429b73";
 
 const $ = (id) => document.getElementById(id);
 
@@ -292,11 +299,25 @@ function stepsBetween(baseISO, targetISO){
   return -stepsBetween(targetISO, baseISO);
 }
 
-function computeHospAuto(targetISO){
+function latestHospAnchor(targetISO){
+  const target = parseISODate(targetISO);
   const baseISO = hospConfig.baseDate || DEFAULT_HOSP_CONFIG.baseDate;
   const baseGrupo = hospConfig.baseGrupo || DEFAULT_HOSP_CONFIG.baseGrupo;
-  const baseIdx = Math.max(0, HOSP_GRUPOS.indexOf(baseGrupo));
-  const step = stepsBetween(baseISO, targetISO);
+  const anchors = [{ fecha: baseISO, grupo: baseGrupo }];
+  for(const [fecha, grupo] of hospExceptions.entries()){
+    const d = parseISODate(fecha);
+    if(d && target && d <= target && HOSP_GRUPOS.includes(grupo)){
+      anchors.push({ fecha, grupo });
+    }
+  }
+  anchors.sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  return anchors[0] || { fecha: baseISO, grupo: baseGrupo };
+}
+
+function computeHospAuto(targetISO){
+  const anchor = latestHospAnchor(targetISO);
+  const baseIdx = Math.max(0, HOSP_GRUPOS.indexOf(anchor.grupo));
+  const step = stepsBetween(anchor.fecha, targetISO);
   const idx = ((baseIdx + step) % HOSP_GRUPOS.length + HOSP_GRUPOS.length) % HOSP_GRUPOS.length;
   return HOSP_GRUPOS[idx];
 }
@@ -395,6 +416,27 @@ function previewHospBoxFromInputs(){
   }
 }
 
+async function marcarReglasEspecialesVisitantes(){
+  const alertas = [];
+  for(const r of cache){
+    const tipoSemana = await tipoSemanaForDate(db, r.fecha || r.id);
+    r.tipoSemanaRegla = tipoSemana;
+    r.reglaAlerta = "";
+    if(isSemanaSinReunion(tipoSemana)){
+      r.reglaAlerta = `Semana marcada como ${semanaTipoLabel(tipoSemana)}: no corresponde visitante.`;
+    }else if(isSemanaVisitaViajante(tipoSemana) && !isViajanteRecord(r)){
+      r.reglaAlerta = "Semana marcada como Visita del viajante: no corresponde visitante externo; el discurso público lo da el viajante.";
+    }
+    if(r.reglaAlerta) alertas.push(`${r.fecha || r.id}: ${r.reglaAlerta}`);
+  }
+  const box = $("reglasAlertas");
+  if(box){
+    box.innerHTML = alertas.length
+      ? `<div class="notice warn"><b>Alertas de reglas</b><br>${alertas.map(escapeHtml).join("<br>")}</div>`
+      : `<div class="notice ok">Sin conflictos detectados con Asamblea o Visita del viajante.</div>`;
+  }
+}
+
 function renderTable(){
   const q = ($("filtro").value||"").trim().toLowerCase();
   const rows = cache.filter(r=>{
@@ -408,8 +450,8 @@ function renderTable(){
     return;
   }
   tbody.innerHTML = rows.map(r=>`
-    <tr data-id="${r.id}">
-      <td>${r.id}</td>
+    <tr data-id="${r.id}" class="${r.reglaAlerta ? 'row-warning' : ''}">
+      <td>${r.id}${r.reglaAlerta ? '<div class="small" style="color:#b45309;font-weight:700;">⚠ ' + escapeHtml(r.reglaAlerta) + '</div>' : ''}</td>
       <td>${escapeHtml(r.nombre||"")}</td>
       <td>${escapeHtml(r.congregacion||"")}</td>
       <td>${r.bosquejo ?? ""}</td>
@@ -460,6 +502,8 @@ async function load(){
       hospLabel: hospForDate(r.id).label,
     }));
 
+  await marcarReglasEspecialesVisitantes();
+
   cache.sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
   renderTable();
 }
@@ -470,6 +514,14 @@ async function save(){
   const nombre = ($("nombre").value||"").trim();
   const congregacion = ($("congregacion").value||"").trim();
   if(!nombre || !congregacion) return toast("Completá nombre y congregación.", true);
+
+  const tipoSemana = await tipoSemanaForDate(db, fecha);
+  if(isSemanaSinReunion(tipoSemana)){
+    return toast(`No se puede cargar visitante: esa semana está marcada como ${semanaTipoLabel(tipoSemana)}.`, true);
+  }
+  if(isSemanaVisitaViajante(tipoSemana) && !isViajanteRecord({ nombre, congregacion })){
+    return toast("No se puede cargar un visitante externo en semana de Visita del viajante. Esa semana el discurso público lo da el viajante.", true);
+  }
 
   const bosquejo = normNum($("bosquejo").value);
   const titulo = ($("titulo").value||"").trim();
@@ -494,7 +546,11 @@ async function save(){
 
   try{
     await setDoc(doc(db,"visitas",fecha), payload, { merge:true });
-    toast("Guardado OK.");
+    if(hospManual && !hospSkips.has(fecha)){
+      await setDoc(doc(db, "hospitalidad_excepciones", fecha), { grupo: hospManual, updatedAt: new Date().toISOString() }, { merge: true });
+      await loadHospitalidadState();
+    }
+    toast(hospManual ? "Guardado OK. La hospitalidad manual reinicia la rotación desde esta fecha." : "Guardado OK.");
     clearForm();
     await load();
   }catch(e){

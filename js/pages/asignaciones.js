@@ -2,7 +2,7 @@
 // Admin: carga personas, guarda asignaciones semanales, y autocompleta visitante/títulos.
 // NO modifica Firebase.
 
-import { auth, db } from "../firebase-config.js?v=20260429b71";
+import { auth, db } from "../firebase-config.js?v=20260429b73";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection,
@@ -18,6 +18,12 @@ import {
 import { canciones } from "../data/canciones.js";
 import { bosquejos } from "../data/bosquejos.js";
 import { visitantes as visitantesLocal } from "../data/visitantes.js";
+import {
+  buscarConflictosArreglos,
+  buildAlertaConflictos,
+  marcarHospitalidadSkip,
+  isSemanaSinSalidasNiVisitantes
+} from "../services/semanaEspecialService.js?v=20260429b73";
 
 import {
   getAncianosOSiervos,
@@ -147,8 +153,17 @@ function semanaTipo() {
   return String(getVal("tipoSemana") || "normal").trim().toLowerCase() || "normal";
 }
 
-function isSemanaEspecialValue(v) {
+function isSemanaSinReunionValue(v) {
   return v === "asamblea" || v === "conmemoracion";
+}
+
+function isSemanaVisitaValue(v) {
+  return v === "visita" || v === "visita_viajante" || v === "viajante";
+}
+
+function isSemanaEspecialValue(v) {
+  // Mantiene compatibilidad con el código anterior: “especial” aquí significa sin reunión.
+  return isSemanaSinReunionValue(v);
 }
 
 function isSemanaEspecial() {
@@ -156,7 +171,10 @@ function isSemanaEspecial() {
 }
 
 function semanaEspecialLabel(v = semanaTipo()) {
-  return v === "asamblea" ? "Asamblea" : v === "conmemoracion" ? "Conmemoración" : "";
+  if(v === "asamblea") return "Asamblea";
+  if(v === "conmemoracion") return "Conmemoración";
+  if(isSemanaVisitaValue(v)) return "Visita del viajante";
+  return "";
 }
 
 function blankAssignmentsData(extra = {}) {
@@ -183,8 +201,17 @@ function blankAssignmentsData(extra = {}) {
   };
 }
 
+function aplicarReglaVisitaViajante(force = false){
+  if(!isSemanaVisitaValue(semanaTipo())) return;
+  if(force || !String(getVal("oradorPublico") || "").trim()) setVal("oradorPublico", "Viajante");
+  if(force || !String(getVal("congregacionVisitante") || "").trim()) setVal("congregacionVisitante", "Viajante");
+  updateOracionFinalVisitorOptionLabel();
+  autoOracionFinal(force);
+}
+
 function updateSemanaEspecialUI() {
   const especial = isSemanaEspecial();
+  const visita = isSemanaVisitaValue(semanaTipo());
   const ids = [
     "presidente","oracionInicial","oracionFinal","conductorAtalaya","lectorAtalaya",
     "multimedia1","multimedia2","plataforma","microfonista1","microfonista2",
@@ -203,8 +230,11 @@ function updateSemanaEspecialUI() {
   if (note) {
     note.textContent = especial
       ? `${semanaEspecialLabel()}: no hay reuniones ni asignados en esa semana.`
-      : "Normal: se cargan los asignados de la semana.";
+      : (visita
+        ? "Visita del viajante: el discurso público lo da el viajante. No debe haber visitantes externos ni salientes esa semana."
+        : "Normal: se cargan los asignados de la semana.");
   }
+  if(visita) aplicarReglaVisitaViajante(false);
 }
 
 function fmtAR(iso) {
@@ -360,6 +390,33 @@ const roleHistoryMaps = {
   microfonista2: new Map(),
 };
 const roleCountMaps = Object.fromEntries(Object.keys(roleHistoryMaps).map((k) => [k, new Map()]));
+const monthlyAssignmentUsage = []; // { id, roleKey, whenValue, month } para evitar repetidos dentro del mes si hay alternativas.
+
+function monthKeyFromISO(isoValue) {
+  const v = String(isoValue || "").trim();
+  return /^\d{4}-\d{2}/.test(v) ? v.slice(0, 7) : "";
+}
+
+function rememberMonthlyAssignment(roleKey, personaId, whenValue) {
+  const id = String(personaId || "").trim();
+  const when = String(whenValue || "").trim();
+  const month = monthKeyFromISO(when);
+  if (!id || !month) return;
+  monthlyAssignmentUsage.push({ id, roleKey: String(roleKey || ""), whenValue: when, month });
+}
+
+function idsUsedThisMonthExceptCurrentWeek() {
+  const s = semanaISO && semanaISO();
+  const month = monthKeyFromISO(s);
+  const ids = new Set();
+  if (!month) return ids;
+  monthlyAssignmentUsage.forEach((u) => {
+    if (!u || u.month !== month) return;
+    if (s && u.whenValue === s) return;
+    if (u.id) ids.add(u.id);
+  });
+  return ids;
+}
 
 function updateRoleHistory(roleKey, personaId, whenValue) {
   const map = roleHistoryMaps[roleKey];
@@ -368,6 +425,7 @@ function updateRoleHistory(roleKey, personaId, whenValue) {
   if (!map || !id) return;
   if (countMap) countMap.set(id, (countMap.get(id) || 0) + 1);
   const when = String(whenValue || "").trim();
+  rememberMonthlyAssignment(roleKey, id, when);
   const prev = map.get(id) || "";
   if (!prev || (when && prev < when)) {
     map.set(id, when || prev || "");
@@ -412,7 +470,13 @@ function buildCandidateList(candidateIds, selectId, softExcludedIds = [], hardEx
 
   // Primero: no repetir a nadie ya usado en la misma semana.
   const noRepeat = base.filter((id) => !soft.has(id));
-  if (noRepeat.length) return noRepeat;
+  if (noRepeat.length) {
+    // Segundo: dentro del mismo mes, si hay suficientes hermanos, prioriza a quienes todavía no tuvieron asignación.
+    const monthUsed = idsUsedThisMonthExceptCurrentWeek();
+    const freshThisMonth = noRepeat.filter((id) => !monthUsed.has(id));
+    if (freshThisMonth.length) return freshThisMonth;
+    return noRepeat;
+  }
 
   // Si no queda alternativa, permitimos repetir antes que dejar vacío.
   return base;
@@ -492,6 +556,7 @@ async function ensureRoleHistoryLoaded() {
   roleHistoryLoaded = true;
   Object.values(roleHistoryMaps).forEach((m) => m.clear());
   Object.values(roleCountMaps).forEach((m) => m.clear());
+  monthlyAssignmentUsage.length = 0;
 
   try {
     const weekSnap = await getDocs(collection(db, "asignaciones"));
@@ -1023,7 +1088,15 @@ function pickFairCandidate(candidateIds, counts, roleKey, usedThisWeek) {
     const ra = (ca.roles && ca.roles[roleKey]) ? ca.roles[roleKey] : 0;
     const rb = (cb.roles && cb.roles[roleKey]) ? cb.roles[roleKey] : 0;
     if (ra !== rb) return ra - rb;
-    return getLastUsed(a) - getLastUsed(b);
+    const histMap = roleHistoryMaps[roleKey] || new Map();
+    const aWhen = histMap.get(a) || supportLastAssigned.get(a) || "";
+    const bWhen = histMap.get(b) || supportLastAssigned.get(b) || "";
+    if (!aWhen && bWhen) return -1;
+    if (aWhen && !bWhen) return 1;
+    if (aWhen !== bWhen) return aWhen.localeCompare(bWhen);
+    const lu = getLastUsed(a) - getLastUsed(b);
+    if (lu !== 0) return lu;
+    return (personaNameById(a) || "").localeCompare(personaNameById(b) || "", "es", { sensitivity: "base" });
   });
 
   return list[0] || "";
@@ -1034,8 +1107,9 @@ function markLastUsed(roleKey, personaId) {
   localStorage.setItem(`lastUsed_${roleKey}_${personaId}`, String(Date.now()));
 }
 
-function applyMesWeekSuggestion(targetWeekKey) {
+async function applyMesWeekSuggestion(targetWeekKey) {
   // Usa lo ya cargado del mes (lastMesDoc) para mantener equidad, y rellena la semana seleccionada.
+  try { await ensureSupportHistoryLoaded(); await ensureRoleHistoryLoaded(); } catch (_) {}
   if (!lastMesDoc) lastMesDoc = { semanas: {} };
   if (!lastMesDoc.semanas) lastMesDoc.semanas = {};
 
@@ -1095,15 +1169,15 @@ function applyMesWeekSuggestion(targetWeekKey) {
   markLastUsed("microfonista", mic2);
 }
 
-function sugerirSemanaEquitativa() {
+async function sugerirSemanaEquitativa() {
   const mesISO = (getVal("mes") || "").trim();
   if (!mesISO) return setStatus("Elegí un mes primero.", true);
-  applyMesWeekSuggestion(currentMesSemana());
+  await applyMesWeekSuggestion(currentMesSemana());
   renderMesPreview(mesISO, lastMesDoc);
-  setStatus("Sugerencia aplicada a la semana seleccionada. Ajustá si hace falta y guardá.");
+  setStatus("Sugerencia aplicada: se priorizó no repetir en la semana, no repetir en el mes si hay hermanos disponibles, y elegir a quien más tiempo lleva sin asignación.");
 }
 
-function sugerirMesCompleto() {
+async function sugerirMesCompleto() {
   const mesISO = (getVal("mes") || "").trim();
   if (!mesISO) return setStatus("Elegí un mes primero.", true);
   // genera sugerencias para todas las semanas del mes
@@ -1114,17 +1188,17 @@ function sugerirMesCompleto() {
   if (!lastMesDoc.semanas) lastMesDoc.semanas = {};
 
   const prevWeek = currentMesSemana();
-  weeks.forEach((wk) => {
+  for (const wk of weeks) {
     // cambia selección para que hydrate/sets funcionen coherentemente
     setVal("mesSemana", wk);
     hydrateMesToUI(lastMesDoc); // carga si ya existía
-    applyMesWeekSuggestion(wk); // sugiere completando faltantes sin pisar lo ya elegido
-  });
+    await applyMesWeekSuggestion(wk); // sugiere completando faltantes sin pisar lo ya elegido
+  }
   setVal("mesSemana", prevWeek);
   hydrateMesToUI(lastMesDoc);
 
   renderMesPreview(mesISO, lastMesDoc);
-  setStatus("Sugerencias generadas para todo el mes. Revisá semana por semana y guardá cada una.");
+  setStatus("Sugerencias generadas para todo el mes. Se evitó repetir asignados cuando hubo candidatos suficientes y se respetaron las funciones cargadas.");
 }
 
 async function cargarMes() {
@@ -1567,6 +1641,15 @@ async function precargarAsignacionesAutomaticas(opts = {}) {
 
 async function aplicarAutoVisitante(fechaISO, opts = {}) {
   const force = opts?.force !== false; // por defecto sincroniza con la solapa Visitantes.
+  if(isSemanaEspecial()){
+    updateOracionFinalVisitorOptionLabel();
+    autoOracionFinal(false);
+    return null;
+  }
+  if(isSemanaVisitaValue(semanaTipo())){
+    aplicarReglaVisitaViajante(force);
+    return { nombre: "Viajante", congregacion: "Viajante" };
+  }
   const visitante = (await firestoreVisitFor(fechaISO)) || localVisitanteFor(fechaISO);
   if (!visitante) {
     updateOracionFinalVisitorOptionLabel();
@@ -1733,6 +1816,8 @@ function formData() {
   if (isSemanaEspecialValue(tipo)) {
     return blankAssignmentsData({ tipoSemana: tipo });
   }
+  const visita = isSemanaVisitaValue(tipo);
+  if(visita) aplicarReglaVisitaViajante(true);
   return {
     presidenteId: getVal("presidente"),
     oracionInicialId: getVal("oracionInicial"),
@@ -1749,8 +1834,8 @@ function formData() {
     acomodadorAuditorio2Id: "", // Villa Fiad usa un solo acomodador de auditorio. Se deja vacío por compatibilidad con datos viejos.
 
     cancionNumero: getVal("cancionNumero"),
-    oradorPublico: getVal("oradorPublico"),
-    congregacionVisitante: getVal("congregacionVisitante"),
+    oradorPublico: visita ? "Viajante" : getVal("oradorPublico"),
+    congregacionVisitante: visita ? "Viajante" : getVal("congregacionVisitante"),
     discursoNumero: getVal("discursoNumero"),
     tituloDiscurso: getVal("tituloDiscurso"),
     tituloSiguienteSemana: getVal("tituloSiguienteSemana"),
@@ -1804,6 +1889,7 @@ function hydrateToUI(a) {
   setVal("tituloDiscurso", a.tituloDiscurso || "");
   setVal("tituloSiguienteSemana", a.tituloSiguienteSemana || "");
   aplicarAutoDiscurso();
+  if(isSemanaVisitaValue(a.tipoSemana || "")) aplicarReglaVisitaViajante(false);
 }
 
 
@@ -1853,6 +1939,32 @@ function validateNoDuplicates() {
   return null;
 }
 
+async function buildMonthlyRepeatWarning(data) {
+  if (isSemanaEspecial()) return "";
+  try { await ensureRoleHistoryLoaded(); } catch (_) {}
+  const s = semanaISO();
+  const month = monthKeyFromISO(s);
+  if (!month) return "";
+  const monthUsed = idsUsedThisMonthExceptCurrentWeek();
+  const fields = [
+    data.presidenteId,
+    data.oracionInicialId,
+    data.conductorAtalayaId,
+    data.lectorAtalayaId,
+    data.multimedia1Id,
+    data.multimedia2Id,
+    data.plataformaId,
+    data.acomodadorEntradaId,
+    data.acomodadorAuditorio1Id,
+    data.microfonista1Id,
+    data.microfonista2Id,
+  ].filter(Boolean);
+  const repeated = Array.from(new Set(fields.filter((id) => monthUsed.has(id))));
+  if (!repeated.length) return "";
+  const names = repeated.map((id) => personaNameById(id)).filter(Boolean).join(", ");
+  return names ? `Aviso: ${names} ya tenía asignación en este mes. Si hay suficientes hermanos con la función correspondiente, usá Sugerir para evitar repetidos.` : "";
+}
+
 async function cargarSemana() {
   const s = semanaISO();
   if (!s) return setStatus("Elegí una semana (fecha).", true);
@@ -1869,7 +1981,9 @@ async function cargarSemana() {
       try{ autoPresidenteIfNeeded(); }catch(_e){}
       // refresca aviso
       try{ await generarAviso(); }catch(_e){}
-      setStatus("Datos cargados. Si había campos vacíos, se completaron sugerencias automáticas sin repetir funciones.");
+      const alerta = await revisarConflictosSemanaActual(semanaTipo());
+      if(alerta) setStatus(alerta, true);
+      else setStatus("Datos cargados. Si había campos vacíos, se completaron sugerencias automáticas sin repetir funciones.");
     } else {
       hydrateToUI(blankAssignmentsData({ tipoSemana: "normal" }));
       updateSemanaEspecialUI();
@@ -1883,6 +1997,13 @@ async function cargarSemana() {
     console.error(e);
     setStatus("Error cargando datos. Revisá consola (F12) y permisos de Firestore.", true);
   }
+}
+
+async function revisarConflictosSemanaActual(tipo = semanaTipo()){
+  const s = semanaISO();
+  if(!s || !isSemanaSinSalidasNiVisitantes(tipo)) return "";
+  const conflictos = await buscarConflictosArreglos(db, s, tipo);
+  return buildAlertaConflictos(conflictos);
 }
 
 async function guardar() {
@@ -1899,6 +2020,8 @@ async function guardar() {
   setStatus("Guardando…");
   setBusy("btnGuardar", true, "Guardando…");
   const data = formData();
+  const alertaRegla = await revisarConflictosSemanaActual(data.tipoSemana);
+  const alertaMes = await buildMonthlyRepeatWarning(data);
 
   try {
     await setDoc(
@@ -1910,6 +2033,10 @@ async function guardar() {
       { merge: true }
     );
 
+    if(data.tipoSemana === "asamblea" || data.tipoSemana === "conmemoracion"){
+      await marcarHospitalidadSkip(db, s, true);
+    }
+
     
     // Si estás guardando una reunión de fin de semana (sábado/domingo),
     // copiamos automáticamente acomodadores/multimedia/microfonistas al jueves anterior (sin pisar lo ya cargado).
@@ -1919,7 +2046,8 @@ async function guardar() {
       console.warn("No pude copiar asignados al jueves anterior:", e);
     }
 
-setStatus("Guardado con éxito.");
+    const mensajesGuardado = [alertaRegla, alertaMes].filter(Boolean).join(" ");
+    setStatus(mensajesGuardado ? `Guardado con éxito. ${mensajesGuardado}` : "Guardado con éxito.", Boolean(mensajesGuardado));
     // deja el aviso listo para WhatsApp
     generarAviso();
   } catch (e) {
@@ -2332,12 +2460,20 @@ async function init() {
   $("btnActualizarVisitante")?.addEventListener("click", async () => {
     const s = semanaISO();
     if (!s) return setStatus("Elegí una semana para cotejar visitantes.", true);
+    if(isSemanaVisitaValue(semanaTipo())){
+      aplicarReglaVisitaViajante(true);
+      setStatus("Visita del viajante: se fijó el orador público como Viajante. No se busca visitante externo.");
+      return;
+    }
     const v = await aplicarAutoVisitante(s, { force: true });
     if (v) setStatus(`Visitante actualizado desde Visitantes: ${v.nombre || "sin nombre"}${v.congregacion ? " — " + v.congregacion : ""}.`);
     else setStatus("No encontré visitante cargado para esa fecha en Visitantes.", true);
   });
-  $("tipoSemana")?.addEventListener("change", () => {
+  $("tipoSemana")?.addEventListener("change", async () => {
     updateSemanaEspecialUI();
+    if(isSemanaVisitaValue(semanaTipo())) aplicarReglaVisitaViajante(true);
+    const alerta = await revisarConflictosSemanaActual(semanaTipo());
+    if(alerta) setStatus(alerta, true);
   });
 
 

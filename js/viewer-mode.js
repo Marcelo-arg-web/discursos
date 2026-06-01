@@ -1,4 +1,4 @@
-import { auth, db } from "./firebase-config.js?v=20260429b71";
+import { auth, db } from "./firebase-config.js?v=20260429b73";
 import { hasPublicAccess, setPublicAccess } from "./services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -29,6 +29,69 @@ function isAdminRole(rol){
 }
 function escapeHtml(s){
   return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+
+const ADMIN_NAV_MAIN = [
+  {href:'asignaciones.html', label:'Asignaciones', icon:'✓'},
+  {href:'visitantes.html', label:'Visitantes', icon:'⇢'},
+  {href:'salientes.html', label:'Salientes', icon:'⇠'},
+  {href:'resultados.html', label:'Resultados', icon:'◉'}
+];
+const ADMIN_NAV_GROUPS = [
+  {label:'Carga y roles', icon:'☑', items:[
+    {href:'funciones.html', label:'Funciones / roles'},
+    {href:'discursantes.html', label:'Discursantes'},
+    {href:'personas.html', label:'Personas'},
+    {href:'directorio-discursos.html', label:'Directorio de discursos'},
+    {href:'preparar-semana.html', label:'Preparar semana'}
+  ]},
+  {label:'PDF e impresión', icon:'📄', items:[
+    {href:'documentos.html', label:'Centro de documentos/PDF'},
+    {href:'programa-mensual.html', label:'Programa mensual'},
+    {href:'doc-presi.html', label:'Presidente: mes'},
+    {href:'presidente.html', label:'Presidente: semana'},
+    {href:'tablero-acomodadores.html', label:'Acomodadores y asignaciones'},
+    {href:'tablero-multimedia.html', label:'Multimedia'},
+    {href:'imprimir.html', label:'Resumen / imprimir'}
+  ]},
+  {label:'Administración', icon:'⚙', items:[
+    {href:'panel.html', label:'Panel'},
+    {href:'usuarios.html', label:'Usuarios'},
+    {href:'importar.html', label:'Importar'},
+    {href:'importar-visitantes.html', label:'Importar visitantes'},
+    {href:'importar-asignaciones.html', label:'Importar asignaciones'},
+    {href:'estadisticas.html', label:'Estadísticas'},
+    {href:'perfil.html', label:'Mi perfil'}
+  ]}
+];
+function isCurrentHref(href){
+  const h = String(href || '').toLowerCase().split('?')[0].split('#')[0].replace(/^\.\//,'');
+  return h === pageName();
+}
+function adminNavLink(item, cls='navQuick'){
+  const active = isCurrentHref(item.href) ? ' active' : '';
+  return `<a href="${item.href}" class="${cls}${active}" title="${escapeHtml(item.label)}"><span class="navIcon" aria-hidden="true">${item.icon || '•'}</span><span class="navText">${escapeHtml(item.label)}</span></a>`;
+}
+function renderAdminTopbar(){
+  const topbar = document.getElementById('topbar');
+  if(!topbar) return;
+  document.body.classList.add('pro-online','has-topbar');
+  document.body.classList.remove('public-view');
+  const name = currentUserDoc?.nombre || currentUserDoc?.email || 'Admin';
+  const main = ADMIN_NAV_MAIN.map(item => adminNavLink(item)).join('');
+  const groups = ADMIN_NAV_GROUPS.map(group => {
+    const active = group.items.some(item => isCurrentHref(item.href));
+    const links = group.items.map(item => adminNavLink(item, 'navDropLink')).join('');
+    return `<details class="navGroup${active ? ' active' : ''}"><summary title="${escapeHtml(group.label)}"><span class="navIcon" aria-hidden="true">${group.icon}</span><span>${escapeHtml(group.label)}</span></summary><div class="navGroupMenu">${links}</div></details>`;
+  }).join('');
+  topbar.innerHTML = `
+    <div class="topbar organized-topbar">
+      <div class="brand"><span class="brand-dot"></span><span class="brand-copy"><span class="brand-title">Discursos</span><span class="brand-sub">Arreglos · Villa Fiad</span></span></div>
+      <div class="links nav-organized">${main}${groups}</div>
+      <div class="actions"><span class="badge soft">${escapeHtml(name)}</span><button id="btnSalirViewer" class="btn danger sm" type="button">Salir</button></div>
+    </div>
+  `;
+  document.getElementById('btnSalirViewer')?.addEventListener('click', logout);
 }
 function logout(){
   if(hasPublicAccess()){
@@ -95,6 +158,7 @@ onAuthStateChanged(auth, async (user)=>{
       currentUserDoc = snap.exists() ? snap.data() : { email:user.email, rol:"viewer" };
       viewerMode = !isAdminRole(currentUserDoc?.rol);
       if(viewerMode) apply();
+      else renderAdminTopbar();
     }catch(e){
       console.warn("No pude determinar el rol para modo lectura:", e);
       currentUserDoc = { email:user.email, nombre:user.email, rol:"viewer" };
