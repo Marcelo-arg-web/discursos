@@ -1,9 +1,11 @@
-import { auth, db } from "../firebase-config.js?v=20260429b73";
+import { auth, db } from "../firebase-config.js?v=20260429b75";
 import { hasPublicAccess, setPublicAccess } from "../services/publicAccess.js";
+import { getGeneralConfig, nombreViajanteFromConfig } from "../services/configService.js?v=20260429b75";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { collection, getDocs, doc, getDoc, query, orderBy, documentId, startAt, endAt } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { bosquejos } from "../data/bosquejos.js";
 
+let GENERAL_CONFIG = { nombreViajante: "Viajante" };
 let personasMap = new Map();
 let personasMapLoaded = false;
 
@@ -37,6 +39,19 @@ function resolveNombre(asig, keys){
     return nombrePorId(s) || s;
   }
   return "";
+}
+function isSemanaVisitaValue(v){
+  const t = String(v || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[_-]+/g, " ");
+  return t === "visita" || t === "visita viajante" || t === "visita del viajante" || t === "viajante";
+}
+function isGenericViajante(value){
+  const t = String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return !t || t === "viajante" || t === "superintendente de circuito" || t === "visita del viajante";
+}
+function displayOradorPublico(a){
+  const raw = String(a?.oradorPublico || a?.visitante || a?.orador || "").trim();
+  if(isSemanaVisitaValue(a?.tipoSemana) && isGenericViajante(raw)) return nombreViajanteFromConfig(GENERAL_CONFIG);
+  return raw;
 }
 
 function mesTitulo(mesISO){
@@ -275,7 +290,7 @@ function asignacionResumen(a){
   const oracionInicial = resolveNombre(a, ["oracionInicialId","oracionInicialNombre","oracionInicial"]);
   const conductor = resolveNombre(a, ["conductorAtalayaId","conductorAtalayaNombre","conductorAtalaya"]);
   const lector = resolveNombre(a, ["lectorAtalayaId","lectorAtalayaNombre","lectorAtalaya"]);
-  const orador = String(a.oradorPublico || a.visitante || a.orador || "").trim();
+  const orador = displayOradorPublico(a);
   const congregacion = String(a.congregacionVisitante || a.congregacion || "").trim();
   const bosquejo = String(a.numeroDiscurso || a.bosquejo || a.discurso || "").trim();
   const titulo = String(a.tituloDiscurso || a.titulo || "").trim() || (bosquejo && bosquejos[Number(bosquejo)] ? bosquejos[Number(bosquejo)] : "");
@@ -526,6 +541,7 @@ function attachScrollablePreviewFrame(frame, helpEl){
     // Menú provisorio inmediato para que nunca quede pantalla sin navegación.
     renderViewerTopbar("Usuario");
     await requireAccess();
+    GENERAL_CONFIG = await getGeneralConfig();
     attachScrollablePreviewFrame($("docFrameResultados"), $("docHelpResultados"));
     $("tipoDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);
     $("semanaDocumentoResultados")?.addEventListener("change", refreshDocumentosResultados);

@@ -1,4 +1,4 @@
-import { auth, db } from "../firebase-config.js?v=20260429b73";
+import { auth, db } from "../firebase-config.js?v=20260429b75";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { bosquejos } from "../data/bosquejos.js";
@@ -9,7 +9,7 @@ import {
   isSemanaVisitaViajante,
   isSemanaSinSalidasNiVisitantes,
   isViajanteRecord
-} from "../services/semanaEspecialService.js?v=20260429b73";
+} from "../services/semanaEspecialService.js?v=20260429b75";
 
 const $ = (id)=>document.getElementById(id);
 const LOCALES_VILLA_FIAD = ["Marcelo Palavecino","Sergio Saldaña","Luis Navarro","Leonardo Araya","Marcelo Rodríguez","Marcelo Rodriguez"];

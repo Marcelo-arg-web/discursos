@@ -36,10 +36,10 @@ export function publicTalkDates(semanaISO){
 }
 
 export function semanaTipoLabel(tipo){
-  const t = normalKey(tipo || "normal");
+  const t = normalKey(tipo || "normal").replace(/[_-]+/g, " ");
   if(t === "asamblea") return "Asamblea";
   if(t === "conmemoracion") return "Conmemoración";
-  if(t === "visita" || t === "visita viajante" || t === "viajante") return "Visita del viajante";
+  if(t === "visita" || t === "visita viajante" || t === "visita del viajante" || t === "viajante") return "Visita del viajante";
   return "Normal";
 }
 
@@ -49,8 +49,8 @@ export function isSemanaSinReunion(tipo){
 }
 
 export function isSemanaVisitaViajante(tipo){
-  const t = normalKey(tipo || "normal");
-  return t === "visita" || t === "visita viajante" || t === "viajante";
+  const t = normalKey(tipo || "normal").replace(/[_-]+/g, " ");
+  return t === "visita" || t === "visita viajante" || t === "visita del viajante" || t === "viajante";
 }
 
 export function isSemanaSinSalidasNiVisitantes(tipo){

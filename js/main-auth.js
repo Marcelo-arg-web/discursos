@@ -1,4 +1,4 @@
-import { auth } from "./firebase.js?v=20260429b73";
+import { auth } from "./firebase.js?v=20260429b75";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,

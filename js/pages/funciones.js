@@ -1,4 +1,4 @@
-import { auth, db } from "../firebase-config.js?v=20260429b73";
+import { auth, db } from "../firebase-config.js?v=20260429b75";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection,
@@ -8,12 +8,15 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  setDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
 let cache = [];
 let IS_ADMIN = false;
+const CONFIG_DOC_REF = () => doc(db, "configuracion", "general");
+const CONFIG_LOCAL_KEY = "discursos_configuracion_general";
 
 const MANAGED = [
   { key: "presidente", label: "Presidente", aliases: ["presidente"] },
@@ -225,6 +228,62 @@ function render(){
   }
 }
 
+function setConfigStatus(msg, isError=false){
+  const box = $("configGeneralStatus");
+  if(!box) return;
+  box.textContent = msg;
+  box.style.display = "block";
+  box.style.background = isError ? "#fff1f2" : "#f0fdf4";
+  box.style.border = `1px solid ${isError ? "#fecdd3" : "#bbf7d0"}`;
+  box.style.color = isError ? "#9f1239" : "#166534";
+}
+
+function localConfigGeneral(){
+  try{ return JSON.parse(localStorage.getItem(CONFIG_LOCAL_KEY) || "{}"); }catch(e){ return {}; }
+}
+
+function setConfigGeneralForm(data){
+  const el = $("cfg_viajante_nombre");
+  if(el) el.value = String(data?.viajanteNombre || data?.nombreViajante || "").trim();
+}
+
+async function cargarConfigGeneral(){
+  const local = localConfigGeneral();
+  if(local && Object.keys(local).length) setConfigGeneralForm(local);
+  try{
+    const snap = await getDoc(CONFIG_DOC_REF());
+    if(snap.exists()){
+      const data = snap.data() || {};
+      localStorage.setItem(CONFIG_LOCAL_KEY, JSON.stringify(data));
+      setConfigGeneralForm(data);
+      setConfigStatus("Configuración cargada.");
+    }
+  }catch(e){
+    console.warn("No pude leer configuración general", e);
+    if(local && Object.keys(local).length) setConfigStatus("Configuración cargada desde este equipo. Revisá reglas de Firestore si querés sincronizarla.", true);
+  }
+}
+
+async function guardarConfigGeneral(){
+  if(!IS_ADMIN) return toast("Modo solo lectura.", true);
+  const btn = $("btnGuardarConfigGeneral");
+  const nombreViajante = ($("cfg_viajante_nombre")?.value || "").trim();
+  const payload = { nombreViajante, viajanteNombre: nombreViajante, updatedAt: serverTimestamp(), actualizadoEn: new Date().toISOString() };
+  if(btn){ btn.disabled = true; btn.textContent = "Guardando…"; }
+  try{
+    localStorage.setItem(CONFIG_LOCAL_KEY, JSON.stringify({ nombreViajante, viajanteNombre: nombreViajante, actualizadoEn: payload.actualizadoEn }));
+    await setDoc(CONFIG_DOC_REF(), payload, { merge:true });
+    setConfigStatus(nombreViajante ? `Guardado. En Visita del viajante se usará: ${nombreViajante}.` : "Guardado. Si no se carga nombre, se usará 'Viajante'.");
+    toast("Configuración guardada.");
+  }catch(e){
+    console.error(e);
+    setConfigStatus("No pude guardar en Firestore. Se dejó una copia local en este equipo. Revisá las reglas de Firestore.", true);
+    toast("No pude guardar en Firestore. Revisá permisos.", true);
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = "Guardar configuración"; }
+  }
+}
+
 async function cargar(){
   const snap = await getDocs(collection(db,"personas"));
   cache = snap.docs.map(d=>({ id:d.id, ...d.data() })).filter(p=>p?.nombre);
@@ -349,13 +408,19 @@ async function guardarFunciones(){
   if(!IS_ADMIN){
     const b = $("btnGuardarFunciones");
     if(b) b.disabled = true;
+    const cfgBtn = $("btnGuardarConfigGeneral");
+    if(cfgBtn) cfgBtn.disabled = true;
+    const cfgInput = $("cfg_viajante_nombre");
+    if(cfgInput) cfgInput.disabled = true;
     toast("Modo solo lectura.");
   }
   $("q")?.addEventListener("input", render);
   $("filtro")?.addEventListener("change", render);
   $("btnGuardarFunciones")?.addEventListener("click", guardarFunciones);
+  $("btnGuardarConfigGeneral")?.addEventListener("click", guardarConfigGeneral);
   $("btnGuardarPersona")?.addEventListener("click", guardarPersona);
   $("btnLimpiarPersona")?.addEventListener("click", ()=>{ limpiarPersona(); toast("Formulario limpio."); });
   $("btnEliminarPersona")?.addEventListener("click", eliminarPersonaActual);
+  await cargarConfigGeneral();
   await cargar();
 })();

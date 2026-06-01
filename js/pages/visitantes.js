@@ -1,4 +1,4 @@
-import { auth, db } from "../firebase-config.js?v=20260429b73";
+import { auth, db } from "../firebase-config.js?v=20260429b75";
 import { hasPublicAccess, requirePublicAccess, setPublicAccess } from "../services/publicAccess.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -14,7 +14,7 @@ import {
   isSemanaSinReunion,
   isSemanaVisitaViajante,
   isViajanteRecord
-} from "../services/semanaEspecialService.js?v=20260429b73";
+} from "../services/semanaEspecialService.js?v=20260429b75";
 
 const $ = (id) => document.getElementById(id);
 

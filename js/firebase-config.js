@@ -8,7 +8,8 @@ export const firebaseConfig = {
   projectId: "discursos-147ba",
   storageBucket: "discursos-147ba.firebasestorage.app",
   messagingSenderId: "778635238055",
-  appId: "1:778635238055:web:100e08b496f0b6d6c35982"
+  appId: "1:778635238055:web:100e08b496f0b6d6c35982",
+  measurementId: "G-YVZY3H3DE3"
 };
 
 const app = initializeApp(firebaseConfig);

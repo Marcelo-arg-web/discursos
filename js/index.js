@@ -1,4 +1,4 @@
-import { auth, db } from "./firebase-config.js?v=20260429b73";
+import { auth, db } from "./firebase-config.js?v=20260429b79";
 import { allowedUids } from "./data/allowedUids.js";
 import { sendPasswordRecoveryEmail, recoveryOkMessage } from "./shared/password-reset.js";
 import {
@@ -216,8 +216,23 @@ onAuthStateChanged(auth, async (user)=>{
   }
 });
 
+function setupPasswordToggle(buttonId, inputId){
+  const btn = $(buttonId);
+  const input = $(inputId);
+  if(!btn || !input) return;
+  btn.addEventListener("click", ()=>{
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    btn.textContent = show ? "Ocultar" : "Ver";
+    btn.setAttribute("aria-label", show ? "Ocultar contraseña" : "Mostrar contraseña");
+    btn.setAttribute("aria-pressed", show ? "true" : "false");
+    try{ input.focus({ preventScroll:true }); }catch(e){ input.focus(); }
+  });
+}
+
 $("btnLogin")?.addEventListener("click", entrar);
 $("password")?.addEventListener("keydown", (ev)=>{ if(ev.key === "Enter") entrar(); });
 $("email")?.addEventListener("keydown", (ev)=>{ if(ev.key === "Enter") entrar(); });
 $("btnRegister")?.addEventListener("click", registrar);
 $("btnReset")?.addEventListener("click", reset);
+setupPasswordToggle("btnTogglePassword", "password");

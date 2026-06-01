@@ -1,9 +1,24 @@
-import { auth, db } from "../firebase-config.js?v=20260429b73";
+import { auth, db } from "../firebase-config.js?v=20260429b75";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { canciones } from "../data/canciones.js";
+import { getGeneralConfig, nombreViajanteFromConfig } from "../services/configService.js?v=20260429b75";
 
 const $ = (id) => document.getElementById(id);
+let GENERAL_CONFIG = { nombreViajante: "Viajante" };
+function isSemanaVisitaValue(v){
+  const t = String(v || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[_-]+/g, " ");
+  return t === "visita" || t === "visita viajante" || t === "visita del viajante" || t === "viajante";
+}
+function isGenericViajante(value){
+  const t = String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return !t || t === "viajante" || t === "superintendente de circuito" || t === "visita del viajante";
+}
+function displayOradorPublico(a){
+  const raw = safe(a?.oradorPublico);
+  if(isSemanaVisitaValue(a?.tipoSemana) && isGenericViajante(raw)) return nombreViajanteFromConfig(GENERAL_CONFIG);
+  return raw;
+}
 
 function ensureTopbarStyles(){ /* estilos unificados en css/styles.css */ }
 
@@ -99,7 +114,7 @@ const presidente = safe(a.presidente || nameById(a.presidenteId));
 // Por defecto la oración inicial la hace el presidente (si no está cargada, usamos el presidente)
 const oracionIni = safe(a.oracionInicial || nameById(a.oracionInicialId) || presidente);
 
-const orador = safe(a.oradorPublico);
+const orador = displayOradorPublico(a);
 const cong = safe(a.congregacionVisitante);
 const tema = safe(a.tituloDiscurso); // campo existente en tu BD
 const prox = safe(a.tituloSiguienteSemana);
@@ -166,6 +181,7 @@ async function load(){
 
 (async function(){
   await requireActive();
+  GENERAL_CONFIG = await getGeneralConfig();
   $("btnPrint")?.addEventListener("click", ()=>window.print());
   await load();
 })();

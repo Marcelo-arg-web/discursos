@@ -1,4 +1,4 @@
-/* pro-shell.js - Build 73 seguro.
+/* pro-shell.js - Build 75 seguro.
    Corrección: se quitó el MutationObserver global que reescribía el menú una y otra vez
    y podía congelar Resultados/Mi perfil en usuario común. */
 (function(){
@@ -43,11 +43,12 @@
     'asignaciones villa fiad':'▤','visitantes':'⇢','salientes':'⇠','personas':'👥','funciones':'☑',
     'discursantes':'🎙','estadísticas':'◈','visitas/salidas':'↔','imprimir':'⎙','importar':'⇩',
     'usuarios':'⚙','perfil':'👤','mi perfil':'👤','pdf discursantes':'📄','discursantes pdf':'📄',
-    'documentos':'📄','documentos/pdf':'📄','preparar semana':'🧭','preparar':'🧭','doc presidente':'☰'
+    'documentos':'📄','documentos/pdf':'📄','configuración':'⚙','configuracion':'⚙','preparar semana':'🧭','preparar':'🧭','doc presidente':'☰'
   };
   function keyFor(a){
     const txt=(a.textContent||'').trim().toLowerCase();
     const href=(a.getAttribute('href')||'').toLowerCase();
+    if(href.includes('configuracion')) return 'configuración';
     if(href.includes('preparar-semana')) return 'preparar semana';
     if(href.includes('panel') || href.includes('inicio')) return 'panel';
     if(href.includes('asignaciones.html')) return 'asignaciones';
@@ -89,7 +90,9 @@
     ]},
     {label:'Administración', icon:'⚙', items:[
       {href:'panel.html', label:'Panel'},
+      {href:'funciones.html#config-general', label:'Configuración general'},
       {href:'usuarios.html', label:'Usuarios'},
+      {href:'configuracion.html', label:'Configuración'},
       {href:'importar.html', label:'Importar'},
       {href:'importar-visitantes.html', label:'Importar visitantes'},
       {href:'importar-asignaciones.html', label:'Importar asignaciones'},
@@ -110,12 +113,12 @@
     return `<a href="${item.href}" class="${extraClass || 'navQuick'}${active}" title="${item.label}"><span class="navIcon" aria-hidden="true">${icon}</span><span class="navText">${item.label}</span></a>`;
   }
   function organizeAdminNav(linkContainer){
-    if(!linkContainer || linkContainer.dataset.organizedBuild === '73') return;
+    if(!linkContainer || linkContainer.dataset.organizedBuild === '75') return;
     // No se reorganiza la vista común/consulta: esa queda solo con Resultados y Mi perfil.
     if(document.body.classList.contains('viewer-result-mode') || linkContainer.classList.contains('viewer-links')) return;
     const hasAnyAdminLink = Array.from(linkContainer.querySelectorAll('a')).some(a => /usuarios|importar|funciones|discursantes|documentos|asignaciones|visitantes|salientes/i.test(a.getAttribute('href') || a.textContent || ''));
     if(!hasAnyAdminLink) return;
-    linkContainer.dataset.organizedBuild = '73';
+    linkContainer.dataset.organizedBuild = '75';
     linkContainer.classList.add('nav-organized');
     const main = ADMIN_NAV_MAIN.map(item => navLinkHtml(item, 'navQuick')).join('');
     const groups = ADMIN_NAV_GROUPS.map((group) => {
@@ -195,7 +198,7 @@
       hits += 1;
       setTimeout(function(){
         enhanceTopbarOnce();
-        if(document.querySelector('.nav-organized[data-organized-build="73"]') || hits > 30){
+        if(document.querySelector('.nav-organized[data-organized-build="75"]') || hits > 30){
           try{ topbarObserver.disconnect(); }catch(_){}
           topbarObserver = null;
         }

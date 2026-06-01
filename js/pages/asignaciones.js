@@ -2,7 +2,7 @@
 // Admin: carga personas, guarda asignaciones semanales, y autocompleta visitante/títulos.
 // NO modifica Firebase.
 
-import { auth, db } from "../firebase-config.js?v=20260429b73";
+import { auth, db } from "../firebase-config.js?v=20260429b78";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection,
@@ -23,7 +23,8 @@ import {
   buildAlertaConflictos,
   marcarHospitalidadSkip,
   isSemanaSinSalidasNiVisitantes
-} from "../services/semanaEspecialService.js?v=20260429b73";
+} from "../services/semanaEspecialService.js?v=20260429b78";
+import { getGeneralConfig, nombreViajanteFromConfig } from "../services/configService.js?v=20260429b78";
 
 import {
   getAncianosOSiervos,
@@ -45,6 +46,48 @@ const setVal = (id, v) => {
   const el = $(id);
   if (el) el.value = v ?? "";
 };
+
+const CONFIG_LOCAL_KEY = "discursos_configuracion_general";
+let CONFIG_GENERAL = { viajanteNombre: "" };
+
+function normalizeText(s){
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function getNombreViajante(){
+  return String(CONFIG_GENERAL?.viajanteNombre || CONFIG_GENERAL?.nombreViajante || "").trim() || "Viajante";
+}
+
+function isNombreGenericoViajante(v){
+  const t = normalizeText(v);
+  return !t || t === "viajante" || t === "superintendente de circuito" || t === "sc";
+}
+
+async function cargarConfigGeneral(){
+  try{
+    GENERAL_CONFIG = await getGeneralConfig();
+    try{ localStorage.setItem(CONFIG_LOCAL_KEY, JSON.stringify(GENERAL_CONFIG)); }catch(e){}
+  }catch(e){
+    console.warn("No pude leer configuración general; se usa copia local o valor por defecto.", e);
+    try{
+      const local = JSON.parse(localStorage.getItem(CONFIG_LOCAL_KEY) || "{}");
+      GENERAL_CONFIG = { ...GENERAL_CONFIG, ...local };
+    }catch(err){}
+  }
+}
+
+let GENERAL_CONFIG = { nombreViajante: "Viajante" };
+function nombreViajanteActual(){
+  return nombreViajanteFromConfig(GENERAL_CONFIG);
+}
+function esTextoGenericoViajante(value){
+  const t = String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return !t || t === "viajante" || t === "superintendente de circuito" || t === "visita del viajante";
+}
 
 // ---------------- Semana Jueves/Sábado: copiar asignados automáticamente ----------------
 function isoToDate(iso){
@@ -149,6 +192,21 @@ function addDaysISO(iso, days) {
   return d.toISOString().slice(0, 10);
 }
 
+function ensureTipoSemanaOptions(){
+  const sel = $("tipoSemana");
+  if(!sel || !sel.options) return;
+  const existing = Array.from(sel.options).map(o => String(o.value || "").trim().toLowerCase());
+  const add = (value, label) => {
+    if(existing.includes(value)) return;
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    sel.appendChild(opt);
+    existing.push(value);
+  };
+  add("visita", "Visita del viajante");
+}
+
 function semanaTipo() {
   return String(getVal("tipoSemana") || "normal").trim().toLowerCase() || "normal";
 }
@@ -158,7 +216,8 @@ function isSemanaSinReunionValue(v) {
 }
 
 function isSemanaVisitaValue(v) {
-  return v === "visita" || v === "visita_viajante" || v === "viajante";
+  const t = String(v || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[_-]+/g, " ");
+  return t === "visita" || t === "visita viajante" || t === "visita del viajante" || t === "viajante";
 }
 
 function isSemanaEspecialValue(v) {
@@ -203,8 +262,11 @@ function blankAssignmentsData(extra = {}) {
 
 function aplicarReglaVisitaViajante(force = false){
   if(!isSemanaVisitaValue(semanaTipo())) return;
-  if(force || !String(getVal("oradorPublico") || "").trim()) setVal("oradorPublico", "Viajante");
-  if(force || !String(getVal("congregacionVisitante") || "").trim()) setVal("congregacionVisitante", "Viajante");
+  const nombreViajante = nombreViajanteActual();
+  const curOrador = getVal("oradorPublico");
+  const curCong = getVal("congregacionVisitante");
+  if(force || esTextoGenericoViajante(curOrador)) setVal("oradorPublico", nombreViajante);
+  if(force || esTextoGenericoViajante(curCong)) setVal("congregacionVisitante", "Viajante");
   updateOracionFinalVisitorOptionLabel();
   autoOracionFinal(force);
 }
@@ -218,7 +280,7 @@ function updateSemanaEspecialUI() {
     "acomodadorEntrada","acomodadorAuditorio1",
     "cancionNumero","oradorPublico","congregacionVisitante","discursoNumero",
     "tituloDiscurso","tituloSiguienteSemana",
-    "btnSugerirPresidente","btnSugerirOracionInicial","btnSugerirConductor","btnSugerirLectorAtalaya","btnSugMultimedia1","btnSugMultimedia2",
+    "btnSugerirPresidente","btnSugerirOracionInicial","btnSugerirOracionFinal","btnSugerirConductor","btnSugerirLectorAtalaya","btnSugMultimedia1","btnSugMultimedia2",
     "btnSugPlataforma","btnSugAcomEntrada","btnSugAcomAuditorio1","btnSugMicrofonista1","btnSugMicrofonista2"
   ];
   ids.forEach((id) => {
@@ -402,7 +464,7 @@ function rememberMonthlyAssignment(roleKey, personaId, whenValue) {
   const when = String(whenValue || "").trim();
   const month = monthKeyFromISO(when);
   if (!id || !month) return;
-  monthlyAssignmentUsage.push({ id, roleKey: String(roleKey || ""), whenValue: when, month });
+  monthlyAssignmentUsage.push({ id, roleKey: canonicalRoleKey(roleKey), whenValue: when, month });
 }
 
 function idsUsedThisMonthExceptCurrentWeek() {
@@ -458,23 +520,100 @@ function selectedIdsThisWeek(exceptSelectId = "") {
   return ids;
 }
 
+function canonicalRoleKey(roleKey) {
+  const k = String(roleKey || "").trim();
+  return ({
+    multimedia1: "multimedia",
+    multimedia2: "multimedia",
+    acomodadorEntrada: "acomodadores",
+    acomodadorAuditorio1: "acomodadores",
+    acomodadorAuditorio2: "acomodadores",
+    microfonista1: "microfonista",
+    microfonista2: "microfonista",
+  })[k] || k;
+}
+
+function roleGroupForSelectId(selectId) {
+  const sid = String(selectId || "").trim();
+  return canonicalRoleKey(({
+    presidente: "presidente",
+    oracionInicial: "oracionInicial",
+    oracionFinal: "oracionFinal",
+    conductorAtalaya: "conductorAtalaya",
+    lectorAtalaya: "lectorAtalaya",
+    plataforma: "plataforma",
+    multimedia1: "multimedia",
+    multimedia2: "multimedia",
+    acomodadorEntrada: "acomodadores",
+    acomodadorAuditorio1: "acomodadores",
+    microfonista1: "microfonista",
+    microfonista2: "microfonista",
+  })[sid] || sid);
+}
+
+function selectedIdsForSuggestion(selectId) {
+  const ids = new Set();
+  const currentGroup = roleGroupForSelectId(selectId);
+  const presidenteId = String(getVal("presidente") || "").trim();
+
+  // Regla pedida: el presidente no debe recibir oración ni otra asignación.
+  // Al sugerir cualquier campo que no sea Presidente, se excluye al presidente.
+  if (selectId !== "presidente" && presidenteId) ids.add(presidenteId);
+
+  WEEK_PERSON_SELECT_IDS.forEach((sid) => {
+    if (sid === selectId) return;
+    const v = String(getVal(sid) || "").trim();
+    if (!v || !personaNameById(v)) return;
+
+    if (selectId === "presidente") {
+      // Si alguien ya tiene otra asignación, no sugerirlo como presidente.
+      ids.add(v);
+      return;
+    }
+
+    // Para los demás campos solo evitamos repetir la misma función/grupo
+    // dentro de la semana. Oración y apoyo pueden coincidir si no es presidente.
+    if (sid === "presidente" || roleGroupForSelectId(sid) === currentGroup) {
+      ids.add(v);
+    }
+  });
+
+  return ids;
+}
+
+function idsUsedThisMonthForRoleExceptCurrentWeek(roleKey) {
+  const s = semanaISO && semanaISO();
+  const month = monthKeyFromISO(s);
+  const canonical = canonicalRoleKey(roleKey);
+  const ids = new Set();
+  if (!month || !canonical) return ids;
+  monthlyAssignmentUsage.forEach((u) => {
+    if (!u || u.month !== month) return;
+    if (s && u.whenValue === s) return;
+    if (canonicalRoleKey(u.roleKey) !== canonical) return;
+    if (u.id) ids.add(u.id);
+  });
+  return ids;
+}
+
 function buildCandidateList(candidateIds, selectId, softExcludedIds = [], hardExcludedIds = []) {
+  const roleKey = roleGroupForSelectId(selectId);
   const hard = new Set((hardExcludedIds || []).map((v) => String(v || "").trim()).filter(Boolean));
   const soft = new Set([
-    ...Array.from(selectedIdsThisWeek(selectId)),
+    ...Array.from(selectedIdsForSuggestion(selectId)),
     ...(softExcludedIds || []).map((v) => String(v || "").trim()).filter(Boolean),
   ]);
   const base = Array.from(new Set((candidateIds || []).map((v) => String(v || "").trim()).filter(Boolean)))
     .filter((id) => !hard.has(id));
   if (!base.length) return [];
 
-  // Primero: no repetir a nadie ya usado en la misma semana.
+  // Primero: respetar presidente exclusivo y no repetir la misma función en la semana.
   const noRepeat = base.filter((id) => !soft.has(id));
   if (noRepeat.length) {
-    // Segundo: dentro del mismo mes, si hay suficientes hermanos, prioriza a quienes todavía no tuvieron asignación.
-    const monthUsed = idsUsedThisMonthExceptCurrentWeek();
-    const freshThisMonth = noRepeat.filter((id) => !monthUsed.has(id));
-    if (freshThisMonth.length) return freshThisMonth;
+    // Segundo: dentro del mes evitamos repetir LA MISMA FUNCIÓN/GRUPO si hay alternativa.
+    const monthUsedSameRole = idsUsedThisMonthForRoleExceptCurrentWeek(roleKey);
+    const freshSameRoleThisMonth = noRepeat.filter((id) => !monthUsedSameRole.has(id));
+    if (freshSameRoleThisMonth.length) return freshSameRoleThisMonth;
     return noRepeat;
   }
 
@@ -586,24 +725,25 @@ async function ensureRoleHistoryLoaded() {
 }
 
 function compareCandidatesByRoleHistory(roleKey, aId, bId) {
-  const map = roleHistoryMaps[roleKey] || new Map();
-  const countMap = roleCountMaps[roleKey] || new Map();
+  const canonical = canonicalRoleKey(roleKey);
+  const map = roleHistoryMaps[canonical] || roleHistoryMaps[roleKey] || new Map();
+  const countMap = roleCountMaps[canonical] || roleCountMaps[roleKey] || new Map();
 
-  // 1) Menos veces en esa asignación.
-  const aCount = countMap.get(aId) || 0;
-  const bCount = countMap.get(bId) || 0;
-  if (aCount !== bCount) return aCount - bCount;
-
-  // 2) Más tiempo sin servir en esa asignación.
+  // 1) Antigüedad: primero el que nunca tuvo esa función, o el que más tiempo lleva sin hacerla.
   const aWhen = map.get(aId) || "";
   const bWhen = map.get(bId) || "";
   if (!aWhen && bWhen) return -1;
   if (aWhen && !bWhen) return 1;
   if (aWhen !== bWhen) return aWhen.localeCompare(bWhen);
 
-  // 3) Desempate local para que no gane siempre el primero alfabéticamente.
-  const aLocal = getLastSuggestedLocal(roleKey, aId);
-  const bLocal = getLastSuggestedLocal(roleKey, bId);
+  // 2) Si están iguales en antigüedad, elegir el que menos veces hizo esa misma función.
+  const aCount = countMap.get(aId) || 0;
+  const bCount = countMap.get(bId) || 0;
+  if (aCount !== bCount) return aCount - bCount;
+
+  // 3) Desempate local: al apretar Sugerir de nuevo, no vuelve siempre al mismo.
+  const aLocal = getLastSuggestedLocal(canonical, aId);
+  const bLocal = getLastSuggestedLocal(canonical, bId);
   if (aLocal !== bLocal) return aLocal - bLocal;
 
   const aName = personaNameById(aId) || "";
@@ -611,22 +751,68 @@ function compareCandidatesByRoleHistory(roleKey, aId, bId) {
   return aName.localeCompare(bName, "es", { sensitivity: "base" });
 }
 
-async function suggestByRoleHistory(selectId, roleKey, candidateIds, extraExcludedIds = [], hardExcludedIds = []) {
+function chooseNextCandidateForButton(selectId, roleKey, sortedList) {
+  const sel = $(selectId);
+  const list = Array.from(new Set((sortedList || []).filter(Boolean)));
+  if (!sel || !list.length) return "";
+
+  // Si el botón Sugerir se aprieta varias veces, avanza por la lista ordenada por antigüedad.
+  // Si el campo está vacío, arranca por el más antiguo disponible.
+  const current = String(sel.value || "").trim();
+  let idx = current ? list.indexOf(current) : -1;
+  if (idx >= 0 && list.length > 1) idx = (idx + 1) % list.length;
+  else idx = 0;
+
+  const chosen = list[idx] || "";
+  const key = `suggestCycle_${selectId}_${canonicalRoleKey(roleKey)}_${monthKeyFromISO(semanaISO() || isoToday())}`;
+  try { localStorage.setItem(key, chosen); } catch (_) {}
+  return chosen;
+}
+
+function setSuggestStatus(selectId, roleKey, chosen, candidateIds) {
+  if (chosen) {
+    const label = personaNameById(chosen) || chosen;
+    setStatus(`Sugerido: ${label}. Si apretás Sugerir otra vez, pasa al siguiente disponible por antigüedad.`);
+    return;
+  }
+  const total = (candidateIds || []).filter(Boolean).length;
+  const roleLabel = ({
+    presidente: "Presidente",
+    oracionInicial: "Oración inicial",
+    oracionFinal: "Oración final",
+    conductorAtalaya: "Conductor de La Atalaya",
+    lectorAtalaya: "Lector de La Atalaya",
+    multimedia: "Multimedia",
+    plataforma: "Plataforma",
+    acomodadores: "Acomodadores",
+    microfonista: "Microfonistas"
+  })[canonicalRoleKey(roleKey)] || roleKey || selectId;
+  setStatus(total
+    ? `No quedó candidato disponible para ${roleLabel} respetando presidente exclusivo y la misma función del mes.`
+    : `No hay candidatos cargados para ${roleLabel}. Revisá los tildes en Funciones.`, true);
+}
+
+async function suggestByRoleHistory(selectId, roleKey, candidateIds, extraExcludedIds = [], hardExcludedIds = [], opts = {}) {
   if (!isAdmin) return "";
   const sel = $(selectId);
   if (!sel) return "";
 
   await ensureRoleHistoryLoaded();
 
+  const canonical = canonicalRoleKey(roleKey);
   const list = buildCandidateList(candidateIds, selectId, extraExcludedIds, hardExcludedIds);
-  if (!list.length) return "";
-  list.sort((a, b) => compareCandidatesByRoleHistory(roleKey, a, b));
+  if (!list.length) {
+    if (opts?.showStatus) setSuggestStatus(selectId, canonical, "", candidateIds);
+    return "";
+  }
+  list.sort((a, b) => compareCandidatesByRoleHistory(canonical, a, b));
 
-  const chosen = list[0] || "";
+  const chosen = chooseNextCandidateForButton(selectId, canonical, list);
   if (chosen) {
     sel.value = chosen;
-    updateRoleHistory(roleKey, chosen, semanaISO() || isoToday());
-    markSuggestedLocal(roleKey, chosen);
+    updateRoleHistory(canonical, chosen, semanaISO() || isoToday());
+    markSuggestedLocal(canonical, chosen);
+    if (opts?.showStatus) setSuggestStatus(selectId, canonical, chosen, candidateIds);
   }
   return chosen;
 }
@@ -707,15 +893,7 @@ function compareSupportCandidatesByHistory(aId, bId) {
 }
 
 function supportRoleKeyForSelectId(selectId) {
-  return ({
-    multimedia1: "multimedia1",
-    multimedia2: "multimedia2",
-    plataforma: "plataforma",
-    acomodadorEntrada: "acomodadorEntrada",
-    acomodadorAuditorio1: "acomodadorAuditorio1",
-    microfonista1: "microfonista1",
-    microfonista2: "microfonista2",
-  })[String(selectId || "").trim()] || "";
+  return roleGroupForSelectId(selectId);
 }
 
 async function suggestSupportSelect(selectId, candidateIds) {
@@ -736,7 +914,7 @@ async function suggestSupportSelect(selectId, candidateIds) {
     list.sort(compareSupportCandidatesByHistory);
   }
 
-  const chosen = list[0] || "";
+  const chosen = chooseNextCandidateForButton(selectId, roleKey || selectId, list);
   if (chosen) {
     sel.value = chosen;
     updateSupportLastAssigned(chosen, semanaISO() || isoToday());
@@ -744,6 +922,9 @@ async function suggestSupportSelect(selectId, candidateIds) {
       updateRoleHistory(roleKey, chosen, semanaISO() || isoToday());
       markSuggestedLocal(roleKey, chosen);
     }
+    setSuggestStatus(selectId, roleKey || selectId, chosen, candidateIds);
+  } else {
+    setSuggestStatus(selectId, roleKey || selectId, "", candidateIds);
   }
   return chosen;
 }
@@ -824,7 +1005,7 @@ function applyReadOnlyMode(){
 
   // Botones sugerir
   [
-    "btnSugerirPresidente","btnSugerirOracionInicial","btnSugerirConductor","btnSugerirLectorAtalaya","btnSugMultimedia1","btnSugMultimedia2","btnSugPlataforma",
+    "btnSugerirPresidente","btnSugerirOracionInicial","btnSugerirOracionFinal","btnSugerirConductor","btnSugerirLectorAtalaya","btnSugMultimedia1","btnSugMultimedia2","btnSugPlataforma",
   ].forEach(id=>{ const b = $(id); if(b) b.disabled = true; });
 }
 
@@ -1056,8 +1237,8 @@ function monthUsageCounts(m) {
     if (!w) return;
     const entries = [
       ["plataforma", w.plataformaId],
-      ["acomodadorEntrada", w.acomodadorEntradaId],
-      ["acomodadorAuditorio1", w.acomodadorAuditorio1Id || w.acomodadorAuditorioId],
+      ["acomodadores", w.acomodadorEntradaId],
+      ["acomodadores", w.acomodadorAuditorio1Id || w.acomodadorAuditorioId],
       ["multimedia", w.multimedia1Id],
       ["multimedia", w.multimedia2Id],
       ["microfonista", w.microfonista1Id],
@@ -1074,20 +1255,21 @@ function monthUsageCounts(m) {
 }
 
 function pickFairCandidate(candidateIds, counts, roleKey, usedThisWeek) {
+  const canonical = canonicalRoleKey(roleKey);
   const list = (candidateIds || []).filter(Boolean).filter((id) => !usedThisWeek.has(id));
   if (list.length === 0) return "";
-  // Orden: menos total en el mes, luego menos veces en ese rol, luego rotación local (último uso)
-  const lastUsedKey = (id) => `lastUsed_${roleKey}_${id}`;
+  // Orden: primero no repetir la misma función en el mes; después equidad general.
+  const lastUsedKey = (id) => `lastUsed_${canonical}_${id}`;
   const getLastUsed = (id) => parseInt(localStorage.getItem(lastUsedKey(id)) || "0", 10);
 
   list.sort((a, b) => {
     const ca = counts[a] || { total: 0, roles: {} };
     const cb = counts[b] || { total: 0, roles: {} };
+    const ra = (ca.roles && ca.roles[canonical]) ? ca.roles[canonical] : 0;
+    const rb = (cb.roles && cb.roles[canonical]) ? cb.roles[canonical] : 0;
+    if (ra !== rb) return ra - rb;
     const ta = ca.total || 0, tb = cb.total || 0;
     if (ta !== tb) return ta - tb;
-    const ra = (ca.roles && ca.roles[roleKey]) ? ca.roles[roleKey] : 0;
-    const rb = (cb.roles && cb.roles[roleKey]) ? cb.roles[roleKey] : 0;
-    if (ra !== rb) return ra - rb;
     const histMap = roleHistoryMaps[roleKey] || new Map();
     const aWhen = histMap.get(a) || supportLastAssigned.get(a) || "";
     const bWhen = histMap.get(b) || supportLastAssigned.get(b) || "";
@@ -1123,10 +1305,10 @@ async function applyMesWeekSuggestion(targetWeekKey) {
   const platforma = getVal("mesPlataforma") || pickFairCandidate(candidates.plataforma, counts, "plataforma", used);
   used.add(platforma);
 
-  const acomEnt = getVal("mesAcomodadorEntrada") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorEntrada", used);
+  const acomEnt = getVal("mesAcomodadorEntrada") || pickFairCandidate(candidates.acomodadores, counts, "acomodadores", used);
   used.add(acomEnt);
 
-  const acomAud1 = getVal("mesAcomodadorAuditorio1") || pickFairCandidate(candidates.acomodadores, counts, "acomodadorAuditorio1", used);
+  const acomAud1 = getVal("mesAcomodadorAuditorio1") || pickFairCandidate(candidates.acomodadores, counts, "acomodadores", used);
   used.add(acomAud1);
 
   const mm1 = getVal("mesMultimedia1") || pickFairCandidate(candidates.multimedia, counts, "multimedia", used);
@@ -1161,8 +1343,8 @@ async function applyMesWeekSuggestion(targetWeekKey) {
 
   // Marca uso para el criterio de desempate local
   markLastUsed("plataforma", platforma);
-  markLastUsed("acomodadorEntrada", acomEnt);
-  markLastUsed("acomodadorAuditorio1", acomAud1);
+  markLastUsed("acomodadores", acomEnt);
+  markLastUsed("acomodadores", acomAud1);
   markLastUsed("multimedia", mm1);
   markLastUsed("multimedia", mm2);
   markLastUsed("microfonista", mic1);
@@ -1174,7 +1356,7 @@ async function sugerirSemanaEquitativa() {
   if (!mesISO) return setStatus("Elegí un mes primero.", true);
   await applyMesWeekSuggestion(currentMesSemana());
   renderMesPreview(mesISO, lastMesDoc);
-  setStatus("Sugerencia aplicada: se priorizó no repetir en la semana, no repetir en el mes si hay hermanos disponibles, y elegir a quien más tiempo lleva sin asignación.");
+  setStatus("Sugerencia aplicada: presidente exclusivo, no repetir la misma función en el mes si hay hermanos disponibles, y elegir a quien más tiempo lleva sin esa función.");
 }
 
 async function sugerirMesCompleto() {
@@ -1198,7 +1380,7 @@ async function sugerirMesCompleto() {
   hydrateMesToUI(lastMesDoc);
 
   renderMesPreview(mesISO, lastMesDoc);
-  setStatus("Sugerencias generadas para todo el mes. Se evitó repetir asignados cuando hubo candidatos suficientes y se respetaron las funciones cargadas.");
+  setStatus("Sugerencias generadas para todo el mes. Se evitó repetir la misma función cuando hubo candidatos suficientes y se respetaron las funciones cargadas.");
 }
 
 async function cargarMes() {
@@ -1387,15 +1569,10 @@ function suggestSelect(selectId, key, ids){
   if (selectId === "plataforma") {
     return suggestByRoleHistory(selectId, "plataforma", ids);
   }
-  if(!isAdmin) return;
+  if(!isAdmin) return "";
   const sel = $(selectId);
-  if(!sel) return;
-  const current = sel.value;
-  let chosen = nextFromRotation(key, ids);
-  if(chosen && chosen === current && (ids||[]).length > 1){
-    chosen = nextFromRotation(key, ids);
-  }
-  if(chosen) sel.value = chosen;
+  if(!sel) return "";
+  return suggestByRoleHistory(selectId, key, ids, [], [], { showStatus: true });
 }
 
 // ---------------- Autocompletado canción y discurso por número ----------------
@@ -1438,6 +1615,79 @@ function aplicarAutoDiscurso() {
     }
   }
   lastAutoTituloDiscurso = t;
+}
+
+
+// ---------------- Autocompletado del discurso de la semana siguiente ----------------
+// Solo lee el arreglo guardado del sábado siguiente. No cambia otros campos.
+let lastAutoTituloSiguienteSemana = "";
+
+function titleFromAssignmentData(raw) {
+  const a = raw?.asignaciones || raw || {};
+  const tipo = String(a?.tipoSemana || "").trim().toLowerCase();
+  if (!a || isSemanaSinReunionValue(tipo)) return "";
+
+  const titulo = cleanText(a.tituloDiscurso || a.titulo || a.tema || "");
+  if (titulo) return titulo;
+
+  const num = normNumero(a.discursoNumero || a.bosquejo || a.numeroDiscurso || a.numero);
+  if (num) return cleanText(bosquejosMap.get(num) || "");
+
+  return "";
+}
+
+async function tituloDiscursoDesdeVisitante(fechaISO) {
+  const visitante = (await firestoreVisitFor(fechaISO)) || localVisitanteFor(fechaISO);
+  if (!visitante) return "";
+  const titulo = cleanText(visitante.titulo);
+  if (titulo) return titulo;
+  const num = normNumero(visitante.bosquejo);
+  return num ? cleanText(bosquejosMap.get(num) || "") : "";
+}
+
+async function tituloDiscursoDeSemana(fechaISO) {
+  if (!fechaISO) return "";
+
+  try {
+    const snap = await getDoc(doc(db, "asignaciones", fechaISO));
+    if (snap.exists()) {
+      const titulo = titleFromAssignmentData(snap.data());
+      if (titulo) return titulo;
+    }
+  } catch (e) {
+    console.warn("No pude leer la asignación de la semana siguiente:", e);
+  }
+
+  try {
+    return await tituloDiscursoDesdeVisitante(fechaISO);
+  } catch (e) {
+    console.warn("No pude leer el visitante de la semana siguiente:", e);
+    return "";
+  }
+}
+
+async function aplicarAutoTituloSiguienteSemana(fechaISO, opts = {}) {
+  const el = $("tituloSiguienteSemana");
+  if (!el || !fechaISO) return "";
+
+  const nextISO = shiftWeekISO(fechaISO, 1);
+  const titulo = cleanText(await tituloDiscursoDeSemana(nextISO));
+  const current = cleanText(el.value);
+  const previousAuto = cleanText(el.dataset.autoNextTitle || lastAutoTituloSiguienteSemana);
+  const force = Boolean(opts.force);
+
+  // No pisa un texto escrito manualmente. Solo completa si está vacío,
+  // si se fuerza, o si el campo contenía el autocompletado anterior.
+  if (force || !current || (previousAuto && current === previousAuto)) {
+    el.value = titulo;
+    el.dataset.autoNextTitle = titulo;
+    lastAutoTituloSiguienteSemana = titulo;
+    el.placeholder = titulo
+      ? `Tomado automáticamente del ${fmtAR(nextISO)}`
+      : `Si el ${fmtAR(nextISO)} ya está cargado, se completará automáticamente`;
+  }
+
+  return titulo;
 }
 
 
@@ -1531,7 +1781,7 @@ async function sugerirPresidente(){
     // Marcelo se reserva para conducir La Atalaya, salvo asignación manual del usuario.
     .filter(p => !exclNames.has(normalize(p.nombre || "")))
     .map(p => p.id);
-  return await suggestByRoleHistory("presidente", "presidente", candidatos, excl);
+  return await suggestByRoleHistory("presidente", "presidente", candidatos, excl, [], { showStatus: true });
 }
 
 async function sugerirConductorAtalaya(){
@@ -1562,7 +1812,8 @@ async function sugerirConductorAtalaya(){
     "conductorAtalaya",
     candidatos,
     [getVal("presidente"), getVal("lectorAtalaya")],
-    hardExcluded
+    hardExcluded,
+    { showStatus: true }
   );
 
   if (salidaMarcelo && !chosen) {
@@ -1582,7 +1833,8 @@ async function sugerirLectorAtalaya(){
     "lectorAtalaya",
     candidatos,
     [getVal("presidente"), getVal("conductorAtalaya")],
-    salidaMarcelo && marcelo?.id ? [marcelo.id] : []
+    salidaMarcelo && marcelo?.id ? [marcelo.id] : [],
+    { showStatus: true }
   );
 }
 
@@ -1594,18 +1846,38 @@ function autoPresidenteIfNeeded(){
 async function sugerirOracionInicial(){
   if(!window.__personasCache) return "";
   const pool = (getOradoresOracion(window.__personasCache) || []);
+  const respaldo = (getAncianosOSiervos(window.__personasCache) || []);
   const candidatos = pool
+    .filter(p=>p && p.id && p.nombre)
+    .map(p=>p.id);
+  const candidatosRespaldo = respaldo
     .filter(p=>p && p.id && p.nombre)
     .map(p=>p.id);
   const marcelo = personaByName(MARCELO_CONDUCTOR_NOMBRE);
   const salidaMarcelo = marcelo ? await marceloTieneSalidaFinDeSemana(semanaISO() || upcomingSaturdayISO()) : false;
-  return await suggestByRoleHistory(
+  const hard = salidaMarcelo && marcelo?.id ? [marcelo.id] : [];
+  let chosen = await suggestByRoleHistory(
     "oracionInicial",
     "oracionInicial",
     candidatos,
-    [getVal("lectorAtalaya"), getVal("conductorAtalaya"), getVal("presidente")],
-    salidaMarcelo && marcelo?.id ? [marcelo.id] : []
+    [getVal("presidente")],
+    hard,
+    { showStatus: true }
   );
+
+  // Si los tildes de Oración dejaron como único candidato al presidente u otro excluido,
+  // usamos el respaldo permitido de ancianos/siervos para no dejar el botón en blanco.
+  if(!chosen && candidatosRespaldo.some(id => !candidatos.includes(id))){
+    chosen = await suggestByRoleHistory(
+      "oracionInicial",
+      "oracionInicial",
+      candidatosRespaldo,
+      [getVal("presidente")],
+      hard,
+      { showStatus: true }
+    );
+  }
+  return chosen;
 }
 
 function autoOracionInicialIfNeeded(){
@@ -1637,6 +1909,8 @@ async function precargarAsignacionesAutomaticas(opts = {}) {
   await completarSiVacio("acomodadorAuditorio1", () => suggestSelect("acomodadorAuditorio1", "acomodadores", candidates.acomodadores));
   await completarSiVacio("microfonista1", () => suggestSelect("microfonista1", "microfonista", candidates.microfonistas));
   await completarSiVacio("microfonista2", () => suggestSelect("microfonista2", "microfonista", candidates.microfonistas));
+  updateOracionFinalVisitorOptionLabel();
+  autoOracionFinal(false);
 }
 
 async function aplicarAutoVisitante(fechaISO, opts = {}) {
@@ -1648,7 +1922,7 @@ async function aplicarAutoVisitante(fechaISO, opts = {}) {
   }
   if(isSemanaVisitaValue(semanaTipo())){
     aplicarReglaVisitaViajante(force);
-    return { nombre: "Viajante", congregacion: "Viajante" };
+    return { nombre: nombreViajanteActual(), congregacion: "Viajante" };
   }
   const visitante = (await firestoreVisitFor(fechaISO)) || localVisitanteFor(fechaISO);
   if (!visitante) {
@@ -1719,14 +1993,15 @@ function ensureOracionFinalOption(value){
   const sel = $("oracionFinal");
   const v = String(value || "").trim();
   if(!sel || !v) return;
+  const label = personaNameById(v) || v;
   let opt = Array.from(sel.options).find(x => (x.value || "").trim() === v);
   if(!opt){
     opt = document.createElement("option");
     opt.value = v;
-    opt.textContent = v;
+    opt.textContent = label;
     sel.appendChild(opt);
-  }else{
-    opt.textContent = v;
+  }else if(!String(opt.textContent || "").trim()){
+    opt.textContent = label;
   }
 }
 
@@ -1748,6 +2023,14 @@ function autoOracionFinal(force = false){
   ensureOracionFinalOption(v);
   sel.value = v;
   sel.dataset.manual = "0";
+}
+
+function sugerirOracionFinal(){
+  updateOracionFinalVisitorOptionLabel();
+  autoOracionFinal(true);
+  const texto = oracionFinalValueForSave();
+  if(texto) setStatus(`Oración final sugerida: ${texto}.`);
+  return texto;
 }
 
 function oracionFinalValueForSave(){
@@ -1802,6 +2085,7 @@ async function copiarSemanaAnterior() {
     const a = data.asignaciones || data;
     hydrateToUI(a);
     await aplicarAutoVisitante(s, { force: true });
+    await aplicarAutoTituloSiguienteSemana(s, { force: false });
     setStatus("Listo: copié la semana anterior. Revisá y Guardá.");
     generarAviso();
   } catch (e) {
@@ -1834,7 +2118,7 @@ function formData() {
     acomodadorAuditorio2Id: "", // Villa Fiad usa un solo acomodador de auditorio. Se deja vacío por compatibilidad con datos viejos.
 
     cancionNumero: getVal("cancionNumero"),
-    oradorPublico: visita ? "Viajante" : getVal("oradorPublico"),
+    oradorPublico: visita ? (String(getVal("oradorPublico") || "").trim() || nombreViajanteActual()) : getVal("oradorPublico"),
     congregacionVisitante: visita ? "Viajante" : getVal("congregacionVisitante"),
     discursoNumero: getVal("discursoNumero"),
     tituloDiscurso: getVal("tituloDiscurso"),
@@ -1888,6 +2172,19 @@ function hydrateToUI(a) {
   setVal("discursoNumero", a.discursoNumero || "");
   setVal("tituloDiscurso", a.tituloDiscurso || "");
   setVal("tituloSiguienteSemana", a.tituloSiguienteSemana || "");
+
+  // Reponer textos guardados de oración final, incluso cuando no son IDs
+  // de personas sino la regla automática Visitante/Presidente.
+  const savedFinal = String(a.oracionFinalId || "").trim();
+  if(savedFinal){
+    ensureOracionFinalOption(savedFinal);
+    setVal("oracionFinal", savedFinal);
+  }
+  const finalSel = $("oracionFinal");
+  if(finalSel) finalSel.dataset.manual = savedFinal && !isAutoOracionFinalValue(savedFinal) ? "1" : "0";
+  updateOracionFinalVisitorOptionLabel();
+  autoOracionFinal(false);
+
   aplicarAutoDiscurso();
   if(isSemanaVisitaValue(a.tipoSemana || "")) aplicarReglaVisitaViajante(false);
 }
@@ -1911,30 +2208,51 @@ function validateRequired() {
 
 function validateNoDuplicates() {
   if (isSemanaEspecial()) return null;
-  const fields = [
-    { id: "presidente", label: "Presidente" },
-    { id: "oracionInicial", label: "Oración inicial" },
-    { id: "conductorAtalaya", label: "Conductor La Atalaya" },
-    { id: "lectorAtalaya", label: "Lector La Atalaya" },
-    { id: "multimedia1", label: "Multimedia 1" },
-    { id: "multimedia2", label: "Multimedia 2" },
-    { id: "plataforma", label: "Acomodador de plataforma" },
-    { id: "acomodadorEntrada", label: "Acomodador Entrada" },
-    { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1" },
-    { id: "microfonista1", label: "Microfonista 1" },
-    { id: "microfonista2", label: "Microfonista 2" },
-  ];
-  const chosen = fields.map((f) => ({ ...f, value: getVal(f.id) })).filter((x) => x.value);
 
-  const seen = new Map();
-  for (const c of chosen) {
-    if (seen.has(c.value)) {
-      const a = seen.get(c.value);
-      const p = personas.find((pp) => pp.id === c.value);
-      const name = p ? displayName(p) : "(persona)";
-      return `No podés asignar a ${name} en ${a.label} y ${c.label}.`;
+  const fieldDefs = [
+    { id: "presidente", label: "Presidente", group: "presidente" },
+    { id: "oracionInicial", label: "Oración inicial", group: "oracionInicial" },
+    { id: "conductorAtalaya", label: "Conductor La Atalaya", group: "conductorAtalaya" },
+    { id: "lectorAtalaya", label: "Lector La Atalaya", group: "lectorAtalaya" },
+    { id: "multimedia1", label: "Multimedia 1", group: "multimedia" },
+    { id: "multimedia2", label: "Multimedia 2", group: "multimedia" },
+    { id: "plataforma", label: "Acomodador de plataforma", group: "plataforma" },
+    { id: "acomodadorEntrada", label: "Acomodador Entrada", group: "acomodadores" },
+    { id: "acomodadorAuditorio1", label: "Acomodador Auditorio 1", group: "acomodadores" },
+    { id: "microfonista1", label: "Microfonista 1", group: "microfonista" },
+    { id: "microfonista2", label: "Microfonista 2", group: "microfonista" },
+  ];
+
+  const presidenteId = String(getVal("presidente") || "").trim();
+  if (presidenteId) {
+    const otra = fieldDefs
+      .filter((f) => f.id !== "presidente")
+      .map((f) => ({ ...f, value: String(getVal(f.id) || "").trim() }))
+      .find((f) => f.value === presidenteId);
+    const finalValue = String(getVal("oracionFinal") || "").trim();
+    const finalEsPresidente = finalValue === presidenteId;
+    if (otra || finalEsPresidente) {
+      const name = personaNameById(presidenteId) || "el presidente";
+      const label = otra ? otra.label : "Oración final";
+      return `No podés asignar a ${name} como Presidente y también en ${label}. El presidente queda solo para presidir.`;
     }
-    seen.set(c.value, c);
+  }
+
+  // En la misma semana no repetimos dos espacios de la MISMA función/grupo.
+  // Pero sí permitimos que alguien que no preside haga oración y otra ayuda.
+  const uniqueGroups = new Set(["multimedia", "acomodadores", "microfonista"]);
+  const seenByGroup = new Map();
+  for (const f of fieldDefs) {
+    if (!uniqueGroups.has(f.group)) continue;
+    const value = String(getVal(f.id) || "").trim();
+    if (!value) continue;
+    const key = `${f.group}:${value}`;
+    if (seenByGroup.has(key)) {
+      const first = seenByGroup.get(key);
+      const name = personaNameById(value) || "(persona)";
+      return `No conviene asignar a ${name} en ${first.label} y ${f.label} la misma semana.`;
+    }
+    seenByGroup.set(key, f);
   }
   return null;
 }
@@ -1945,24 +2263,36 @@ async function buildMonthlyRepeatWarning(data) {
   const s = semanaISO();
   const month = monthKeyFromISO(s);
   if (!month) return "";
-  const monthUsed = idsUsedThisMonthExceptCurrentWeek();
+
   const fields = [
-    data.presidenteId,
-    data.oracionInicialId,
-    data.conductorAtalayaId,
-    data.lectorAtalayaId,
-    data.multimedia1Id,
-    data.multimedia2Id,
-    data.plataformaId,
-    data.acomodadorEntradaId,
-    data.acomodadorAuditorio1Id,
-    data.microfonista1Id,
-    data.microfonista2Id,
-  ].filter(Boolean);
-  const repeated = Array.from(new Set(fields.filter((id) => monthUsed.has(id))));
+    { roleKey: "presidente", id: data.presidenteId, label: "Presidente" },
+    { roleKey: "oracionInicial", id: data.oracionInicialId, label: "Oración inicial" },
+    { roleKey: "conductorAtalaya", id: data.conductorAtalayaId, label: "Conductor La Atalaya" },
+    { roleKey: "lectorAtalaya", id: data.lectorAtalayaId, label: "Lector La Atalaya" },
+    { roleKey: "multimedia", id: data.multimedia1Id, label: "Multimedia" },
+    { roleKey: "multimedia", id: data.multimedia2Id, label: "Multimedia" },
+    { roleKey: "plataforma", id: data.plataformaId, label: "Plataforma" },
+    { roleKey: "acomodadores", id: data.acomodadorEntradaId, label: "Acomodador" },
+    { roleKey: "acomodadores", id: data.acomodadorAuditorio1Id, label: "Acomodador" },
+    { roleKey: "microfonista", id: data.microfonista1Id, label: "Microfonista" },
+    { roleKey: "microfonista", id: data.microfonista2Id, label: "Microfonista" },
+  ].filter((x) => x.id);
+
+  const repeated = [];
+  const seenMessages = new Set();
+  fields.forEach((f) => {
+    const usedSameRole = idsUsedThisMonthForRoleExceptCurrentWeek(f.roleKey);
+    if (!usedSameRole.has(f.id)) return;
+    const name = personaNameById(f.id);
+    if (!name) return;
+    const msg = `${name} ya tuvo ${f.label} este mes`;
+    if (!seenMessages.has(msg)) {
+      seenMessages.add(msg);
+      repeated.push(msg);
+    }
+  });
   if (!repeated.length) return "";
-  const names = repeated.map((id) => personaNameById(id)).filter(Boolean).join(", ");
-  return names ? `Aviso: ${names} ya tenía asignación en este mes. Si hay suficientes hermanos con la función correspondiente, usá Sugerir para evitar repetidos.` : "";
+  return `Aviso: ${repeated.join("; ")}. Si hay hermanos disponibles con esa función, usá Sugerir para rotar la misma función.`;
 }
 
 async function cargarSemana() {
@@ -1979,18 +2309,20 @@ async function cargarSemana() {
       await aplicarAutoVisitante(s, { force: true });
       try{ await precargarAsignacionesAutomaticas({ soloVacios: true }); }catch(_e){}
       try{ autoPresidenteIfNeeded(); }catch(_e){}
+      await aplicarAutoTituloSiguienteSemana(s, { force: false });
       // refresca aviso
       try{ await generarAviso(); }catch(_e){}
       const alerta = await revisarConflictosSemanaActual(semanaTipo());
       if(alerta) setStatus(alerta, true);
-      else setStatus("Datos cargados. Si había campos vacíos, se completaron sugerencias automáticas sin repetir funciones.");
+      else setStatus("Datos cargados. Si había campos vacíos, se completaron sugerencias automáticas respetando presidente exclusivo y rotación por función.");
     } else {
       hydrateToUI(blankAssignmentsData({ tipoSemana: "normal" }));
       updateSemanaEspecialUI();
-      setStatus("No hay datos guardados para esta semana. Hice una precarga automática sin repetir funciones. Revisá y guardá.");
+      setStatus("No hay datos guardados para esta semana. Hice una precarga automática respetando presidente exclusivo y rotación por función. Revisá y guardá.");
       await aplicarAutoVisitante(s, { force: true });
       try{ await precargarAsignacionesAutomaticas({ soloVacios: true }); }catch(_e){}
       try{ autoPresidenteIfNeeded(); }catch(_e){}
+      await aplicarAutoTituloSiguienteSemana(s, { force: false });
       setAvisoText("");
     }
   } catch (e) {
@@ -2019,6 +2351,10 @@ async function guardar() {
 
   setStatus("Guardando…");
   setBusy("btnGuardar", true, "Guardando…");
+  if(isSemanaVisitaValue(semanaTipo())) aplicarReglaVisitaViajante(true);
+  updateOracionFinalVisitorOptionLabel();
+  autoOracionFinal(false);
+  await aplicarAutoTituloSiguienteSemana(s, { force: false });
   const data = formData();
   const alertaRegla = await revisarConflictosSemanaActual(data.tipoSemana);
   const alertaMes = await buildMonthlyRepeatWarning(data);
@@ -2408,6 +2744,8 @@ async function init() {
     });
   });
 
+  await cargarConfigGeneral();
+
   renderTopbar('asignaciones', usuarioRol);
   applyReadOnlyMode();
   // Usuarios (no admin): solo ver desde hoy en adelante
@@ -2437,6 +2775,8 @@ async function init() {
     await signOut(auth);
     window.location.href = "index.html";
   });
+  ensureTipoSemanaOptions();
+
   $("btnCargar")?.addEventListener("click", cargarSemana);
   $("btnGuardar")?.addEventListener("click", guardar);
   $("btnLimpiar")?.addEventListener("click", limpiar);
@@ -2462,16 +2802,19 @@ async function init() {
     if (!s) return setStatus("Elegí una semana para cotejar visitantes.", true);
     if(isSemanaVisitaValue(semanaTipo())){
       aplicarReglaVisitaViajante(true);
-      setStatus("Visita del viajante: se fijó el orador público como Viajante. No se busca visitante externo.");
+      await aplicarAutoTituloSiguienteSemana(s, { force: false });
+      setStatus(`Visita del viajante: se fijó el orador público como ${nombreViajanteActual()}. No se busca visitante externo.`);
       return;
     }
     const v = await aplicarAutoVisitante(s, { force: true });
+    await aplicarAutoTituloSiguienteSemana(s, { force: false });
     if (v) setStatus(`Visitante actualizado desde Visitantes: ${v.nombre || "sin nombre"}${v.congregacion ? " — " + v.congregacion : ""}.`);
     else setStatus("No encontré visitante cargado para esa fecha en Visitantes.", true);
   });
   $("tipoSemana")?.addEventListener("change", async () => {
     updateSemanaEspecialUI();
     if(isSemanaVisitaValue(semanaTipo())) aplicarReglaVisitaViajante(true);
+    await aplicarAutoTituloSiguienteSemana(semanaISO(), { force: false });
     const alerta = await revisarConflictosSemanaActual(semanaTipo());
     if(alerta) setStatus(alerta, true);
   });
@@ -2484,6 +2827,7 @@ async function init() {
   // Sugerencias / rotación
   $("btnSugerirPresidente")?.addEventListener("click", ()=>{ sugerirPresidente(); });
   $("btnSugerirOracionInicial")?.addEventListener("click", ()=>{ sugerirOracionInicial(); });
+  $("btnSugerirOracionFinal")?.addEventListener("click", ()=>{ sugerirOracionFinal(); });
   $("btnSugerirConductor")?.addEventListener("click", ()=>{ sugerirConductorAtalaya(); });
   $("btnSugerirLectorAtalaya")?.addEventListener("click", ()=>{ sugerirLectorAtalaya(); });
   $("btnSugMultimedia1")?.addEventListener("click", ()=>suggestSelect("multimedia1","multimedia", candidates.multimedia));
@@ -2538,16 +2882,33 @@ async function init() {
     const cur = String(getVal("tituloDiscurso") || "").trim();
     if (cur !== lastAutoTituloDiscurso) lastAutoTituloDiscurso = cur ? "__MANUAL__" : "";
   });
+  $("tituloSiguienteSemana")?.addEventListener("input", () => {
+    const el = $("tituloSiguienteSemana");
+    const cur = cleanText(el?.value || "");
+    if (cur && cur !== cleanText(el?.dataset.autoNextTitle || "")) {
+      lastAutoTituloSiguienteSemana = "__MANUAL__";
+    }
+  });
 
   try {
     await cargarPersonas();
     poblarSelects();
   // Mantener reglas de oraciones
   const presEl = $("presidente");
-  if (presEl) presEl.addEventListener("change", () => { autoOracionInicialIfNeeded(); });
+  if (presEl) presEl.addEventListener("change", () => {
+    autoOracionInicialIfNeeded();
+    updateOracionFinalVisitorOptionLabel();
+    autoOracionFinal(false);
+  });
   const conductorEl = $("conductorAtalaya");
   if (conductorEl) conductorEl.addEventListener("change", () => { if(!getVal("lectorAtalaya")) sugerirLectorAtalaya(); });
   const oradorEl = $("oradorPublico");
+  if (oradorEl) {
+    ["input", "change"].forEach(evt => oradorEl.addEventListener(evt, () => {
+      updateOracionFinalVisitorOptionLabel();
+      autoOracionFinal(false);
+    }));
+  }
   const oracionFinalEl = $("oracionFinal");
   if (oracionFinalEl) oracionFinalEl.addEventListener("change", () => { oracionFinalEl.dataset.manual = "1"; });
 

@@ -1,5 +1,6 @@
-import { auth, db } from "../firebase-config.js?v=20260429b73";
+import { auth, db } from "../firebase-config.js?v=20260429b75";
 import { hasPublicAccess } from "../services/publicAccess.js";
+import { getGeneralConfig, nombreViajanteFromConfig } from "../services/configService.js?v=20260429b75";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   doc,
@@ -15,6 +16,20 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
+let GENERAL_CONFIG = { nombreViajante: "Viajante" };
+function isSemanaVisitaValue(v){
+  const t = String(v || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[_-]+/g, " ");
+  return t === "visita" || t === "visita viajante" || t === "visita del viajante" || t === "viajante";
+}
+function isGenericViajante(value){
+  const t = String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return !t || t === "viajante" || t === "superintendente de circuito" || t === "visita del viajante";
+}
+function displayOradorPublico(a){
+  const raw = String(a?.oradorPublico || "").trim();
+  if(isSemanaVisitaValue(a?.tipoSemana) && isGenericViajante(raw)) return nombreViajanteFromConfig(GENERAL_CONFIG);
+  return raw;
+}
 
 function toast(msg, isError=false){
   const host = $("toastHost");
@@ -190,7 +205,7 @@ function render(mesISO, items){
     const conductor = resolveNombre(a, "conductorAtalayaId");
     const lector = resolveNombre(a, "lectorAtalayaId");
 
-    const orador = String(a.oradorPublico || "").trim();
+    const orador = displayOradorPublico(a);
     const cong = String(a.congregacionVisitante || "").trim();
     const titulo = String(a.tituloDiscurso || "").trim();
 
@@ -293,6 +308,7 @@ async function cargar(){
 
 (async function init(){
   await requireActiveUser();
+  GENERAL_CONFIG = await getGeneralConfig();
 
   const now = new Date();
   const params = new URLSearchParams(location.search);
